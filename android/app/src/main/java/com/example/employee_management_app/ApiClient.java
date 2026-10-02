@@ -6,8 +6,8 @@ import okhttp3.OkHttpClient;
 import java.util.concurrent.TimeUnit;
 
 public class ApiClient {
-    // Đổi sang IP thật của máy bạn trên mạng WiFi thay vì 10.0.2.2
-    private static final String BASE_URL = "http://192.168.11.5/employee-api/";
+    // IP của bạn ĐÃ THAY ĐỔI LẦN NỮA thành 192.168.11.3
+    private static final String BASE_URL = "http://192.168.11.3/employee-api/";
     private static Retrofit retrofit = null;
 
     public static Retrofit getClient() {
