@@ -9,7 +9,7 @@ App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới d�
 
 | Vai trò | Màn hình | Chức năng |
 |---|---|---|
-| Admin | Trang quản trị | Xem tổng quan (NV đang làm, đơn chờ duyệt, đi muộn), quản lý nhân viên, sửa mọi thông tin, khóa/mở TK mọi phòng ban |
+| Admin | Trang quản trị | Xem tổng quan (NV đang làm, đơn chờ duyệt, đi muộn), quản lý nhân viên, tạo tài khoản NV, sửa mọi thông tin, khóa/mở TK mọi phòng ban |
 | Sếp (manager) | Trang quản trị | Như admin nhưng chỉ khóa/mở NV thường cùng phòng mình |
 | Nhân viên (staff) | Trang nhân viên | Xem hồ sơ, chấm công vào/ra, xin nghỉ phép, đổi mật khẩu |
 | Chung | Đăng nhập, Quên mật khẩu | Login phân quyền; quên MK bằng mã 6 số qua Email hoặc SMS (Firebase, miễn phí) |
@@ -21,7 +21,7 @@ Quyền khóa/mở và khóa sửa mail/SĐT được chặn ở **server**, app
 ```
 database/  SQL full 8 bảng (roles, departments, positions, employees,
            attendances, leave_requests, salaries, password_resets)
-api/       PHP REST API: auth.php (login, đổi/quên MK),
+api/       PHP REST API: auth.php (login, register, đổi/quên MK),
            employees.php (CRUD, upload avatar, khóa/mở),
            attendances.php (chấm công), leaves_salaries.php (phép, lương, dashboard)
 android/   App Android Studio (Java + Retrofit + Glide + Firebase Auth)
@@ -39,3 +39,15 @@ Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_
 ## Quy trình nhóm
 
 Mỗi việc 1 nhánh (`ten-viec`) → push nhánh → Pull Request → review → merge vào `main`. Không push thẳng `main`. Chi tiết xem `HUONG-DAN-GITHUB-NHOM.md`.
+
+## ⚠️ Lưu ý khi chạy trên máy ảo (Emulator)
+
+Máy ảo Android **KHÔNG** kết nối được tới `localhost` hay `127.0.0.1` của máy tính. Bắt buộc dùng **IP LAN (Wi-Fi)** thực tế.
+
+Khi Wi-Fi cấp lại IP mới sẽ lỗi **"failed to connect"** → lấy lại IP và cập nhật app.
+
+**B1 - Lấy IP (Mac):** mở Terminal, chạy `ifconfig | grep "inet " | grep -v 127.0.0.1` → ghi dãy `192.168.x.x`. (Windows: mở cmd, gõ `ipconfig`, tìm `IPv4 Address` mục Wi-Fi).
+
+**B2 - Cập nhật app:** mở `app -> java -> com.example.employee_management_app -> ApiClient.java`, sửa `BASE_URL`, ví dụ `private static final String BASE_URL = "http://192.168.11.3/employee-api/";`
+
+**B3 - Run lại** app trong Android Studio.
