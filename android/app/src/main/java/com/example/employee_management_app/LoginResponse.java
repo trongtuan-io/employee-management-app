@@ -6,7 +6,7 @@ public class LoginResponse {
     @SerializedName("success")
     private boolean success;
 
-    @SerializedName("message")
+    @SerializedName("error")
     private String message;
 
     @SerializedName("data")
@@ -31,7 +31,7 @@ public class LoginResponse {
         @SerializedName("username")
         private String username;
 
-        @SerializedName("role")
+        @SerializedName("role_name")
         private String role;
 
         public int getId() {
