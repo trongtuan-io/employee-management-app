@@ -40,6 +40,16 @@
             android:name=".ForgotPasswordActivity"
             android:exported="false">
         </activity>
+
+        <activity
+            android:name=".AdminActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".EmployeeActivity"
+            android:exported="false">
+        </activity>
     </application>
 
 </manifest>

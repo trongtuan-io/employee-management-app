@@ -48,9 +48,19 @@ public class LoginActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null) {
                             LoginResponse loginResponse = response.body();
                             if (loginResponse.isSuccess()) {
-                                Toast.makeText(LoginActivity.this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
-                                // Go to MainActivity or Employee List screen
-                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                // 1 role = 1 man hinh: admin -> AdminActivity, con lai -> EmployeeActivity
+                                String role = "staff";
+                                if (loginResponse.getData() != null && loginResponse.getData().getRole() != null) {
+                                    role = loginResponse.getData().getRole();
+                                }
+                                Intent intent;
+                                if (role.equalsIgnoreCase("admin")) {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
+                                    intent = new Intent(LoginActivity.this, AdminActivity.class);
+                                } else {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Nhân viên!", Toast.LENGTH_SHORT).show();
+                                    intent = new Intent(LoginActivity.this, EmployeeActivity.class);
+                                }
                                 
                                 // Lưu JWT Token vào điện thoại
                                 if (loginResponse.getToken() != null) {
@@ -61,9 +71,8 @@ public class LoginActivity extends AppCompatActivity {
                                     TokenManager.getInstance(LoginActivity.this).saveUserId(loginResponse.getData().getId());
                                 }
                                 
-                                // Truyền thông tin sang trang chủ
+                                // Truyền thông tin sang trang chủ (giữ để tương thích MainActivity cũ)
                                 String loggedInUser = user;
-                                String role = "Unknown";
                                 
                                 if (loginResponse.getData() != null) {
                                     if (loginResponse.getData().getUsername() != null) {
@@ -75,14 +84,7 @@ public class LoginActivity extends AppCompatActivity {
                                 }
                                 intent.putExtra("USERNAME", loggedInUser);
                                 intent.putExtra("ROLE", role);
-                                
-                                // Kiểm tra Role trước khi vào Dashboard (Ví dụ)
-                                if (role.equalsIgnoreCase("admin")) {
-                                    Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
-                                } else {
-                                    Toast.makeText(LoginActivity.this, "Chào mừng Nhân viên!", Toast.LENGTH_SHORT).show();
-                                }
-                                
+
                                 startActivity(intent);
                                 finish();
                             } else {
