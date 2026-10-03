@@ -35,26 +35,47 @@ if ($a === "change-password" && $m === "POST") {
 }
 if ($a === "forgot-password" && $m === "POST") {
   require_once __DIR__ . "/../employee-api/mail_config.php";
+  require_once __DIR__ . "/../employee-api/sms_config.php";
   $b = body();
+  // 2 kenh: email hoac phone. Bat buoc phai khop voi DB.
   $email = trim($b["email"] ?? "");
-  if ($email === "") err("Vui long nhap email");
-  $stmt = $pdo->prepare("SELECT id, full_name FROM employees WHERE email=? LIMIT 1");
-  $stmt->execute([$email]);
+  $phone = trim($b["phone"] ?? "");
+  if ($email === "" && $phone === "") err("Vui long nhap email hoac so dien thoai");
+  if ($email !== "") {
+    $stmt = $pdo->prepare("SELECT id, full_name, email, phone FROM employees WHERE email=? LIMIT 1");
+    $stmt->execute([$email]);
+    $channel = "email";
+  } else {
+    $stmt = $pdo->prepare("SELECT id, full_name, email, phone FROM employees WHERE phone=? LIMIT 1");
+    $stmt->execute([$phone]);
+    $channel = "sms";
+  }
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
-  // Email phai ton tai trong DB moi duoc gui ma
-  if (!$u) err("Email khong ton tai trong he thong", 404);
+  if (!$u) err(($channel === "email" ? "Email" : "So dien thoai") . " khong ton tai trong he thong", 404);
   $code = str_pad((string)random_int(0, 999999), 6, "0", STR_PAD_LEFT);
-  $pdo->prepare("UPDATE password_resets SET used=1 WHERE email=? AND used=0")->execute([$email]);
-  $pdo->prepare("INSERT INTO password_resets(email, code, expires_at) VALUES(?,?,DATE_ADD(NOW(), INTERVAL 10 MINUTE))")->execute([$email, $code]);
-  $ok = send_reset_code($email, $u["full_name"], $code);
-  $res = ["sent" => true, "mail_ok" => $ok];
-  if (DEBUG_SHOW_CODE) $res["debug_code"] = $code; // TAT khi demo that (chuyen false trong mail_config.php)
+  $pdo->prepare("UPDATE password_resets SET used=1 WHERE (email=? OR phone=?) AND used=0")->execute([$u["email"], $u["phone"]]);
+  $pdo->prepare("INSERT INTO password_resets(email, phone, code, expires_at) VALUES(?,?,?,DATE_ADD(NOW(), INTERVAL 10 MINUTE))")->execute([$u["email"], $u["phone"], $code]);
+  if ($channel === "email") {
+    $ok = send_reset_code($u["email"], $u["full_name"], $code);
+    $res = ["sent" => true, "channel" => "email", "mail_ok" => $ok];
+    if (DEBUG_SHOW_CODE) $res["debug_code"] = $code; // TAT khi demo that
+  } else {
+    $ok = send_sms_code($u["phone"], $code);
+    $res = ["sent" => true, "channel" => "sms", "sms_ok" => $ok];
+    if (SMS_DEBUG_SHOW_CODE) $res["debug_code"] = $code; // TAT khi demo that
+  }
   out($res);
 }
 if ($a === "verify-code" && $m === "POST") {
   $b = body();
-  $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE email=? AND code=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
-  $stmt->execute([trim($b["email"] ?? ""), trim($b["code"] ?? "")]);
+  $code = trim($b["code"] ?? "");
+  if (isset($b["email"]) && trim($b["email"]) !== "") {
+    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE email=? AND code=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+    $stmt->execute([trim($b["email"]), $code]);
+  } else {
+    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE phone=? AND code=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+    $stmt->execute([trim($b["phone"] ?? ""), $code]);
+  }
   $r = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$r) err("Ma xac nhan sai hoac het han", 401);
   $token = bin2hex(random_bytes(20));

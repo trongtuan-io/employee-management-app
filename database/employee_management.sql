@@ -100,7 +100,7 @@ CREATE TABLE `employees` (
   CONSTRAINT `fk_emp_dept` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_emp_pos` FOREIGN KEY (`position_id`) REFERENCES `positions` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_emp_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -109,7 +109,7 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,'admin','$2y$10$k4x3cnsRBInxRjFW/lKxCeybGVoDNQHSFWk5CY501BU8G.O2ngmhi','Admin',NULL,'admin@cty.vn',0.00,1,1,1,1,'2026-10-02 01:57:01');
+INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin',NULL,'admin@cty.vn',0.00,1,1,1,1,'2026-10-02 01:57:01'),(2,'tuannt03','$2y$10$4aH3i1jXbOccCBMRzJFxq.ZTpeKT9nbQ/ovT7aex/ASz1.nWyFxz2','Nguyễn Trọng Tuấn','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,1,2,3,'2026-10-03 16:43:23');
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -157,6 +157,7 @@ DROP TABLE IF EXISTS `password_resets`;
 CREATE TABLE `password_resets` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(100) NOT NULL,
+  `phone` varchar(15) DEFAULT NULL,
   `code` varchar(10) NOT NULL,
   `reset_token` varchar(64) DEFAULT NULL,
   `expires_at` datetime NOT NULL,
@@ -164,7 +165,7 @@ CREATE TABLE `password_resets` (
   `created_at` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_email_code` (`email`,`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -173,7 +174,7 @@ CREATE TABLE `password_resets` (
 
 LOCK TABLES `password_resets` WRITE;
 /*!40000 ALTER TABLE `password_resets` DISABLE KEYS */;
-INSERT INTO `password_resets` VALUES (1,'admin@cty.vn','283140',NULL,'2026-10-03 16:45:31',1,'2026-10-03 16:35:31'),(2,'admin@cty.vn','614121','539232fdb67230e5c8a09027fdc10a1c66540522','2026-10-03 16:45:46',1,'2026-10-03 16:35:46');
+INSERT INTO `password_resets` VALUES (1,'admin@cty.vn',NULL,'283140',NULL,'2026-10-03 16:45:31',1,'2026-10-03 16:35:31'),(2,'admin@cty.vn',NULL,'614121','539232fdb67230e5c8a09027fdc10a1c66540522','2026-10-03 16:45:46',1,'2026-10-03 16:35:46'),(3,'admin@cty.vn',NULL,'182146','f6218982ca45d44bed5bcb3666038f6b4f6dfd02','2026-10-03 16:48:54',1,'2026-10-03 16:38:54'),(4,'tuannguyentrong1202@gmail.com',NULL,'833594',NULL,'2026-10-03 16:53:45',1,'2026-10-03 16:43:45'),(5,'tuannguyentrong1202@gmail.com',NULL,'355753',NULL,'2026-10-03 16:55:52',1,'2026-10-03 16:45:52'),(6,'tuannguyentrong1202@gmail.com','0975120205','693503','482bf2e0df6b8d4928c227639df38873fb634155','2026-10-03 17:00:03',1,'2026-10-03 16:50:03');
 /*!40000 ALTER TABLE `password_resets` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -271,4 +272,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-03 16:36:58
+-- Dump completed on 2026-10-03 16:50:53

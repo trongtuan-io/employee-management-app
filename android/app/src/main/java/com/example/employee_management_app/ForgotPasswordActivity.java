@@ -19,6 +19,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     private EditText etEmail, etCode, etNewPass, etConfirmPass;
     private TextView tvHint2;
     private String email, resetToken;
+    private boolean isEmailChannel = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +37,22 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         Button btnSend = findViewById(R.id.btnSendCode);
         Button btnVerify = findViewById(R.id.btnVerifyCode);
         Button btnReset = findViewById(R.id.btnResetPass);
+        Button btnChannelEmail = findViewById(R.id.btnChannelEmail);
+        Button btnChannelSms = findViewById(R.id.btnChannelSms);
+
+        // Chon kenh: Email hoac SMS (so dien thoai phai co trong DB)
+        btnChannelEmail.setOnClickListener(v -> {
+            isEmailChannel = true;
+            etEmail.setText("");
+            etEmail.setHint("Email đăng ký (phải có trong hệ thống)");
+            etEmail.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        });
+        btnChannelSms.setOnClickListener(v -> {
+            isEmailChannel = false;
+            etEmail.setText("");
+            etEmail.setHint("Số điện thoại đăng ký (vd 0975120205)");
+            etEmail.setInputType(android.text.InputType.TYPE_CLASS_PHONE);
+        });
 
         btnSend.setOnClickListener(v -> sendCode());
         btnVerify.setOnClickListener(v -> verifyCode());
@@ -48,15 +65,15 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         step3.setVisibility(n == 3 ? View.VISIBLE : View.GONE);
     }
 
-    // Buoc 1: nhap email -> server gui ma 6 so (email phai co trong DB)
+    // Buoc 1: nhap email HOAC sdt -> server doi chieu DB roi gui ma (mail/SMS)
     private void sendCode() {
         email = etEmail.getText().toString().trim();
         if (email.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập email", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, isEmailChannel ? "Vui lòng nhập email" : "Vui lòng nhập số điện thoại", Toast.LENGTH_SHORT).show();
             return;
         }
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
-        api.forgotPassword(new ForgotRequest(email)).enqueue(new Callback<ForgotResponse>() {
+        api.forgotPassword(new ForgotRequest(email, isEmailChannel)).enqueue(new Callback<ForgotResponse>() {
             @Override
             public void onResponse(Call<ForgotResponse> c, Response<ForgotResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
@@ -64,7 +81,9 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                     showStep(2);
                     Toast.makeText(ForgotPasswordActivity.this, "Đã gửi mã xác nhận!", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(ForgotPasswordActivity.this, "Email không tồn tại trong hệ thống", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ForgotPasswordActivity.this,
+                            isEmailChannel ? "Email không tồn tại trong hệ thống" : "Số điện thoại không tồn tại trong hệ thống",
+                            Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -83,7 +102,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             return;
         }
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
-        api.verifyCode(new VerifyRequest(email, code)).enqueue(new Callback<VerifyResponse>() {
+        api.verifyCode(new VerifyRequest(email, code, isEmailChannel)).enqueue(new Callback<VerifyResponse>() {
             @Override
             public void onResponse(Call<VerifyResponse> c, Response<VerifyResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()

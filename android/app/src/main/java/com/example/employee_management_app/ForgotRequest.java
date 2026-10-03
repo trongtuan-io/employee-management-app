@@ -1,15 +1,11 @@
 package com.example.employee_management_app;
 
-import com.google.gson.annotations.SerializedName;
-
 public class ForgotRequest {
     private String email;
+    private String phone;
 
-    public ForgotRequest(String email) {
-        this.email = email;
-    }
-
-    public String getEmail() {
-        return email;
+    public ForgotRequest(String email, boolean isEmail) {
+        if (isEmail) this.email = email;
+        else this.phone = email;
     }
 }
