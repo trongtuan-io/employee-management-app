@@ -53,11 +53,11 @@
             android:layout_height="wrap_content"
             android:text="Lưu"/>
 
-        <Button
-            android:id="@+id/btnLockAccount"
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swLockAccount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Khóa tài khoản"
+            android:text="Tài khoản hoạt động"
             android:layout_marginTop="8dp"
             android:visibility="gone"/>
 

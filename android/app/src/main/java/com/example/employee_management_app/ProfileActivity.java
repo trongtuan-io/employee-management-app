@@ -35,8 +35,8 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageView ivAvatar;
     private EditText etName, etEmail, etPhone;
     private int targetId, myId, currentStatus = 1;
-    private boolean isAdminMode;
-    private Button btnLockAccount;
+    private boolean isAdminMode, suppressLockEvent;
+    private androidx.appcompat.widget.SwitchCompat swLock;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,9 +49,14 @@ public class ProfileActivity extends AppCompatActivity {
         etPhone = findViewById(R.id.etProfilePhone);
         Button btnAvatar = findViewById(R.id.btnPickAvatar);
         Button btnSave = findViewById(R.id.btnSaveProfile);
-        btnLockAccount = findViewById(R.id.btnLockAccount);
-        // Nut khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac
-        btnLockAccount.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
+        swLock = findViewById(R.id.swLockAccount);
+        // Cong tac khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
+        // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
+        swLock.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
+        swLock.setOnCheckedChangeListener((v, isChecked) -> {
+            if (suppressLockEvent) return;
+            setLock(isChecked);
+        });
 
         myId = TokenManager.getInstance(this).getUserId();
         String role = TokenManager.getInstance(this).getRole();
@@ -77,12 +82,11 @@ public class ProfileActivity extends AppCompatActivity {
             startActivityForResult(Intent.createChooser(i, "Chọn ảnh"), PICK_IMAGE);
         });
         btnSave.setOnClickListener(v -> saveProfile());
-        btnLockAccount.setOnClickListener(v -> toggleLock());
     }
 
-    // Khoa/mo tai khoan: server tu chan theo quyen (admin moi phong / sep cung phong)
-    private void toggleLock() {
-        int newStatus = currentStatus == 1 ? 0 : 1;
+    // Gat cong tac: server tu chan theo quyen (admin moi phong / sep cung phong)
+    private void setLock(boolean enable) {
+        int newStatus = enable ? 1 : 0;
         EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
         api.setStatus(new SetStatusRequest(targetId, myId, newStatus)).enqueue(new Callback<ApiResponse>() {
             @Override
@@ -91,14 +95,16 @@ public class ProfileActivity extends AppCompatActivity {
                     Toast.makeText(ProfileActivity.this,
                             newStatus == 0 ? "Đã khóa tài khoản!" : "Đã mở khóa!",
                             Toast.LENGTH_SHORT).show();
-                    loadProfile(); // tai lai de cap nhat nut + trang thai
+                    loadProfile(); // tai lai de dong bo trang thai that tu server
                 } else {
+                    revertLock(enable);
                     Toast.makeText(ProfileActivity.this, "Không có quyền (sếp chỉ khóa NV phòng mình)", Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> c, Throwable t) {
+                revertLock(enable);
                 Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -116,7 +122,9 @@ public class ProfileActivity extends AppCompatActivity {
                     etEmail.setText(d.getEmail());
                     etPhone.setText(d.getPhone());
                     currentStatus = d.getStatus();
-                    btnLockAccount.setText(currentStatus == 1 ? "Khóa tài khoản" : "Mở khóa tài khoản");
+                    suppressLockEvent = true;
+                    swLock.setChecked(currentStatus == 1);
+                    suppressLockEvent = false;
                     if (d.getAvatarUrl() != null && !d.getAvatarUrl().isEmpty()) {
                         Glide.with(ProfileActivity.this)
                                 .load(ApiClient.baseUrl() + d.getAvatarUrl())
@@ -167,7 +175,12 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    // Copy anh vao cache roi upload multipart (khong can quyen doc bo nho)
+    // Gat that bai (mang loi / khong quyen) -> gat cong tac ve lai, tranh lech voi DB
+    private void revertLock(boolean triedEnable) {
+        suppressLockEvent = true;
+        swLock.setChecked(!triedEnable);
+        suppressLockEvent = false;
+    }
     private void uploadAvatar(Uri uri) {
         try {
             InputStream in = getContentResolver().openInputStream(uri);
