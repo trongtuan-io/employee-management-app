@@ -24,6 +24,8 @@ public class EmployeeActivity extends AppCompatActivity {
 
         tvName = findViewById(R.id.tvEmpName);
         tvInfo = findViewById(R.id.tvEmpInfo);
+        TextView tvRole = findViewById(R.id.tvEmpRole);
+        tvRole.setText("Vai trò: " + TokenManager.getInstance(this).getRole());
         Button btnIn = findViewById(R.id.btnCheckIn);
         Button btnOut = findViewById(R.id.btnCheckOut);
         Button btnLeave = findViewById(R.id.btnMyLeave);

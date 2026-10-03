@@ -16,6 +16,13 @@
             android:text="..."
             android:textSize="24sp"
             android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:id="@+id/tvEmpRole"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vai trò: ..."
             android:layout_marginBottom="8dp"/>
 
         <TextView

@@ -7,6 +7,7 @@ public class TokenManager {
     private static final String PREF_NAME = "EmployeeAppPrefs";
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_USER_ID = "user_id";
+    private static final String KEY_ROLE = "user_role";
 
     private SharedPreferences prefs;
     private static TokenManager instance;
@@ -38,7 +39,15 @@ public class TokenManager {
         return prefs.getInt(KEY_USER_ID, -1);
     }
 
+    public void saveRole(String role) {
+        prefs.edit().putString(KEY_ROLE, role).apply();
+    }
+
+    public String getRole() {
+        return prefs.getString(KEY_ROLE, "staff");
+    }
+
     public void clearToken() {
-        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).apply();
+        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).remove(KEY_ROLE).apply();
     }
 }
