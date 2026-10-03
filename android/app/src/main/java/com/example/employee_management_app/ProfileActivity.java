@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -37,6 +38,7 @@ public class ProfileActivity extends AppCompatActivity {
     private int targetId, myId, currentStatus = 1;
     private boolean isAdminMode, suppressLockEvent;
     private androidx.appcompat.widget.SwitchCompat swLock;
+    private TextView tvLockStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,9 +52,10 @@ public class ProfileActivity extends AppCompatActivity {
         Button btnAvatar = findViewById(R.id.btnPickAvatar);
         Button btnSave = findViewById(R.id.btnSaveProfile);
         swLock = findViewById(R.id.swLockAccount);
-        // Cong tac khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
+        tvLockStatus = findViewById(R.id.tvLockStatus);
+        // Cum khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
         // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
-        swLock.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
+        findViewById(R.id.layoutLock).setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         swLock.setOnCheckedChangeListener((v, isChecked) -> {
             if (suppressLockEvent) return;
             setLock(isChecked);
@@ -125,6 +128,9 @@ public class ProfileActivity extends AppCompatActivity {
                     suppressLockEvent = true;
                     swLock.setChecked(currentStatus == 1);
                     suppressLockEvent = false;
+                    tvLockStatus.setText(currentStatus == 1
+                            ? "Đang hoạt động - gạt TẮT để khóa"
+                            : "ĐÃ BỊ KHÓA - gạt BẬT để mở lại");
                     if (d.getAvatarUrl() != null && !d.getAvatarUrl().isEmpty()) {
                         Glide.with(ProfileActivity.this)
                                 .load(ApiClient.baseUrl() + d.getAvatarUrl())
