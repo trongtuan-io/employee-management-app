@@ -33,7 +33,7 @@ CREATE TABLE `attendances` (
   UNIQUE KEY `uq_att_emp_date` (`employee_id`,`work_date`),
   KEY `idx_att_date` (`work_date`),
   CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,7 +42,7 @@ CREATE TABLE `attendances` (
 
 LOCK TABLES `attendances` WRITE;
 /*!40000 ALTER TABLE `attendances` DISABLE KEYS */;
-INSERT INTO `attendances` VALUES (1,2,'2026-10-03','2026-10-03 12:12:00',NULL,'late');
+INSERT INTO `attendances` VALUES (1,2,'2026-10-03','2026-10-03 12:12:00',NULL,'late'),(3,1,'2026-10-03','2026-10-03 12:35:30','2026-10-03 12:35:33','late');
 /*!40000 ALTER TABLE `attendances` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -111,7 +111,7 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin',NULL,'admin@cty.vn',0.00,1,1,1,1,'2026-10-02 01:57:01',NULL),(2,'tuannt03','$2y$10$XPSl6X689o3bBTTYI0V32OBBZcwrk5/k9qPfEzSSAQC4Ddxg7XsC2','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,1,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png'),(3,'sep_hr','$2y$10$PiKHDvIX4MLgMv37uXGQKuJdvvkhLoDWlJM7ARNHJR06nthxC5L2O','Sep Phong HR','0901111111','sephr@cty.vn',0.00,1,2,2,NULL,'2026-10-03 17:26:20',NULL),(4,'nv_hr','$2y$10$4kPudxQBb93iNsdO0iDcoOEq9lrSffh7d3U7VsuUZ0tc7SiJ0jNwm','Nhan Vien HR','0902222222','nvhr@cty.vn',0.00,1,3,2,NULL,'2026-10-03 17:26:20',NULL);
+INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin','','admin@cty.vn',0.00,1,1,1,NULL,'2026-10-02 01:57:01',NULL),(2,'tuannt03','$2y$10$XPSl6X689o3bBTTYI0V32OBBZcwrk5/k9qPfEzSSAQC4Ddxg7XsC2','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,1,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png'),(3,'sep_hr','$2y$10$PiKHDvIX4MLgMv37uXGQKuJdvvkhLoDWlJM7ARNHJR06nthxC5L2O','Sep Phong HR','0901111111','sephr@cty.vn',0.00,1,2,2,NULL,'2026-10-03 17:26:20',NULL),(4,'nv_hr','$2y$10$4kPudxQBb93iNsdO0iDcoOEq9lrSffh7d3U7VsuUZ0tc7SiJ0jNwm','Nhan Vien HR','0902222222','nvhr@cty.vn',0.00,1,3,2,NULL,'2026-10-03 17:26:20',NULL);
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -274,4 +274,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-03 17:28:37
+-- Dump completed on 2026-10-03 17:40:07

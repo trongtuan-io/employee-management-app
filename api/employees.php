@@ -41,9 +41,17 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   $isAdmin = in_array($reqRole, ["admin", "manager"]);
   if ($reqId !== $id && !$isAdmin) err("Khong co quyen sua ho so nguoi khac", 403);
   if ($isAdmin) {
+    // Giu nguyen cac field khong gui len (tranh mat phong ban/quyen nhu cu)
+    $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=? LIMIT 1");
+    $stmt->execute([$id]);
+    $cur = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$cur) err("Khong tim thay nhan vien", 404);
+    $pick = function($k) use ($b, $cur) {
+      return array_key_exists($k, $b) && $b[$k] !== "" && $b[$k] !== null ? $b[$k] : $cur[$k];
+    };
     try {
       $pdo->prepare("UPDATE employees SET full_name=?,phone=?,email=?,base_salary=?,department_id=?,position_id=?,role_id=?,status=? WHERE id=?")
-        ->execute([$b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, $b["department_id"] ?? null, $b["position_id"] ?? null, $b["role_id"] ?? 3, $b["status"] ?? 1, $id]);
+        ->execute([$pick("full_name"), $pick("phone"), $pick("email"), $pick("base_salary"), $pick("department_id"), $pick("position_id"), $pick("role_id"), $pick("status"), $id]);
     } catch (Exception $e) { err("Email da duoc dung boi nguoi khac", 409); }
   } else {
     // Nhan vien tu sua: chi duoc doi ho ten. Mail, SDT, luong, role... giu nguyen tu DB.
