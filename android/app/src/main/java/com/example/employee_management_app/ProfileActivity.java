@@ -3,6 +3,7 @@ package com.example.employee_management_app;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -33,8 +34,9 @@ public class ProfileActivity extends AppCompatActivity {
 
     private ImageView ivAvatar;
     private EditText etName, etEmail, etPhone;
-    private int targetId, myId;
+    private int targetId, myId, currentStatus = 1;
     private boolean isAdminMode;
+    private Button btnLockAccount;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +49,9 @@ public class ProfileActivity extends AppCompatActivity {
         etPhone = findViewById(R.id.etProfilePhone);
         Button btnAvatar = findViewById(R.id.btnPickAvatar);
         Button btnSave = findViewById(R.id.btnSaveProfile);
+        btnLockAccount = findViewById(R.id.btnLockAccount);
+        // Nut khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac
+        btnLockAccount.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
 
         myId = TokenManager.getInstance(this).getUserId();
         String role = TokenManager.getInstance(this).getRole();
@@ -72,6 +77,31 @@ public class ProfileActivity extends AppCompatActivity {
             startActivityForResult(Intent.createChooser(i, "Chọn ảnh"), PICK_IMAGE);
         });
         btnSave.setOnClickListener(v -> saveProfile());
+        btnLockAccount.setOnClickListener(v -> toggleLock());
+    }
+
+    // Khoa/mo tai khoan: server tu chan theo quyen (admin moi phong / sep cung phong)
+    private void toggleLock() {
+        int newStatus = currentStatus == 1 ? 0 : 1;
+        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
+        api.setStatus(new SetStatusRequest(targetId, myId, newStatus)).enqueue(new Callback<ApiResponse>() {
+            @Override
+            public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
+                    Toast.makeText(ProfileActivity.this,
+                            newStatus == 0 ? "Đã khóa tài khoản!" : "Đã mở khóa!",
+                            Toast.LENGTH_SHORT).show();
+                    loadProfile(); // tai lai de cap nhat nut + trang thai
+                } else {
+                    Toast.makeText(ProfileActivity.this, "Không có quyền (sếp chỉ khóa NV phòng mình)", Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse> c, Throwable t) {
+                Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void loadProfile() {
@@ -85,6 +115,8 @@ public class ProfileActivity extends AppCompatActivity {
                     etName.setText(d.getFullName());
                     etEmail.setText(d.getEmail());
                     etPhone.setText(d.getPhone());
+                    currentStatus = d.getStatus();
+                    btnLockAccount.setText(currentStatus == 1 ? "Khóa tài khoản" : "Mở khóa tài khoản");
                     if (d.getAvatarUrl() != null && !d.getAvatarUrl().isEmpty()) {
                         Glide.with(ProfileActivity.this)
                                 .load(ApiClient.baseUrl() + d.getAvatarUrl())

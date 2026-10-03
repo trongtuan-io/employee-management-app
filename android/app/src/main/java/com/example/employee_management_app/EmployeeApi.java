@@ -32,6 +32,10 @@ public interface EmployeeApi {
     @POST("employees.php?action=update")
     Call<ApiResponse> updateEmployee(@Body UpdateEmployeeRequest request);
 
+    // Khoa / mo tai khoan (admin moi phong / manager cung phong)
+    @POST("employees.php?action=set-status")
+    Call<ApiResponse> setStatus(@Body SetStatusRequest request);
+
     // Upload anh dai dien
     @Multipart
     @POST("employees.php?action=upload-avatar")

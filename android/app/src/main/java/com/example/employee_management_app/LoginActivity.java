@@ -56,7 +56,7 @@ public class LoginActivity extends AppCompatActivity {
                                 // Luu role de cac man hinh hien thi + phan quyen
                                 TokenManager.getInstance(LoginActivity.this).saveRole(role);
                                 Intent intent;
-                                if (role.equalsIgnoreCase("admin")) {
+                                if (role.equalsIgnoreCase("admin") || role.equalsIgnoreCase("manager")) {
                                     Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
                                     intent = new Intent(LoginActivity.this, AdminActivity.class);
                                 } else {

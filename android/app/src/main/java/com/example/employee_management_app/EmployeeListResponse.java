@@ -24,16 +24,18 @@ public class EmployeeListResponse {
         private String full_name;
         private String email;
         private String phone;
+        private int status;
 
         public int getId() { return id; }
         public String getUsername() { return username; }
         public String getFullName() { return full_name; }
         public String getEmail() { return email; }
         public String getPhone() { return phone; }
+        public int getStatus() { return status; }
 
         @Override
         public String toString() {
-            return full_name + " (" + username + ")";
+            return full_name + " (" + username + ")" + (status == 0 ? " [ĐÃ KHÓA]" : "");
         }
     }
 }

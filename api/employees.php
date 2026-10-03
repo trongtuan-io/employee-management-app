@@ -73,6 +73,28 @@ if ($a === "upload-avatar" && $m === "POST") {
   $pdo->prepare("UPDATE employees SET avatar_url=? WHERE id=?")->execute([$url, $empId]);
   out(["avatar_url" => $url]);
 }
+if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
+  // Khoa/mo tai khoan. Admin: tat ca phong ban. Manager: chi staff cung phong.
+  $b = body();
+  $id = (int)($b["id"] ?? 0);
+  $reqId = (int)($b["requester_id"] ?? 0);
+  $status = (int)($b["status"] ?? 1);
+  if (!$id) err("Thieu id");
+  if ($id === $reqId) err("Khong the tu khoa tai khoan cua minh", 403);
+  $q = $pdo->prepare("SELECT e.department_id, LOWER(r.name) AS role FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
+  $q->execute([$reqId]);
+  $req = $q->fetch(PDO::FETCH_ASSOC);
+  if (!$req || !in_array($req["role"], ["admin", "manager"])) err("Chi admin/manager duoc khoa mo tai khoan", 403);
+  $q->execute([$id]);
+  $target = $q->fetch(PDO::FETCH_ASSOC);
+  if (!$target) err("Khong tim thay nhan vien", 404);
+  if ($req["role"] === "manager") {
+    if ((int)$target["department_id"] !== (int)$req["department_id"]) err("Chi duoc khoa mo nhan vien phong ban minh", 403);
+    if ($target["role"] !== "staff") err("Chi duoc khoa mo nhan vien thuong", 403);
+  }
+  $pdo->prepare("UPDATE employees SET status=? WHERE id=?")->execute([$status ? 1 : 0, $id]);
+  out(["updated" => true, "status" => $status ? 1 : 0]);
+}
 if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   $id = body()["id"] ?? $_GET["id"] ?? 0;
   if (!$id) err("Thieu id");
