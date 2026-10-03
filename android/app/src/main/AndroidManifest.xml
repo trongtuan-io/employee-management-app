@@ -30,6 +30,11 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize">
         </activity>
+
+        <activity
+            android:name=".ChangePasswordActivity"
+            android:exported="false">
+        </activity>
     </application>
 
 </manifest>

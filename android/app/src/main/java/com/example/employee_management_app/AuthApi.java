@@ -7,4 +7,7 @@ import retrofit2.http.POST;
 public interface AuthApi {
     @POST("auth.php?action=login")
     Call<LoginResponse> login(@Body LoginRequest request);
+
+    @POST("auth.php?action=change-password")
+    Call<ApiResponse> changePassword(@Body ChangePasswordRequest request);
 }

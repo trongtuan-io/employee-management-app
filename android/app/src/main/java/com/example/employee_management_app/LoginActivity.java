@@ -38,7 +38,7 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                AuthApi authApi = ApiClient.getClient().create(AuthApi.class);
+                AuthApi authApi = ApiClient.getClient(LoginActivity.this).create(AuthApi.class);
                 authApi.login(new LoginRequest(user, pass)).enqueue(new Callback<LoginResponse>() {
                     @Override
                     public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
@@ -49,12 +49,36 @@ public class LoginActivity extends AppCompatActivity {
                                 // Go to MainActivity or Employee List screen
                                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                                 
-                                // Truyền tên đăng nhập sang trang chủ
+                                // Lưu JWT Token vào điện thoại
+                                if (loginResponse.getToken() != null) {
+                                    TokenManager.getInstance(LoginActivity.this).saveToken(loginResponse.getToken());
+                                }
+                                // Lưu id user để dùng cho đổi mật khẩu, xem hồ sơ...
+                                if (loginResponse.getData() != null) {
+                                    TokenManager.getInstance(LoginActivity.this).saveUserId(loginResponse.getData().getId());
+                                }
+                                
+                                // Truyền thông tin sang trang chủ
                                 String loggedInUser = user;
-                                if (loginResponse.getData() != null && loginResponse.getData().getUsername() != null) {
-                                    loggedInUser = loginResponse.getData().getUsername();
+                                String role = "Unknown";
+                                
+                                if (loginResponse.getData() != null) {
+                                    if (loginResponse.getData().getUsername() != null) {
+                                        loggedInUser = loginResponse.getData().getUsername();
+                                    }
+                                    if (loginResponse.getData().getRole() != null) {
+                                        role = loginResponse.getData().getRole();
+                                    }
                                 }
                                 intent.putExtra("USERNAME", loggedInUser);
+                                intent.putExtra("ROLE", role);
+                                
+                                // Kiểm tra Role trước khi vào Dashboard (Ví dụ)
+                                if (role.equalsIgnoreCase("admin")) {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Nhân viên!", Toast.LENGTH_SHORT).show();
+                                }
                                 
                                 startActivity(intent);
                                 finish();
