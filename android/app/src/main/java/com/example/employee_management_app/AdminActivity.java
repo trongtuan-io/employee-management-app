@@ -26,6 +26,9 @@ public class AdminActivity extends AppCompatActivity {
         tvLateToday = findViewById(R.id.tvLateToday);
         TextView tvRole = findViewById(R.id.tvAdminRole);
         tvRole.setText("Vai trò: " + TokenManager.getInstance(this).getRole());
+        TextView tvWelcome = findViewById(R.id.tvAdminWelcome);
+        String username = getIntent().getStringExtra("USERNAME");
+        tvWelcome.setText("Xin chào " + (username != null ? username : "") + "!");
         Button btnApprove = findViewById(R.id.btnAdminApprove);
         Button btnStaff = findViewById(R.id.btnAdminStaff);
         Button btnPass = findViewById(R.id.btnAdminChangePass);
