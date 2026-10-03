@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -40,6 +41,10 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Firebase Phone Auth (SMS mien phi)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)

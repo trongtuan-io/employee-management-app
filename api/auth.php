@@ -94,5 +94,21 @@ if ($a === "reset-password" && $m === "POST") {
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE id=?")->execute([$r["id"]]);
   out(["updated" => true]);
 }
+if ($a === "reset-password-by-phone" && $m === "POST") {
+  // Client da xac thuc SDT qua Firebase Phone Auth (SMS mien phi).
+  // Luu y bao cao: production can verify Firebase ID token server-side.
+  $b = body();
+  $phone = trim($b["phone"] ?? "");
+  $fbUid = trim($b["firebase_uid"] ?? "");
+  if ($phone === "" || $fbUid === "") err("Thieu phone/firebase_uid");
+  if (strlen($b["new_password"] ?? "") < 6) err("Mat khau moi it nhat 6 ky tu");
+  $stmt = $pdo->prepare("SELECT id FROM employees WHERE phone=? LIMIT 1");
+  $stmt->execute([$phone]);
+  if (!$stmt->fetch()) err("So dien thoai khong ton tai trong he thong", 404);
+  $hash = password_hash($b["new_password"], PASSWORD_BCRYPT);
+  $pdo->prepare("UPDATE employees SET password_hash=? WHERE phone=?")->execute([$hash, $phone]);
+  $pdo->prepare("UPDATE password_resets SET used=1 WHERE phone=? AND used=0")->execute([$phone]);
+  out(["updated" => true]);
+}
 err("Unknown auth action");
 ?>

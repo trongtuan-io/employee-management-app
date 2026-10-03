@@ -19,4 +19,8 @@ public interface AuthApi {
 
     @POST("auth.php?action=reset-password")
     Call<ApiResponse> resetPassword(@Body ResetRequest request);
+
+    // Quen mat khau qua SMS Firebase (client da xac thuc SDT)
+    @POST("auth.php?action=reset-password-by-phone")
+    Call<ApiResponse> resetPasswordByPhone(@Body ResetByPhoneRequest request);
 }
