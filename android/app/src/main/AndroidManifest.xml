@@ -50,6 +50,16 @@
             android:name=".EmployeeActivity"
             android:exported="false">
         </activity>
+
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".StaffListActivity"
+            android:exported="false">
+        </activity>
     </application>
 
 </manifest>

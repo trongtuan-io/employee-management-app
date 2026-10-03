@@ -33,7 +33,7 @@ CREATE TABLE `attendances` (
   UNIQUE KEY `uq_att_emp_date` (`employee_id`,`work_date`),
   KEY `idx_att_date` (`work_date`),
   CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,6 +42,7 @@ CREATE TABLE `attendances` (
 
 LOCK TABLES `attendances` WRITE;
 /*!40000 ALTER TABLE `attendances` DISABLE KEYS */;
+INSERT INTO `attendances` VALUES (1,2,'2026-10-03','2026-10-03 12:12:00',NULL,'late');
 /*!40000 ALTER TABLE `attendances` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -91,6 +92,7 @@ CREATE TABLE `employees` (
   `department_id` int(11) DEFAULT NULL,
   `position_id` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
+  `avatar_url` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`),
@@ -109,7 +111,7 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin',NULL,'admin@cty.vn',0.00,1,1,1,1,'2026-10-02 01:57:01'),(2,'tuannt03','$2y$10$//qk9sV4HFCbIcJMgvU7EuIM9NezJxye2nGAUMvOFg7nu67VXRHMe','Nguyễn Trọng Tuấn','0975120205','tuannguyentrong1202@gmail.com',15000000.00,2,3,2,3,'2026-10-03 16:43:23');
+INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin',NULL,'admin@cty.vn',0.00,1,1,1,1,'2026-10-02 01:57:01',NULL),(2,'tuannt03','$2y$10$//qk9sV4HFCbIcJMgvU7EuIM9NezJxye2nGAUMvOFg7nu67VXRHMe','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,NULL,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png');
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -272,4 +274,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-03 17:11:30
+-- Dump completed on 2026-10-03 17:19:44

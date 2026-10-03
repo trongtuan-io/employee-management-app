@@ -36,11 +36,11 @@ public class AdminActivity extends AppCompatActivity {
 
         loadDashboard(btnApprove);
 
-        // Chuc nang cua ban D (duyet phep) / ban B (QL nhan vien): man hinh chi tiet lam tiep
+        // Chuc nang cua ban D (duyet phep): man hinh chi tiet lam tiep
         btnApprove.setOnClickListener(v ->
                 Toast.makeText(this, "Mở danh sách duyệt phép (bạn D làm tiếp)", Toast.LENGTH_SHORT).show());
         btnStaff.setOnClickListener(v ->
-                Toast.makeText(this, "Mở quản lý nhân viên (bạn B làm tiếp)", Toast.LENGTH_SHORT).show());
+                startActivity(new Intent(this, StaffListActivity.class)));
         btnPass.setOnClickListener(v ->
                 startActivity(new Intent(this, ChangePasswordActivity.class)));
         btnLogout.setOnClickListener(v -> {

@@ -41,10 +41,15 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:3.14.9")
 
     // Firebase Phone Auth (SMS mien phi)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+
+    // Tai + hien thi anh dai dien
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)

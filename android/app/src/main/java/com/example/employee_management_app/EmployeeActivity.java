@@ -29,6 +29,7 @@ public class EmployeeActivity extends AppCompatActivity {
         Button btnIn = findViewById(R.id.btnCheckIn);
         Button btnOut = findViewById(R.id.btnCheckOut);
         Button btnLeave = findViewById(R.id.btnMyLeave);
+        Button btnProfile = findViewById(R.id.btnEmpProfile);
         Button btnPass = findViewById(R.id.btnEmpChangePass);
         Button btnLogout = findViewById(R.id.btnEmpLogout);
 
@@ -37,6 +38,8 @@ public class EmployeeActivity extends AppCompatActivity {
 
         btnIn.setOnClickListener(v -> doAttendance(true));
         btnOut.setOnClickListener(v -> doAttendance(false));
+        btnProfile.setOnClickListener(v ->
+                startActivity(new Intent(this, ProfileActivity.class)));
         // Man hinh xin nghi / xem luong: ban D lam tiep
         btnLeave.setOnClickListener(v ->
                 Toast.makeText(this, "Xin nghỉ phép (bạn D làm tiếp)", Toast.LENGTH_SHORT).show());

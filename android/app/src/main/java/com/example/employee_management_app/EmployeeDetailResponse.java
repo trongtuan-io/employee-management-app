@@ -25,6 +25,9 @@ public class EmployeeDetailResponse {
         private String email;
         private String base_salary;
 
+        @SerializedName("avatar_url")
+        private String avatarUrl;
+
         @SerializedName("dept_name")
         private String deptName;
 
@@ -37,6 +40,7 @@ public class EmployeeDetailResponse {
         public String getPhone() { return phone; }
         public String getEmail() { return email; }
         public String getBaseSalary() { return base_salary; }
+        public String getAvatarUrl() { return avatarUrl; }
         public String getDeptName() { return deptName; }
         public String getPositionName() { return positionName; }
     }

@@ -31,11 +31,47 @@ if ($a === "create" && $m === "POST") {
   } catch (Exception $e) { err("Trung username/email", 409); }
 }
 if ($a === "update" && ($m === "PUT" || $m === "POST")) {
-  $b = body(); $id = $b["id"] ?? $_GET["id"] ?? 0;
+  $b = body(); $id = (int)($b["id"] ?? $_GET["id"] ?? 0);
+  $reqId = (int)($b["requester_id"] ?? 0);
   if (!$id) err("Thieu id");
-  $pdo->prepare("UPDATE employees SET full_name=?,phone=?,email=?,base_salary=?,department_id=?,position_id=?,role_id=?,status=? WHERE id=?")
-    ->execute([$b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, $b["department_id"] ?? null, $b["position_id"] ?? null, $b["role_id"] ?? 3, $b["status"] ?? 1, $id]);
+  // Xac dinh quyen nguoi sua: chi admin/manager duoc doi mail, sdt, luong, role...
+  $stmt = $pdo->prepare("SELECT r.name FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
+  $stmt->execute([$reqId]);
+  $reqRole = strtolower(($stmt->fetch(PDO::FETCH_ASSOC) ?: [])["name"] ?? "");
+  $isAdmin = in_array($reqRole, ["admin", "manager"]);
+  if ($reqId !== $id && !$isAdmin) err("Khong co quyen sua ho so nguoi khac", 403);
+  if ($isAdmin) {
+    try {
+      $pdo->prepare("UPDATE employees SET full_name=?,phone=?,email=?,base_salary=?,department_id=?,position_id=?,role_id=?,status=? WHERE id=?")
+        ->execute([$b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, $b["department_id"] ?? null, $b["position_id"] ?? null, $b["role_id"] ?? 3, $b["status"] ?? 1, $id]);
+    } catch (Exception $e) { err("Email da duoc dung boi nguoi khac", 409); }
+  } else {
+    // Nhan vien tu sua: chi duoc doi ho ten. Mail, SDT, luong, role... giu nguyen tu DB.
+    $pdo->prepare("UPDATE employees SET full_name=? WHERE id=?")->execute([$b["full_name"], $id]);
+  }
   out(["updated" => true]);
+}
+if ($a === "upload-avatar" && $m === "POST") {
+  $empId = (int)($_POST["employee_id"] ?? 0);
+  $reqId = (int)($_POST["requester_id"] ?? 0);
+  if (!$empId) err("Thieu employee_id");
+  $stmt = $pdo->prepare("SELECT r.name FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
+  $stmt->execute([$reqId]);
+  $reqRole = strtolower(($stmt->fetch(PDO::FETCH_ASSOC) ?: [])["name"] ?? "");
+  $isAdmin = in_array($reqRole, ["admin", "manager"]);
+  if ($reqId !== $empId && !$isAdmin) err("Khong co quyen", 403);
+  if (!isset($_FILES["avatar"]) || $_FILES["avatar"]["error"] !== UPLOAD_ERR_OK) err("Chua chon anh");
+  $f = $_FILES["avatar"];
+  $ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
+  if (!in_array($ext, ["jpg", "jpeg", "png", "webp"])) err("Chi nhan anh jpg/png/webp");
+  if ($f["size"] > 2 * 1024 * 1024) err("Anh toi da 2MB");
+  $dir = __DIR__ . "/uploads/avatars";
+  if (!is_dir($dir)) mkdir($dir, 0777, true);
+  $name = "emp_" . $empId . "_" . time() . "." . $ext;
+  if (!move_uploaded_file($f["tmp_name"], $dir . "/" . $name)) err("Luu anh that bai", 500);
+  $url = "uploads/avatars/" . $name;
+  $pdo->prepare("UPDATE employees SET avatar_url=? WHERE id=?")->execute([$url, $empId]);
+  out(["avatar_url" => $url]);
 }
 if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   $id = body()["id"] ?? $_GET["id"] ?? 0;

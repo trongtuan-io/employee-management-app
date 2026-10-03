@@ -54,6 +54,13 @@
             android:layout_marginTop="8dp"/>
 
         <Button
+            android:id="@+id/btnEmpProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Hồ sơ của tôi"
+            android:layout_marginTop="8dp"/>
+
+        <Button
             android:id="@+id/btnEmpChangePass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -15,6 +15,10 @@ public class ApiClient {
     private static final String BASE_URL = "http://172.16.8.36/employee-api/";
     private static Retrofit retrofit = null;
 
+    public static String baseUrl() {
+        return BASE_URL;
+    }
+
     public static Retrofit getClient(Context context) {
         if (retrofit == null) {
             
