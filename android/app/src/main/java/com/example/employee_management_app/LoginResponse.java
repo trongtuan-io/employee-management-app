@@ -9,9 +9,6 @@ public class LoginResponse {
     @SerializedName("error")
     private String message;
     
-    @SerializedName("token")
-    private String token;
-
     @SerializedName("data")
     private EmployeeData data;
 
@@ -19,10 +16,6 @@ public class LoginResponse {
         return success;
     }
     
-    public String getToken() {
-        return token;
-    }
-
     public String getMessage() {
         return message;
     }

@@ -36,4 +36,14 @@
         android:layout_height="wrap_content"
         android:text="Login"/>
 
+    <TextView
+        android:id="@+id/tvForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quên mật khẩu?"
+        android:textColor="#0284c7"
+        android:layout_marginTop="16dp"
+        android:clickable="true"
+        android:focusable="true"/>
+
 </LinearLayout>
