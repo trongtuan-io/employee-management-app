@@ -53,9 +53,6 @@ public class ProfileActivity extends AppCompatActivity {
         Button btnSave = findViewById(R.id.btnSaveProfile);
         swLock = findViewById(R.id.swLockAccount);
         tvLockStatus = findViewById(R.id.tvLockStatus);
-        // Cum khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
-        // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
-        findViewById(R.id.layoutLock).setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         swLock.setOnCheckedChangeListener((v, isChecked) -> {
             if (suppressLockEvent) return;
             setLock(isChecked);
@@ -77,6 +74,10 @@ public class ProfileActivity extends AppCompatActivity {
         }
         etEmail.setEnabled(isAdminMode);
         etPhone.setEnabled(isAdminMode);
+        // Cum khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
+        // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
+        // Dat SAU khi xac dinh isAdminMode o tren.
+        findViewById(R.id.layoutLock).setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
 
         loadProfile();
         btnAvatar.setOnClickListener(v -> {
