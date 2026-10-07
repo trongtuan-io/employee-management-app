@@ -22,7 +22,24 @@
         android:layout_height="wrap_content"
         android:text="Đăng nhập thành công!"
         android:textSize="18sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvRole"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Vai trò: ---"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        android:textColor="#555555"
         android:layout_marginBottom="32dp" />
+
+    <Button
+        android:id="@+id/btnChangePassword"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Đổi mật khẩu"
+        android:layout_marginBottom="8dp" />
 
     <Button
         android:id="@+id/btnLogout"

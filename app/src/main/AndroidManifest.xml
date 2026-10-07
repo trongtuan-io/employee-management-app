@@ -30,6 +30,41 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize">
         </activity>
+
+        <activity
+            android:name=".ChangePasswordActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".AdminActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".EmployeeActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".StaffListActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".CreateAccountActivity"
+            android:exported="false">
+        </activity>
     </application>
 
 </manifest>

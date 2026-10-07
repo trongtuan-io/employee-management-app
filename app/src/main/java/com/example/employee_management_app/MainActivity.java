@@ -26,16 +26,40 @@ public class MainActivity extends AppCompatActivity {
         });
 
         TextView tvWelcome = findViewById(R.id.tvWelcome);
+        TextView tvRole = findViewById(R.id.tvRole);
+        Button btnChangePassword = findViewById(R.id.btnChangePassword);
         Button btnLogout = findViewById(R.id.btnLogout);
 
-        // Lấy username từ Intent nếu có
+        // Lấy username và role từ Intent
         String username = getIntent().getStringExtra("USERNAME");
+        String role = getIntent().getStringExtra("ROLE");
+        
         if (username != null && !username.isEmpty()) {
-            tvWelcome.setText("Chào mừng " + username + "!\nBạn đã đăng nhập thành công.");
+            tvWelcome.setText("Chào mừng " + username + "!");
         }
+        
+        if (role != null && !role.isEmpty()) {
+            tvRole.setText("Phân quyền: " + role.toUpperCase());
+            
+            // Ví dụ: Bạn có thể ẩn/hiện nút bấm tùy theo quyền
+            if (role.equalsIgnoreCase("admin")) {
+                // Hiển thị các chức năng của Admin
+            } else {
+                // Ẩn các chức năng của Admin, chỉ hiện chức năng Nhân viên
+            }
+        }
+
+        // Xử lý chuyển sang màn hình Đổi Mật Khẩu
+        btnChangePassword.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ChangePasswordActivity.class);
+            startActivity(intent);
+        });
 
         // Xử lý đăng xuất
         btnLogout.setOnClickListener(v -> {
+            // Xóa JWT Token khi đăng xuất
+            TokenManager.getInstance(MainActivity.this).clearToken();
+            
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             // Xoá các Activity cũ khỏi stack
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

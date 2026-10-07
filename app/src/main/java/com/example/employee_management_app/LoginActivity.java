@@ -27,6 +27,9 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
 
+        findViewById(R.id.tvForgotPassword).setOnClickListener(v ->
+                startActivity(new Intent(LoginActivity.this, ForgotPasswordActivity.class)));
+
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -38,24 +41,52 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
-                AuthApi authApi = ApiClient.getClient().create(AuthApi.class);
+                AuthApi authApi = ApiClient.getClient(LoginActivity.this).create(AuthApi.class);
                 authApi.login(new LoginRequest(user, pass)).enqueue(new Callback<LoginResponse>() {
                     @Override
                     public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             LoginResponse loginResponse = response.body();
                             if (loginResponse.isSuccess()) {
-                                Toast.makeText(LoginActivity.this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
-                                // Go to MainActivity or Employee List screen
-                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                // 1 role = 1 man hinh: admin -> AdminActivity, con lai -> EmployeeActivity
+                                String role = "staff";
+                                if (loginResponse.getData() != null && loginResponse.getData().getRole() != null) {
+                                    role = loginResponse.getData().getRole();
+                                }
+                                // Luu role de cac man hinh hien thi + phan quyen
+                                TokenManager.getInstance(LoginActivity.this).saveRole(role);
+                                Intent intent;
+                                if (role.equalsIgnoreCase("admin") || role.equalsIgnoreCase("manager")) {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
+                                    intent = new Intent(LoginActivity.this, AdminActivity.class);
+                                } else {
+                                    Toast.makeText(LoginActivity.this, "Chào mừng Nhân viên!", Toast.LENGTH_SHORT).show();
+                                    intent = new Intent(LoginActivity.this, EmployeeActivity.class);
+                                }
                                 
-                                // Truyền tên đăng nhập sang trang chủ
+                                // Lưu JWT Token vào điện thoại
+                                if (loginResponse.getToken() != null) {
+                                    TokenManager.getInstance(LoginActivity.this).saveToken(loginResponse.getToken());
+                                }
+                                // Lưu id user để dùng cho đổi mật khẩu, xem hồ sơ...
+                                if (loginResponse.getData() != null) {
+                                    TokenManager.getInstance(LoginActivity.this).saveUserId(loginResponse.getData().getId());
+                                }
+                                
+                                // Truyền thông tin sang trang chủ (giữ để tương thích MainActivity cũ)
                                 String loggedInUser = user;
-                                if (loginResponse.getData() != null && loginResponse.getData().getUsername() != null) {
-                                    loggedInUser = loginResponse.getData().getUsername();
+                                
+                                if (loginResponse.getData() != null) {
+                                    if (loginResponse.getData().getUsername() != null) {
+                                        loggedInUser = loginResponse.getData().getUsername();
+                                    }
+                                    if (loginResponse.getData().getRole() != null) {
+                                        role = loginResponse.getData().getRole();
+                                    }
                                 }
                                 intent.putExtra("USERNAME", loggedInUser);
-                                
+                                intent.putExtra("ROLE", role);
+
                                 startActivity(intent);
                                 finish();
                             } else {

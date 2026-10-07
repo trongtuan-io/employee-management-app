@@ -6,22 +6,26 @@ public class LoginResponse {
     @SerializedName("success")
     private boolean success;
 
-    @SerializedName("message")
+    @SerializedName("error")
     private String message;
-
+    
     @SerializedName("data")
     private EmployeeData data;
 
     public boolean isSuccess() {
         return success;
     }
-
+    
     public String getMessage() {
         return message;
     }
 
     public EmployeeData getData() {
         return data;
+    }
+
+    public String getToken() {
+        return data != null ? data.getToken() : null;
     }
 
     public static class EmployeeData {
@@ -31,8 +35,11 @@ public class LoginResponse {
         @SerializedName("username")
         private String username;
 
-        @SerializedName("role")
+        @SerializedName("role_name")
         private String role;
+
+        @SerializedName("token")
+        private String token;
 
         public int getId() {
             return id;
@@ -44,6 +51,10 @@ public class LoginResponse {
 
         public String getRole() {
             return role;
+        }
+
+        public String getToken() {
+            return token;
         }
     }
 }
