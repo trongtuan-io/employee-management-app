@@ -12,6 +12,8 @@ public class DepartmentListResponse {
     public static class Item {
         private int id;
         private String name;
+        private String description;
+        private int member_count;
 
         public Item(int id, String name) {
             this.id = id;
@@ -20,6 +22,8 @@ public class DepartmentListResponse {
 
         public int getId() { return id; }
         public String getName() { return name; }
+        public String getDescription() { return description == null ? "" : description; }
+        public int getMemberCount() { return member_count; }
 
         @Override
         public String toString() { return name; }

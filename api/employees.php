@@ -1,11 +1,14 @@
 <?php
-require_once __DIR__ . "/../employee-api/db.php";
+require_once __DIR__ . "/db.php";
+require_once __DIR__ . "/employee_validation.php";
 $a = $_GET["action"] ?? "list"; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "list" && $m === "GET") {
   $search = $_GET["search"] ?? "";
   $dept = $_GET["dept_id"] ?? "";
   $sort = $_GET["sort"] ?? "id_desc";
+  $searchMode = $_GET["search_mode"] ?? "like";
+  if (!in_array($searchMode, ["like", "fulltext"], true)) err("search_mode khong hop le");
   if (!is_string($search) || !is_string($dept) || !is_string($sort)) err("Tham so khong hop le");
 
   $page = filter_var($_GET["page"] ?? 1, FILTER_VALIDATE_INT);
@@ -28,8 +31,20 @@ if ($a === "list" && $m === "GET") {
   if (!isset($orders[$sort])) err("sort khong hop le");
 
   $s = "%" . $search . "%";
-  $where = " WHERE (e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
-  $params = [$s, $s, $s];
+  // FULLTEXT needs migration 001; fall back to LIKE for short words/missing index.
+  $useFulltext = false;
+  if ($searchMode === "fulltext" && trim($search) !== "" && strlen(trim($search)) >= 3) {
+    $idx = $pdo->query("SHOW INDEX FROM employees WHERE Key_name='idx_employee_fulltext'");
+    $useFulltext = (bool)$idx->fetch(PDO::FETCH_ASSOC);
+  }
+  if ($useFulltext) {
+    $where = " WHERE (MATCH(e.full_name,e.username,e.email) AGAINST(? IN NATURAL LANGUAGE MODE)"
+      . " OR e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
+    $params = [$search, $s, $s, $s];
+  } else {
+    $where = " WHERE (e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
+    $params = [$s, $s, $s];
+  }
   if ($dept !== "") { $where .= " AND e.department_id=?"; $params[] = (int)$dept; }
 
   try {
@@ -74,31 +89,36 @@ if ($a === "create" && $m === "POST") {
 if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   $b = body(); $id = (int)($b["id"] ?? $_GET["id"] ?? 0);
   $reqId = (int)($b["requester_id"] ?? 0);
-  if (!$id) err("Thieu id");
-  // Xac dinh quyen nguoi sua: chi admin/manager duoc doi mail, sdt, luong, role...
-  $stmt = $pdo->prepare("SELECT r.name FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
-  $stmt->execute([$reqId]);
-  $reqRole = strtolower(($stmt->fetch(PDO::FETCH_ASSOC) ?: [])["name"] ?? "");
-  $isAdmin = in_array($reqRole, ["admin", "manager"]);
-  if ($reqId !== $id && !$isAdmin) err("Khong co quyen sua ho so nguoi khac", 403);
-  if ($isAdmin) {
-    // Giu nguyen cac field khong gui len (tranh mat phong ban/quyen nhu cu)
-    $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=? LIMIT 1");
-    $stmt->execute([$id]);
-    $cur = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$cur) err("Khong tim thay nhan vien", 404);
-    $pick = function($k) use ($b, $cur) {
-      return array_key_exists($k, $b) && $b[$k] !== "" && $b[$k] !== null ? $b[$k] : $cur[$k];
-    };
-    try {
-      $pdo->prepare("UPDATE employees SET full_name=?,phone=?,email=?,base_salary=?,department_id=?,position_id=?,role_id=?,status=? WHERE id=?")
-        ->execute([$pick("full_name"), $pick("phone"), $pick("email"), $pick("base_salary"), $pick("department_id"), $pick("position_id"), $pick("role_id"), $pick("status"), $id]);
-    } catch (Exception $e) { err("Email da duoc dung boi nguoi khac", 409); }
-  } else {
-    // Nhan vien tu sua: chi duoc doi ho ten. Mail, SDT, luong, role... giu nguyen tu DB.
-    $pdo->prepare("UPDATE employees SET full_name=? WHERE id=?")->execute([$b["full_name"], $id]);
+  if (!$id || !$reqId) err("Thieu id/requester_id");
+  $reqRole = employee_editor_role($pdo, $reqId);
+  $isManager = in_array($reqRole, ["admin", "manager"], true);
+  if (!$reqRole || ($reqId !== $id && !$isManager)) err("Khong co quyen", 403);
+  $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=? LIMIT 1");
+  $stmt->execute([$id]);
+  $cur = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$cur) err("Khong tim thay nhan vien", 404);
+  try {
+    $name = employee_name($b["full_name"] ?? $cur["full_name"]);
+    if ($isManager) {
+      // Null fields omitted by Gson leave existing data untouched.
+      $email = array_key_exists('email', $b) && $b['email'] !== null
+        ? employee_email($b['email']) : $cur['email'];
+      $phone = array_key_exists('phone', $b) && $b['phone'] !== null
+        ? employee_phone($b['phone']) : $cur['phone'];
+      $dept = array_key_exists('department_id', $b) ? employee_optional_fk($pdo, $b['department_id'], 'departments') : $cur['department_id'];
+      $pos = array_key_exists('position_id', $b) ? employee_optional_fk($pdo, $b['position_id'], 'positions') : $cur['position_id'];
+      $hire = array_key_exists('hire_date', $b) ? employee_hire_date($b['hire_date']) : ($cur['hire_date'] ?? null);
+      $pdo->prepare("UPDATE employees SET full_name=?,email=?,phone=?,department_id=?,position_id=?,hire_date=? WHERE id=?")
+        ->execute([$name, $email, $phone, $dept, $pos, $hire, $id]);
+    } else {
+      $pdo->prepare("UPDATE employees SET full_name=? WHERE id=?")->execute([$name, $id]);
+    }
+    out(["updated" => true]);
+  } catch (InvalidArgumentException $e) { err($e->getMessage(), 422);
+  } catch (PDOException $e) {
+    if ($e->getCode() === '23000') err("Email da ton tai", 409);
+    err("Khong cap nhat duoc ho so. Kiem tra migration hire_date", 500);
   }
-  out(["updated" => true]);
 }
 if ($a === "upload-avatar" && $m === "POST") {
   $empId = (int)($_POST["employee_id"] ?? 0);
@@ -111,12 +131,14 @@ if ($a === "upload-avatar" && $m === "POST") {
   if ($reqId !== $empId && !$isAdmin) err("Khong co quyen", 403);
   if (!isset($_FILES["avatar"]) || $_FILES["avatar"]["error"] !== UPLOAD_ERR_OK) err("Chua chon anh");
   $f = $_FILES["avatar"];
-  $ext = strtolower(pathinfo($f["name"], PATHINFO_EXTENSION));
-  if (!in_array($ext, ["jpg", "jpeg", "png", "webp"])) err("Chi nhan anh jpg/png/webp");
+  $mime = (new finfo(FILEINFO_MIME_TYPE))->file($f["tmp_name"]);
+  $extensions = ["image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp"];
+  if (!isset($extensions[$mime]) || !@getimagesize($f["tmp_name"])) err("Chi nhan anh JPG/PNG/WebP", 422);
+  $ext = $extensions[$mime];
   if ($f["size"] > 2 * 1024 * 1024) err("Anh toi da 2MB");
   $dir = __DIR__ . "/uploads/avatars";
   if (!is_dir($dir)) mkdir($dir, 0777, true);
-  $name = "emp_" . $empId . "_" . time() . "." . $ext;
+  $name = "emp_" . $empId . "_" . bin2hex(random_bytes(8)) . "." . $ext;
   if (!move_uploaded_file($f["tmp_name"], $dir . "/" . $name)) err("Luu anh that bai", 500);
   $url = "uploads/avatars/" . $name;
   $pdo->prepare("UPDATE employees SET avatar_url=? WHERE id=?")->execute([$url, $empId]);

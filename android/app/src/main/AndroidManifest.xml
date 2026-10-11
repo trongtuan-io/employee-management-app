@@ -56,6 +56,8 @@
             android:exported="false">
         </activity>
 
+        <activity android:name=".DepartmentActivity" android:exported="false" />
+        <activity android:name=".ImportEmployeesActivity" android:exported="false" />
         <activity
             android:name=".StaffListActivity"
             android:exported="false">

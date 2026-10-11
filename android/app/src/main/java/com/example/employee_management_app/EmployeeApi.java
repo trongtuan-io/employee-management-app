@@ -7,6 +7,7 @@ import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.Query;
+import retrofit2.http.Header;
 
 public interface EmployeeApi {
     // Ho so chi tiet 1 nhan vien
@@ -34,6 +35,34 @@ public interface EmployeeApi {
                                             @Query("page") int page,
                                             @Query("limit") int limit,
                                             @Query("sort") String sort);
+
+    @GET("employees.php?action=list")
+    Call<EmployeeListResponse> getEmployees(@Query("search") String search,
+                                            @Query("dept_id") Integer departmentId,
+                                            @Query("page") int page,
+                                            @Query("limit") int limit,
+                                            @Query("sort") String sort,
+                                            @Query("search_mode") String searchMode);
+
+    @GET("employees.php?action=positions")
+    Call<PositionListResponse> getPositions();
+
+    @GET("departments.php?action=list")
+    Call<DepartmentListResponse> listDepartments();
+
+    @POST("departments.php?action=create")
+    Call<ApiResponse> createDepartment(@Body DepartmentMutationRequest request);
+
+    @POST("departments.php?action=update")
+    Call<ApiResponse> updateDepartment(@Body DepartmentMutationRequest request);
+
+    @POST("departments.php?action=delete")
+    Call<ApiResponse> deleteDepartment(@Body DepartmentMutationRequest request);
+
+    @Multipart
+    @POST("import_employees.php")
+    Call<EmployeeImportResponse> importEmployees(@Part("requester_id") okhttp3.RequestBody requesterId,
+                                                  @Part okhttp3.MultipartBody.Part file);
 
     @GET("employees.php?action=departments")
     Call<DepartmentListResponse> getDepartments();
