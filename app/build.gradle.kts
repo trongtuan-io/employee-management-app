@@ -1,12 +1,28 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.services)
 }
+
+import java.util.Properties
+
+// IP backend rieng tung may: dat trong local.properties (file nay gitignore,
+// khong day len GitHub) -> khong con phai sua code khi doi mang.
+// Vi du them 1 dong: apiUrl=http://192.168.11.3/employee-api/
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use(::load)
+}
+val apiUrl: String = (localProps.getProperty("apiUrl")
+    ?: System.getenv("API_URL")
+    ?: "http://192.168.10.5/employee-api/")
 
 android {
     namespace = "com.example.employee_management_app"
     compileSdk {
         version = release(37)
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     defaultConfig {
@@ -17,6 +33,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
     }
 
     buildTypes {
@@ -42,10 +59,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:3.14.9")
-
-    // Firebase Phone Auth (SMS mien phi)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
 
     // Tai + hien thi anh dai dien
     implementation("com.github.bumptech.glide:glide:4.16.0")

@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.services)
 }
 
 android {
@@ -42,10 +41,6 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:3.14.9")
-
-    // Firebase Phone Auth (SMS mien phi)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
 
     // Tai + hien thi anh dai dien
     implementation("com.github.bumptech.glide:glide:4.16.0")
