@@ -10,36 +10,12 @@ public class EmployeeListResponse {
     @SerializedName("data")
     private List<Item> data;
 
-    @SerializedName("pagination")
-    private Pagination pagination;
-
     public boolean isSuccess() {
         return success;
     }
 
     public List<Item> getData() {
         return data;
-    }
-
-    public Pagination getPagination() { return pagination; }
-
-    public static class Pagination {
-        private int page;
-        private int limit;
-        private int total;
-        @SerializedName("total_pages")
-        private int totalPages;
-
-        public int getPage() { return page; }
-        public int getLimit() { return limit; }
-        public int getTotal() { return total; }
-        public int getTotalPages() { return totalPages; }
-
-        public boolean isValid() {
-            return limit > 0 && limit <= 50 && total >= 0 && page >= 1
-                    && totalPages == Math.max(1L, (total + (long) limit - 1) / limit)
-                    && page <= totalPages;
-        }
     }
 
     public static class Item {

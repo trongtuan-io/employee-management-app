@@ -28,16 +28,6 @@ public interface EmployeeApi {
     @GET("employees.php?action=list")
     Call<EmployeeListResponse> getEmployees(@Query("search") String search);
 
-    @GET("employees.php?action=list")
-    Call<EmployeeListResponse> getEmployees(@Query("search") String search,
-                                            @Query("dept_id") Integer departmentId,
-                                            @Query("page") int page,
-                                            @Query("limit") int limit,
-                                            @Query("sort") String sort);
-
-    @GET("employees.php?action=departments")
-    Call<DepartmentListResponse> getDepartments();
-
     // Sua ho so: nhan vien chi doi duoc ho ten, admin doi duoc het
     @POST("employees.php?action=update")
     Call<ApiResponse> updateEmployee(@Body UpdateEmployeeRequest request);
