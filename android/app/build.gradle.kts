@@ -2,10 +2,27 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+import java.util.Properties
+
+// IP backend rieng tung may: dat trong local.properties (file nay gitignore,
+// khong day len GitHub) -> khong con phai sua code khi doi mang.
+// Vi du them 1 dong: apiUrl=http://192.168.11.10/employee-api/
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use(::load)
+}
+val apiUrl: String = (localProps.getProperty("apiUrl")
+    ?: System.getenv("API_URL")
+    ?: "http://172.16.8.36/employee-api/")
+
 android {
     namespace = "com.example.employee_management_app"
     compileSdk {
         version = release(37)
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     defaultConfig {
@@ -16,6 +33,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
     }
 
     buildTypes {

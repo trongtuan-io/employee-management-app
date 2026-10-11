@@ -25,7 +25,7 @@ api/       PHP REST API: auth.php (login, register, đổi/quên MK),
            employees.php (CRUD, upload avatar, khóa/mở),
            attendances.php (chấm công), leaves_salaries.php (phép, lương, dashboard)
 app/       App Android Studio (Java + Retrofit + Glide) — bản chính, mở folder gốc repo để chạy
-android/   Bản copy của nhóm (IP cứng trong code, không dùng local.properties)
+android/   Bản copy của nhóm (cũng dùng local.properties cho IP, giống bản chính)
 ```
 
 ## Chạy dự án trên máy mới
