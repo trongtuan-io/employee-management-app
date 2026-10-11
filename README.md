@@ -24,7 +24,8 @@ database/  SQL full 8 bảng (roles, departments, positions, employees,
 api/       PHP REST API: auth.php (login, register, đổi/quên MK),
            employees.php (CRUD, upload avatar, khóa/mở),
            attendances.php (chấm công), leaves_salaries.php (phép, lương, dashboard)
-android/   App Android Studio (Java + Retrofit + Glide)
+app/       App Android Studio (Java + Retrofit + Glide) — bản chính, mở folder gốc repo để chạy
+android/   Bản copy của nhóm (IP cứng trong code, không dùng local.properties)
 ```
 
 ## Chạy dự án trên máy mới
@@ -32,7 +33,7 @@ android/   App Android Studio (Java + Retrofit + Glide)
 1. Cài Git, Android Studio, XAMPP. Clone repo.
 2. **DB:** XAMPP Start Apache + MySQL → `http://localhost/phpmyadmin` → Nhập file `database/employee_management.sql`.
 3. **API:** copy folder `api/` vào `htdocs/employee-api/` → test `http://localhost/employee-api/leaves_salaries.php?action=dashboard` phải ra JSON.
-4. **App:** mở folder `android/` bằng Android Studio → thêm IP máy mình vào `local.properties`: `apiUrl=http://<IP-cua-ban>/employee-api/` (`ipconfig getifaddr en0`; máy ảo dùng `10.0.2.2`) → Run. Không sửa code `ApiClient.java`.
+4. **App:** mở **folder gốc repo** bằng Android Studio (module `:app`) → thêm IP máy mình vào `local.properties`: `apiUrl=http://<IP-cua-ban>/employee-api/` (`ipconfig getifaddr en0`; máy ảo dùng `10.0.2.2`) → Sync → Run. Không sửa code `ApiClient.java`.
 
 Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_hr` (NV/HR), `tuannt03` (NV/IT).
 
@@ -44,9 +45,9 @@ Mỗi việc 1 nhánh (`ten-viec`) → push nhánh → Pull Request → review �
 
 Máy ảo Android **KHÔNG** kết nối được tới `localhost` hay `127.0.0.1` của máy tính. Bắt buộc dùng **IP LAN (Wi-Fi)** thực tế.
 
-Khi Wi-Fi cấp lại IP mới sẽ lỗi **"failed to connect"** → lấy lại IP và cập nhật app.
+Khi Wi-Fi đổi mạng hoặc cấp lại IP sẽ lỗi **"failed to connect" / "Lỗi kết nối"** → lấy lại IP và cập nhật app.
 
-**B1 - Lấy IP (Mac):** mở Terminal, chạy `ifconfig | grep "inet " | grep -v 127.0.0.1` → ghi dãy `192.168.x.x`. (Windows: mở cmd, gõ `ipconfig`, tìm `IPv4 Address` mục Wi-Fi).
+**B1 - Lấy IP (Mac):** mở Terminal, chạy `ipconfig getifaddr en0` → ghi dãy `192.168.x.x`. (Windows: mở cmd, gõ `ipconfig`, tìm `IPv4 Address` mục Wi-Fi). Điện thoại phải bắt **cùng Wi-Fi** với laptop.
 
 **B2 - Cập nhật app:** thêm/sửa 1 dòng trong `local.properties` (file này gitignore, mỗi máy tự giữ), ví dụ `apiUrl=http://192.168.11.3/employee-api/` → Sync Gradle.
 
