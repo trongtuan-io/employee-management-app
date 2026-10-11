@@ -3,15 +3,56 @@ require_once __DIR__ . "/../employee-api/db.php";
 $a = $_GET["action"] ?? "list"; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "list" && $m === "GET") {
-  $s = "%" . ($_GET["search"] ?? "") . "%";
-  $page = max(1, (int)($_GET["page"] ?? 1)); $limit = min(50, (int)($_GET["limit"] ?? 20)); $off = ($page - 1) * $limit;
+  $search = $_GET["search"] ?? "";
   $dept = $_GET["dept_id"] ?? "";
-  $sql = "SELECT e.id,e.username,e.full_name,e.phone,e.email,e.base_salary,e.status,d.name AS dept_name,p.title AS position_name,r.name AS role_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id LEFT JOIN roles r ON e.role_id=r.id WHERE (e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
+  $sort = $_GET["sort"] ?? "id_desc";
+  if (!is_string($search) || !is_string($dept) || !is_string($sort)) err("Tham so khong hop le");
+
+  $page = filter_var($_GET["page"] ?? 1, FILTER_VALIDATE_INT);
+  $limit = filter_var($_GET["limit"] ?? 20, FILTER_VALIDATE_INT);
+  if ($page === false || $limit === false) err("page/limit phai la so nguyen");
+  $page = max(1, $page);
+  $limit = max(1, min(50, $limit));
+  if ($dept !== "" && filter_var($dept, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]]) === false) {
+    err("dept_id khong hop le");
+  }
+  // Chi nhan cac cot/huong sap xep trong danh sach cho phep.
+  // ID la khoa phu de cac nhan vien trung ten khong bi dao giua cac trang.
+  $orders = [
+    "id_desc" => "e.id DESC",
+    "name_asc" => "e.full_name ASC, e.id ASC",
+    "name_desc" => "e.full_name DESC, e.id DESC",
+    "code_asc" => "e.username ASC, e.id ASC",
+    "code_desc" => "e.username DESC, e.id DESC"
+  ];
+  if (!isset($orders[$sort])) err("sort khong hop le");
+
+  $s = "%" . $search . "%";
+  $where = " WHERE (e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
   $params = [$s, $s, $s];
-  if ($dept !== "") { $sql .= " AND e.department_id=?"; $params[] = $dept; }
-  $sql .= " ORDER BY e.id DESC LIMIT $limit OFFSET $off";
-  $stmt = $pdo->prepare($sql); $stmt->execute($params);
-  out($stmt->fetchAll(PDO::FETCH_ASSOC));
+  if ($dept !== "") { $where .= " AND e.department_id=?"; $params[] = (int)$dept; }
+
+  try {
+    $count = $pdo->prepare("SELECT COUNT(*) FROM employees e" . $where);
+    $count->execute($params);
+    $total = (int)$count->fetchColumn();
+    $totalPages = max(1, (int)ceil($total / $limit));
+    $page = min($page, $totalPages);
+    $off = ($page - 1) * $limit;
+    $sql = "SELECT e.id,e.username,e.full_name,e.phone,e.email,e.base_salary,e.status,d.name AS dept_name,p.title AS position_name,r.name AS role_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id LEFT JOIN roles r ON e.role_id=r.id"
+      . $where . " ORDER BY " . $orders[$sort] . " LIMIT $limit OFFSET $off";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    // Giu data la mang de khong lam hong client cu; them metadata rieng.
+    echo json_encode([
+      "success" => true,
+      "data" => $stmt->fetchAll(PDO::FETCH_ASSOC),
+      "pagination" => ["page" => $page, "limit" => $limit, "total" => $total, "total_pages" => $totalPages]
+    ]);
+    exit;
+  } catch (PDOException $e) {
+    err("Khong tai duoc danh sach nhan vien", 500);
+  }
 }
 if ($a === "detail" && $m === "GET") {
   $stmt = $pdo->prepare("SELECT e.*, d.name AS dept_name, p.title AS position_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id WHERE e.id=?");
@@ -109,7 +150,13 @@ if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   $pdo->prepare("DELETE FROM employees WHERE id=?")->execute([$id]);
   out(["deleted" => true]);
 }
-if ($a === "departments" && $m === "GET") { out($pdo->query("SELECT * FROM departments")->fetchAll(PDO::FETCH_ASSOC)); }
+if ($a === "departments" && $m === "GET") {
+  try {
+    out($pdo->query("SELECT * FROM departments ORDER BY name ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC));
+  } catch (PDOException $e) {
+    err("Khong tai duoc danh sach phong ban", 500);
+  }
+}
 if ($a === "positions" && $m === "GET") { out($pdo->query("SELECT * FROM positions")->fetchAll(PDO::FETCH_ASSOC)); }
 err("Unknown employees action");
 ?>

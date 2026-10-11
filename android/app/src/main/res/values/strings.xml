@@ -1,3 +1,31 @@
 <resources>
     <string name="app_name">employee-management-app</string>
+    <string name="staff_title">Quản lý nhân viên</string>
+    <string name="staff_edit_hint">Bấm vào 1 người để sửa hồ sơ</string>
+    <string name="staff_search_hint">Nhập tên hoặc mã nhân viên</string>
+    <string name="staff_search">Tìm kiếm</string>
+    <string name="staff_department">Phòng ban</string>
+    <string name="staff_all_departments">Tất cả phòng ban</string>
+    <string name="staff_department_id">Phòng ban #%1$d</string>
+    <string name="staff_departments_loading">Đang tải phòng ban…</string>
+    <string name="staff_departments_empty">Chưa có phòng ban.</string>
+    <string name="staff_departments_error">Không tải được phòng ban. Vui lòng thử lại.</string>
+    <string name="staff_departments_retry">Tải lại phòng ban</string>
+    <string name="staff_sort">Sắp xếp</string>
+    <string-array name="staff_sort_options">
+        <item>Tên nhân viên A–Z</item>
+        <item>Tên nhân viên Z–A</item>
+        <item>Mã nhân viên A–Z</item>
+        <item>Mã nhân viên Z–A</item>
+    </string-array>
+    <string name="staff_previous_page">Trang trước</string>
+    <string name="staff_next_page">Trang sau</string>
+    <string name="staff_page_info">Trang %1$d/%2$d · %3$d nhân viên</string>
+    <string name="staff_page_loading">Đang tải trang %1$d…</string>
+    <string name="staff_page_unavailable">Trang %1$d · Chưa tải được</string>
+    <string name="staff_empty">Không tìm thấy nhân viên.</string>
+    <string name="staff_load_error">Không tải được danh sách. Bấm Tìm kiếm để thử lại.</string>
+    <string name="staff_http_error">Lỗi API (HTTP %1$d). Bấm Tìm kiếm để thử lại.</string>
+    <string name="staff_connection_error">Không tải được danh sách. Kiểm tra kết nối rồi bấm Tìm kiếm để thử lại.</string>
+    <string name="staff_pagination_error">API chưa trả thông tin phân trang hợp lệ. Cần cập nhật employees.php rồi thử lại.</string>
 </resources>
