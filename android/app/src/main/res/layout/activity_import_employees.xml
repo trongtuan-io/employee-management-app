@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="20dp" android:orientation="vertical">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Nhập nhân viên từ Excel .xlsx / CSV UTF-8\n\nDòng đầu phải có: username, full_name, email. Có thể thêm: phone, department_id, position_id, hire_date (YYYY-MM-DD).\n\nTối đa 500 nhân viên, 3MB. Import tất cả hoặc không nhập dòng nào nếu có lỗi. Tài khoản mới có mật khẩu tạm tạo ngẫu nhiên, bạn phải lưu bảng mật khẩu và yêu cầu nhân viên đổi mật khẩu."
+            android:textSize="16sp" android:paddingBottom="16dp" />
+        <Button android:id="@+id/btnChooseImport" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="Chọn file Excel / CSV" />
+        <TextView android:id="@+id/tvImportStatus" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:paddingTop="16dp"
+            android:accessibilityLiveRegion="polite" />
+    </LinearLayout>
+</ScrollView>

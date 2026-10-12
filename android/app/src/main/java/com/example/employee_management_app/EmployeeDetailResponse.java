@@ -26,6 +26,10 @@ public class EmployeeDetailResponse {
         private String base_salary;
 
         private int status;
+        private int department_id;
+        private int position_id;
+        private String created_at;
+        private String hire_date;
 
         @SerializedName("avatar_url")
         private String avatarUrl;
@@ -44,6 +48,10 @@ public class EmployeeDetailResponse {
         public String getBaseSalary() { return base_salary; }
         public String getAvatarUrl() { return avatarUrl; }
         public int getStatus() { return status; }
+        public int getDepartmentId() { return department_id; }
+        public int getPositionId() { return position_id; }
+        public String getCreatedAt() { return created_at; }
+        public String getHireDate() { return hire_date; }
         public String getDeptName() { return deptName; }
         public String getPositionName() { return positionName; }
     }

@@ -38,6 +38,8 @@ public class StaffListActivity extends AppCompatActivity {
     private static final String STATE_DEPARTMENT_NAME = "staff_department_name";
     private static final String STATE_SORT = "staff_sort";
     private static final String STATE_PAGE = "staff_page";
+    private static final String STATE_FULLTEXT = "staff_fulltext";
+    private boolean fulltext;
 
     private final List<EmployeeListResponse.Item> items = new ArrayList<>();
     private final Handler searchHandler = new Handler(Looper.getMainLooper());
@@ -70,7 +72,27 @@ public class StaffListActivity extends AppCompatActivity {
                     savedInstanceState.getInt(STATE_SORT, 0),
                     savedInstanceState.getInt(STATE_PAGE, 1));
             departmentName = savedInstanceState.getString(STATE_DEPARTMENT_NAME);
+            fulltext = savedInstanceState.getBoolean(STATE_FULLTEXT, false);
+        } else if (getIntent().hasExtra("DEPARTMENT_ID")) {
+            query = query.withDepartment(getIntent().getIntExtra("DEPARTMENT_ID", 0));
+            departmentName = getIntent().getStringExtra("DEPARTMENT_NAME");
         }
+        androidx.appcompat.widget.SwitchCompat modeSwitch = findViewById(R.id.swFullTextSearch);
+        modeSwitch.setChecked(fulltext);
+        modeSwitch.setOnCheckedChangeListener((view, checked) -> {
+            if (fulltext == checked) return;
+            fulltext = checked;
+            query = query.withPage(1);
+            cancelStaffCall();
+            loadStaff();
+        });
+        boolean admin = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        findViewById(R.id.btnManageDepartments).setVisibility(admin ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnImportEmployees).setVisibility(admin ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnManageDepartments).setOnClickListener(v ->
+                startActivity(new Intent(this, DepartmentActivity.class)));
+        findViewById(R.id.btnImportEmployees).setOnClickListener(v ->
+                startActivity(new Intent(this, ImportEmployeesActivity.class)));
 
         staffList = findViewById(R.id.lvStaff);
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
@@ -180,6 +202,7 @@ public class StaffListActivity extends AppCompatActivity {
         super.onResume();
         // Tai lai sau khi sua ho so, giu tu khoa, phong ban, cach sap xep va trang.
         loadStaff();
+        loadDepartments();
     }
 
     @Override
@@ -189,6 +212,7 @@ public class StaffListActivity extends AppCompatActivity {
         outState.putString(STATE_DEPARTMENT_NAME, departmentName);
         outState.putInt(STATE_SORT, query.sortIndex);
         outState.putInt(STATE_PAGE, query.page);
+        outState.putBoolean(STATE_FULLTEXT, fulltext);
         super.onSaveInstanceState(outState);
     }
 
@@ -237,7 +261,7 @@ public class StaffListActivity extends AppCompatActivity {
         loading = true;
         updatePageControls();
         staffCall = api.getEmployees(query.search, query.apiDepartmentId(), query.page,
-                StaffListQuery.PAGE_SIZE, query.apiSort());
+                StaffListQuery.PAGE_SIZE, query.apiSort(), fulltext ? "fulltext" : "like");
         staffCall.enqueue(new Callback<EmployeeListResponse>() {
             @Override
             public void onResponse(Call<EmployeeListResponse> call, Response<EmployeeListResponse> response) {
