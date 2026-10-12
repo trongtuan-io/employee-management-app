@@ -31,6 +31,7 @@ public class AdminActivity extends AppCompatActivity {
         tvWelcome.setText("Xin chào " + (username != null ? username : "") + "!");
         Button btnApprove = findViewById(R.id.btnAdminApprove);
         Button btnStaff = findViewById(R.id.btnAdminStaff);
+        Button btnCreateAccount = findViewById(R.id.btnAdminCreateAccount);
         Button btnPass = findViewById(R.id.btnAdminChangePass);
         Button btnLogout = findViewById(R.id.btnAdminLogout);
 
@@ -41,6 +42,8 @@ public class AdminActivity extends AppCompatActivity {
                 Toast.makeText(this, "Mở danh sách duyệt phép (bạn D làm tiếp)", Toast.LENGTH_SHORT).show());
         btnStaff.setOnClickListener(v ->
                 startActivity(new Intent(this, StaffListActivity.class)));
+        btnCreateAccount.setOnClickListener(v ->
+                startActivity(new Intent(this, CreateAccountActivity.class)));
         btnPass.setOnClickListener(v ->
                 startActivity(new Intent(this, ChangePasswordActivity.class)));
         btnLogout.setOnClickListener(v -> {

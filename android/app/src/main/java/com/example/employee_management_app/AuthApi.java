@@ -8,6 +8,10 @@ public interface AuthApi {
     @POST("auth.php?action=login")
     Call<LoginResponse> login(@Body LoginRequest request);
 
+    // Admin tao tai khoan moi (insert vao employees)
+    @POST("auth.php?action=register")
+    Call<ApiResponse> register(@Body RegisterRequest request);
+
     @POST("auth.php?action=change-password")
     Call<ApiResponse> changePassword(@Body ChangePasswordRequest request);
 

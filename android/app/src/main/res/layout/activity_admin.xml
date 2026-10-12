@@ -169,6 +169,13 @@
                 android:layout_marginTop="8dp"/>
 
             <Button
+                android:id="@+id/btnAdminCreateAccount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tạo tài khoản nhân viên"
+                android:layout_marginTop="8dp"/>
+
+            <Button
                 android:id="@+id/btnAdminChangePass"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
