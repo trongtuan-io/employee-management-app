@@ -64,6 +64,25 @@ public interface EmployeeApi {
     Call<EmployeeImportResponse> importEmployees(@Part("requester_id") okhttp3.RequestBody requesterId,
                                                   @Part okhttp3.MultipartBody.Part file);
 
+
+    // Task 22: keep this separate from the team's other employee APIs.
+    @Multipart
+    @POST("import_batches.php?action=sync")
+    Call<EmployeeBatchResponse> syncImportBatch(
+            @Part("requester_id") okhttp3.RequestBody requesterId,
+            @Part("batch_id") okhttp3.RequestBody batchId,
+            @Part okhttp3.MultipartBody.Part file);
+
+    @POST("import_batches.php?action=rollback")
+    Call<EmployeeBatchResponse> rollbackImportBatch(@Body ImportBatchActionRequest request);
+
+    @GET("import_batches.php?action=list")
+    Call<EmployeeBatchResponse> getImportBatchHistory(@Query("requester_id") int requesterId);
+
+    @GET("import_batches.php?action=detail")
+    Call<EmployeeBatchResponse> getImportBatchDetail(
+            @Query("requester_id") int requesterId, @Query("batch_id") long batchId);
+
     @GET("employees.php?action=departments")
     Call<DepartmentListResponse> getDepartments();
 
@@ -74,6 +93,10 @@ public interface EmployeeApi {
     // Khoa / mo tai khoan (admin moi phong / manager cung phong)
     @POST("employees.php?action=set-status")
     Call<ApiResponse> setStatus(@Body SetStatusRequest request);
+
+    // Only admin may delete employee; server verifies role and identity.
+    @POST("employees.php?action=delete")
+    Call<ApiResponse> deleteEmployee(@Body DeleteEmployeeRequest request);
 
     // Upload anh dai dien
     @Multipart

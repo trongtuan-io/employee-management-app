@@ -11,5 +11,14 @@
         <TextView android:id="@+id/tvImportStatus" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:paddingTop="16dp"
             android:accessibilityLiveRegion="polite" />
-    </LinearLayout>
+        <Button android:id="@+id/btnManageImportFiles"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Quản lý file đã import trên thiết bị" />
+    <Button android:id="@+id/btnImportBatchHistory"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Lịch sử import / Rollback trên MySQL" />
+    <Button android:id="@+id/btnManageImportedEmployees"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Xem / sửa / xóa nhân viên trong MySQL" />
+</LinearLayout>
 </ScrollView>

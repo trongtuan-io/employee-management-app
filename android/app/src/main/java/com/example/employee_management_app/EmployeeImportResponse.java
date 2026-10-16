@@ -9,8 +9,10 @@ public class EmployeeImportResponse {
     public String getError() { return error; }
     public static class Data {
         private int imported;
+        private long batch_id;
         private List<Credential> temporary_credentials;
         public int getImported() { return imported; }
+        public long getBatchId() { return batch_id; }
         public List<Credential> getCredentials() { return temporary_credentials; }
     }
     public static class Credential {
