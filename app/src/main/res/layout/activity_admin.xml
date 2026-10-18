@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f1f5f9">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Banner xanh dam rieng cua Admin -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/header_admin"
+            android:padding="24dp"
+            android:paddingTop="40dp"
+            android:paddingBottom="28dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TRANG QUẢN TRỊ"
+                android:textColor="#ffffff"
+                android:textSize="24sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvAdminWelcome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Xin chào!"
+                android:textColor="#bfdbfe"
+                android:textSize="16sp"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:id="@+id/tvAdminRole"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vai trò: admin"
+                android:textColor="#ffffff"
+                android:textSize="14sp"
+                android:background="#2563eb"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+
+        <!-- 3 the so lieu -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
+                android:orientation="vertical"
+                android:background="@drawable/card_admin"
+                android:padding="12dp"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tvTotalStaff"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#1e3a8a"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="NV đang làm"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
+                android:orientation="vertical"
+                android:background="@drawable/card_admin"
+                android:padding="12dp"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tvPendingLeaves"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#b45309"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Đơn chờ duyệt"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
+                android:orientation="vertical"
+                android:background="@drawable/card_admin"
+                android:padding="12dp"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tvLateToday"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="..."
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#b91c1c"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Đi muộn nay"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chức năng quản trị"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="24dp">
+
+            <Button
+                android:id="@+id/btnAdminApprove"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Duyệt nghỉ phép"/>
+
+            <Button
+                android:id="@+id/btnAdminStaff"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Quản lý nhân viên"
+                android:layout_marginTop="8dp"/>
+
+            <Button
+                android:id="@+id/btnAdminCreateAccount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Tạo tài khoản nhân viên"
+                android:layout_marginTop="8dp"/>
+
+            <Button
+                android:id="@+id/btnAdminChangePass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Đổi mật khẩu"
+                android:layout_marginTop="8dp"/>
+
+            <Button
+                android:id="@+id/btnAdminLogout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Đăng xuất"
+                android:layout_marginTop="8dp"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
