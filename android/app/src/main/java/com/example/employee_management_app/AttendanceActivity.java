@@ -2,7 +2,9 @@ package com.example.employee_management_app;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -14,6 +16,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 
@@ -35,6 +40,9 @@ public class AttendanceActivity extends AppCompatActivity {
     private AttendanceHistoryAdapter historyAdapter;
 
     private FusedLocationProviderClient fusedLocationClient;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
+
     private TokenManager tokenManager;
     private AttendanceApi attendanceApi;
 
@@ -64,14 +72,76 @@ public class AttendanceActivity extends AppCompatActivity {
         attendanceApi = ApiClient.getClient(this).create(AttendanceApi.class);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
+        // Cấu hình cập nhật vị trí GPS realtime
+        locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+                .setMinUpdateIntervalMillis(1000)
+                .build();
+
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                for (Location location : locationResult.getLocations()) {
+                    if (location != null) {
+                        currentLat = location.getLatitude();
+                        currentLng = location.getLongitude();
+                        isLocationLoaded = true;
+                        tvGpsStatus.setText("Vị trí GPS: " + String.format("%.6f", currentLat) + ", " + String.format("%.6f", currentLng));
+                    }
+                }
+            }
+        };
+
+        // Bấm vào dòng vị trí GPS để làm mới thủ công nếu muốn
+        tvGpsStatus.setOnClickListener(v -> startLocationUpdates());
+
         // Tải dữ liệu ban đầu
         loadEmployeeInfo();
-        getCurrentLocation();
         loadAttendanceHistory();
 
         // Xử lý sự kiện Check-in & Check-out
         btnCheckIn.setOnClickListener(v -> performCheckIn());
         btnCheckOut.setOnClickListener(v -> performCheckOut());
+    }
+
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
+            return;
+        }
+
+        tvGpsStatus.setText("Trạng thái GPS: Đang cập nhật vị trí...");
+
+        // Thử lấy vị trí tức thời trước
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        currentLat = location.getLatitude();
+                        currentLng = location.getLongitude();
+                        isLocationLoaded = true;
+                        tvGpsStatus.setText("Vị trí GPS: " + String.format("%.6f", currentLat) + ", " + String.format("%.6f", currentLng));
+                    }
+                });
+
+        // Đăng ký nhận cập nhật định kỳ khi tọa độ thay đổi
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+    }
+
+    private void stopLocationUpdates() {
+        if (fusedLocationClient != null && locationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startLocationUpdates();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
     }
 
     private void loadEmployeeInfo() {
@@ -134,36 +204,6 @@ public class AttendanceActivity extends AppCompatActivity {
         });
     }
 
-    private void getCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
-            return;
-        }
-
-        tvGpsStatus.setText("Trạng thái GPS: Đang lấy vị trí...");
-
-        fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-            if (location != null) {
-                currentLat = location.getLatitude();
-                currentLng = location.getLongitude();
-                isLocationLoaded = true;
-                tvGpsStatus.setText("Vị trí GPS: " + String.format("%.6f", currentLat) + ", " + String.format("%.6f", currentLng));
-            } else {
-                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                        .addOnSuccessListener(this, newLocation -> {
-                            if (newLocation != null) {
-                                currentLat = newLocation.getLatitude();
-                                currentLng = newLocation.getLongitude();
-                                isLocationLoaded = true;
-                                tvGpsStatus.setText("Vị trí GPS: " + String.format("%.6f", currentLat) + ", " + String.format("%.6f", currentLng));
-                            } else {
-                                tvGpsStatus.setText("Không lấy được tọa độ GPS.");
-                            }
-                        });
-            }
-        });
-    }
-
     private String parseErrorMessage(Response<?> response) {
         try {
             if (response.errorBody() != null) {
@@ -183,7 +223,7 @@ public class AttendanceActivity extends AppCompatActivity {
     private void performCheckIn() {
         if (!isLocationLoaded) {
             Toast.makeText(this, "Đang lấy vị trí GPS, vui lòng đợi...", Toast.LENGTH_SHORT).show();
-            getCurrentLocation();
+            startLocationUpdates();
             return;
         }
 
@@ -239,7 +279,7 @@ public class AttendanceActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 100) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getCurrentLocation();
+                startLocationUpdates();
             } else {
                 Toast.makeText(this, "Cần cấp quyền vị trí để chấm công!", Toast.LENGTH_SHORT).show();
                 tvGpsStatus.setText("Trạng thái GPS: Bị từ chối quyền vị trí.");
