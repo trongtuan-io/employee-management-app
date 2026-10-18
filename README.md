@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Employee Management App
 
 Phần mềm nội bộ quản lý nhân viên — Đồ án môn Thiết kế phần mềm di động (nhóm 4 người).
@@ -51,3 +52,6 @@ Khi Wi-Fi cấp lại IP mới sẽ lỗi **"failed to connect"** → lấy lạ
 **B2 - Cập nhật app:** mở `app -> java -> com.example.employee_management_app -> ApiClient.java`, sửa `BASE_URL`, ví dụ `private static final String BASE_URL = "http://192.168.11.3/employee-api/";`
 
 **B3 - Run lại** app trong Android Studio.
+=======
+# employee-management-app
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f

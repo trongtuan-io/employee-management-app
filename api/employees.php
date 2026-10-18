@@ -1,4 +1,5 @@
 <?php
+<<<<<<< HEAD
 require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/employee_validation.php";
 $a = $_GET["action"] ?? "list"; $m = $_SERVER["REQUEST_METHOD"];
@@ -68,6 +69,21 @@ if ($a === "list" && $m === "GET") {
   } catch (PDOException $e) {
     err("Khong tai duoc danh sach nhan vien", 500);
   }
+=======
+require_once __DIR__ . "/../employee-api/db.php";
+$a = $_GET["action"] ?? "list"; $m = $_SERVER["REQUEST_METHOD"];
+
+if ($a === "list" && $m === "GET") {
+  $s = "%" . ($_GET["search"] ?? "") . "%";
+  $page = max(1, (int)($_GET["page"] ?? 1)); $limit = min(50, (int)($_GET["limit"] ?? 20)); $off = ($page - 1) * $limit;
+  $dept = $_GET["dept_id"] ?? "";
+  $sql = "SELECT e.id,e.username,e.full_name,e.phone,e.email,e.base_salary,e.status,d.name AS dept_name,p.title AS position_name,r.name AS role_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id LEFT JOIN roles r ON e.role_id=r.id WHERE (e.full_name LIKE ? OR e.username LIKE ? OR e.email LIKE ?)";
+  $params = [$s, $s, $s];
+  if ($dept !== "") { $sql .= " AND e.department_id=?"; $params[] = $dept; }
+  $sql .= " ORDER BY e.id DESC LIMIT $limit OFFSET $off";
+  $stmt = $pdo->prepare($sql); $stmt->execute($params);
+  out($stmt->fetchAll(PDO::FETCH_ASSOC));
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 }
 if ($a === "detail" && $m === "GET") {
   $stmt = $pdo->prepare("SELECT e.*, d.name AS dept_name, p.title AS position_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id WHERE e.id=?");
@@ -87,6 +103,7 @@ if ($a === "create" && $m === "POST") {
   } catch (Exception $e) { err("Trung username/email", 409); }
 }
 if ($a === "update" && ($m === "PUT" || $m === "POST")) {
+<<<<<<< HEAD
   $b = body(); $id = (int)($b["id"] ?? $_GET["id"] ?? 0);
   $reqId = (int)($b["requester_id"] ?? 0);
   if (!$id || !$reqId) err("Thieu id/requester_id");
@@ -165,6 +182,13 @@ if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
   }
   $pdo->prepare("UPDATE employees SET status=? WHERE id=?")->execute([$status ? 1 : 0, $id]);
   out(["updated" => true, "status" => $status ? 1 : 0]);
+=======
+  $b = body(); $id = $b["id"] ?? $_GET["id"] ?? 0;
+  if (!$id) err("Thieu id");
+  $pdo->prepare("UPDATE employees SET full_name=?,phone=?,email=?,base_salary=?,department_id=?,position_id=?,role_id=?,status=? WHERE id=?")
+    ->execute([$b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, $b["department_id"] ?? null, $b["position_id"] ?? null, $b["role_id"] ?? 3, $b["status"] ?? 1, $id]);
+  out(["updated" => true]);
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 }
 if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   $id = body()["id"] ?? $_GET["id"] ?? 0;
@@ -172,6 +196,7 @@ if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   $pdo->prepare("DELETE FROM employees WHERE id=?")->execute([$id]);
   out(["deleted" => true]);
 }
+<<<<<<< HEAD
 if ($a === "departments" && $m === "GET") {
   try {
     out($pdo->query("SELECT * FROM departments ORDER BY name ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC));
@@ -179,6 +204,9 @@ if ($a === "departments" && $m === "GET") {
     err("Khong tai duoc danh sach phong ban", 500);
   }
 }
+=======
+if ($a === "departments" && $m === "GET") { out($pdo->query("SELECT * FROM departments")->fetchAll(PDO::FETCH_ASSOC)); }
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 if ($a === "positions" && $m === "GET") { out($pdo->query("SELECT * FROM positions")->fetchAll(PDO::FETCH_ASSOC)); }
 err("Unknown employees action");
 ?>

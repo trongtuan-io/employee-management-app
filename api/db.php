@@ -14,6 +14,7 @@ try {
   echo json_encode(["success" => false, "error" => "DB connect failed: " . $e->getMessage()]);
   exit;
 }
+<<<<<<< HEAD
 
 function body() { 
     return json_decode(file_get_contents("php://input"), true) ?? []; 
@@ -30,3 +31,9 @@ function err($m, $c = 400) {
     exit; 
 }
 ?>
+=======
+function body() { return json_decode(file_get_contents("php://input"), true) ?? []; }
+function out($d) { echo json_encode(["success" => true, "data" => $d]); exit; }
+function err($m, $c = 400) { http_response_code($c); echo json_encode(["success" => false, "error" => $m]); exit; }
+?>
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f

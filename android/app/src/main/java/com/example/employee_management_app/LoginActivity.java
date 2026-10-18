@@ -27,9 +27,12 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
 
+<<<<<<< HEAD
         findViewById(R.id.tvForgotPassword).setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, ForgotPasswordActivity.class)));
 
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -41,13 +44,18 @@ public class LoginActivity extends AppCompatActivity {
                     return;
                 }
 
+<<<<<<< HEAD
                 AuthApi authApi = ApiClient.getClient(LoginActivity.this).create(AuthApi.class);
+=======
+                AuthApi authApi = ApiClient.getClient().create(AuthApi.class);
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
                 authApi.login(new LoginRequest(user, pass)).enqueue(new Callback<LoginResponse>() {
                     @Override
                     public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             LoginResponse loginResponse = response.body();
                             if (loginResponse.isSuccess()) {
+<<<<<<< HEAD
                                 // 1 role = 1 man hinh: admin -> AdminActivity, con lai -> EmployeeActivity
                                 String role = "staff";
                                 if (loginResponse.getData() != null && loginResponse.getData().getRole() != null) {
@@ -87,6 +95,19 @@ public class LoginActivity extends AppCompatActivity {
                                 intent.putExtra("USERNAME", loggedInUser);
                                 intent.putExtra("ROLE", role);
 
+=======
+                                Toast.makeText(LoginActivity.this, "Đăng nhập thành công!", Toast.LENGTH_SHORT).show();
+                                // Go to MainActivity or Employee List screen
+                                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                
+                                // Truyền tên đăng nhập sang trang chủ
+                                String loggedInUser = user;
+                                if (loginResponse.getData() != null && loginResponse.getData().getUsername() != null) {
+                                    loggedInUser = loginResponse.getData().getUsername();
+                                }
+                                intent.putExtra("USERNAME", loggedInUser);
+                                
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
                                 startActivity(intent);
                                 finish();
                             } else {

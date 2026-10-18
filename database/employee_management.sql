@@ -33,7 +33,11 @@ CREATE TABLE `attendances` (
   UNIQUE KEY `uq_att_emp_date` (`employee_id`,`work_date`),
   KEY `idx_att_date` (`work_date`),
   CONSTRAINT `fk_att_emp` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE
+<<<<<<< HEAD
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -42,7 +46,10 @@ CREATE TABLE `attendances` (
 
 LOCK TABLES `attendances` WRITE;
 /*!40000 ALTER TABLE `attendances` DISABLE KEYS */;
+<<<<<<< HEAD
 INSERT INTO `attendances` VALUES (1,2,'2026-10-03','2026-10-03 12:12:00',NULL,'late'),(3,1,'2026-10-03','2026-10-03 12:35:30','2026-10-03 12:35:33','late');
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 /*!40000 ALTER TABLE `attendances` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -92,7 +99,10 @@ CREATE TABLE `employees` (
   `department_id` int(11) DEFAULT NULL,
   `position_id` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
+<<<<<<< HEAD
   `avatar_url` text DEFAULT NULL,
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`),
@@ -102,7 +112,11 @@ CREATE TABLE `employees` (
   CONSTRAINT `fk_emp_dept` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_emp_pos` FOREIGN KEY (`position_id`) REFERENCES `positions` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_emp_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
+<<<<<<< HEAD
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+=======
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -111,7 +125,10 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
+<<<<<<< HEAD
 INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin','','admin@cty.vn',0.00,1,1,1,NULL,'2026-10-02 01:57:01',NULL),(2,'tuannt03','$2y$10$XPSl6X689o3bBTTYI0V32OBBZcwrk5/k9qPfEzSSAQC4Ddxg7XsC2','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,1,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png'),(3,'sep_hr','$2y$10$PiKHDvIX4MLgMv37uXGQKuJdvvkhLoDWlJM7ARNHJR06nthxC5L2O','Sep Phong HR','0901111111','sephr@cty.vn',0.00,1,2,2,NULL,'2026-10-03 17:26:20',NULL),(4,'nv_hr','$2y$10$4kPudxQBb93iNsdO0iDcoOEq9lrSffh7d3U7VsuUZ0tc7SiJ0jNwm','Nhan Vien HR','0902222222','nvhr@cty.vn',0.00,1,3,2,NULL,'2026-10-03 17:26:20',NULL);
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -150,6 +167,7 @@ LOCK TABLES `leave_requests` WRITE;
 UNLOCK TABLES;
 
 --
+<<<<<<< HEAD
 -- Table structure for table `password_resets`
 --
 
@@ -181,6 +199,8 @@ INSERT INTO `password_resets` VALUES (1,'admin@cty.vn',NULL,'283140',NULL,'2026-
 UNLOCK TABLES;
 
 --
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 -- Table structure for table `positions`
 --
 
@@ -274,4 +294,8 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+<<<<<<< HEAD
 -- Dump completed on 2026-10-03 17:40:07
+=======
+-- Dump completed on 2026-10-02  1:31:19
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f

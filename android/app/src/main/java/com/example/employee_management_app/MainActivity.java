@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         TextView tvWelcome = findViewById(R.id.tvWelcome);
+<<<<<<< HEAD
         TextView tvRole = findViewById(R.id.tvRole);
         Button btnChangePassword = findViewById(R.id.btnChangePassword);
         Button btnLogout = findViewById(R.id.btnLogout);
@@ -60,6 +61,18 @@ public class MainActivity extends AppCompatActivity {
             // Xóa JWT Token khi đăng xuất
             TokenManager.getInstance(MainActivity.this).clearToken();
             
+=======
+        Button btnLogout = findViewById(R.id.btnLogout);
+
+        // Lấy username từ Intent nếu có
+        String username = getIntent().getStringExtra("USERNAME");
+        if (username != null && !username.isEmpty()) {
+            tvWelcome.setText("Chào mừng " + username + "!\nBạn đã đăng nhập thành công.");
+        }
+
+        // Xử lý đăng xuất
+        btnLogout.setOnClickListener(v -> {
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             // Xoá các Activity cũ khỏi stack
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

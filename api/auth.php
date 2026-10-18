@@ -33,6 +33,7 @@ if ($a === "change-password" && $m === "POST") {
   $pdo->prepare("UPDATE employees SET password_hash=? WHERE id=?")->execute([$new, $b["employee_id"]]);
   out(["updated" => true]);
 }
+<<<<<<< HEAD
 if ($a === "forgot-password" && $m === "POST") {
   require_once __DIR__ . "/../employee-api/mail_config.php";
   require_once __DIR__ . "/../employee-api/sms_config.php";
@@ -110,5 +111,7 @@ if ($a === "reset-password-by-phone" && $m === "POST") {
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE phone=? AND used=0")->execute([$phone]);
   out(["updated" => true]);
 }
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 err("Unknown auth action");
 ?>

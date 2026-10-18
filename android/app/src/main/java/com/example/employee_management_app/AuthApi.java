@@ -7,6 +7,7 @@ import retrofit2.http.POST;
 public interface AuthApi {
     @POST("auth.php?action=login")
     Call<LoginResponse> login(@Body LoginRequest request);
+<<<<<<< HEAD
 
     @POST("auth.php?action=change-password")
     Call<ApiResponse> changePassword(@Body ChangePasswordRequest request);
@@ -23,4 +24,6 @@ public interface AuthApi {
     // Quen mat khau qua SMS Firebase (client da xac thuc SDT)
     @POST("auth.php?action=reset-password-by-phone")
     Call<ApiResponse> resetPasswordByPhone(@Body ResetByPhoneRequest request);
+=======
+>>>>>>> 2328eaa7a34a7d695abecba54db24530ae3bbd2f
 }
