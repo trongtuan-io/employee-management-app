@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f1f5f9">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tạo tài khoản nhân viên"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chỉ admin tạo được tài khoản mới"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp"/>
+
+        <EditText
+            android:id="@+id/etNewUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Tên đăng nhập *"
+            android:inputType="text"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mật khẩu * (tối thiểu 6 ký tự)"
+            android:inputType="textPassword"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewFullName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Họ tên *"
+            android:inputType="textPersonName"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Số điện thoại"
+            android:inputType="phone"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vai trò"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <Spinner
+            android:id="@+id/spNewRole"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewDeptId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Department ID (để trống nếu chưa có)"
+            android:inputType="number"
+            android:layout_marginBottom="12dp"/>
+
+        <EditText
+            android:id="@+id/etNewPositionId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Position ID (để trống nếu chưa có)"
+            android:inputType="number"
+            android:layout_marginBottom="16dp"/>
+
+        <Button
+            android:id="@+id/btnDoCreateAccount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tạo tài khoản"/>
+
+    </LinearLayout>
+</ScrollView>

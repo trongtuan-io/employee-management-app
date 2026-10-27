@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/btnBackProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:text="Quay lại"
+        android:contentDescription="Quay lại màn hình trước" />
+
+    <ScrollView
+        android:id="@+id/profileScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <ProgressBar
+            android:id="@+id/progressProfile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tvProfileMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:accessibilityLiveRegion="polite"
+            android:visibility="gone"
+            android:paddingBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnRetryProfile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Thử tải lại hồ sơ"
+            android:visibility="gone"/>
+
+        <ImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:contentDescription="Ảnh đại diện nhân viên"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnPickAvatar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Đổi ảnh"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tvProfileCode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:paddingBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvProfileId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvProfileStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvProfileCreatedAt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvProfileHireDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"/>
+
+        <EditText
+            android:id="@+id/etProfileHireDate" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:hint="Ngày vào làm: YYYY-MM-DD"
+            android:inputType="date" android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/layoutLock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#fef2f2"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TRẠNG THÁI TÀI KHOẢN"
+                android:textStyle="bold"
+                android:textColor="#b91c1c"/>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/swLockAccount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Đang hoạt động"
+                android:textSize="18sp"
+                android:layout_marginTop="4dp"/>
+
+            <TextView
+                android:id="@+id/tvLockStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/etProfileName"
+            android:text="Họ tên *"/>
+
+        <EditText
+            android:id="@+id/etProfileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Chưa cập nhật"
+            android:inputType="textPersonName"
+            android:minHeight="48dp"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/etProfileEmail"
+            android:text="Email *"/>
+
+        <EditText
+            android:id="@+id/etProfileEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Chưa cập nhật"
+            android:minHeight="48dp"
+            android:inputType="textEmailAddress"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/etProfilePhone"
+            android:text="Số điện thoại"/>
+
+        <EditText
+            android:id="@+id/etProfilePhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Chưa cập nhật"
+            android:minHeight="48dp"
+            android:inputType="phone"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Phòng ban"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvProfileDepartment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+
+        <Spinner
+            android:id="@+id/spProfileDepartment"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:contentDescription="Chọn phòng ban"
+            android:visibility="gone"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Chức vụ"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvProfilePosition"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="8dp"/>
+
+        <Spinner
+            android:id="@+id/spProfilePosition"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:contentDescription="Chọn chức vụ"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tvProfileLookupMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:accessibilityLiveRegion="polite"
+            android:visibility="gone"/>
+
+        <Button
+            android:id="@+id/btnRetryProfileLookups"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tải lại phòng ban / chức vụ"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/tvProfilePermissions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="16dp"/>
+
+    </LinearLayout>
+    </ScrollView>
+
+    <!-- Nút Lưu luôn hiển thị ở cạnh dưới; phần hồ sơ phía trên cuộn độc lập. -->
+    <Button
+        android:id="@+id/btnSaveProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:text="Lưu hồ sơ" />
+</LinearLayout>

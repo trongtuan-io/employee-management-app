@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/departmentRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btnBackDepartments"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quay lại"
+        android:contentDescription="Quay lại danh sách nhân viên" />
+
+    <Button
+        android:id="@+id/btnAddDepartment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Thêm phòng ban" />
+
+    <TextView
+        android:id="@+id/tvDepartmentStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp"
+        android:text="Đang tải…"
+        android:accessibilityLiveRegion="polite" />
+
+    <ListView
+        android:id="@+id/lvDepartments"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <Button
+        android:id="@+id/btnReloadDepartments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tải lại" />
+</LinearLayout>
