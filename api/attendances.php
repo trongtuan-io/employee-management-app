@@ -5,8 +5,7 @@ $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "checkin" && $m === "POST") {
   $me = require_login($pdo);
-  $b = body(); $emp = $b["employee_id"] ?? 0;
-  if (!$emp) err("Thieu employee_id");
+  $b = body(); $emp = $b["employee_id"] ?? $me["id"]; // mac dinh la chinh nguoi dang nhap
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
   $late = (strtotime(date("H:i")) > strtotime("08:15")) ? "late" : "present";
@@ -17,8 +16,7 @@ if ($a === "checkin" && $m === "POST") {
 }
 if ($a === "checkout" && $m === "POST") {
   $me = require_login($pdo);
-  $b = body(); $emp = $b["employee_id"] ?? 0; $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
-  if (!$emp) err("Thieu employee_id");
+  $b = body(); $emp = $b["employee_id"] ?? $me["id"]; $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   // Chi check-out duoc khi da check-in va chua check-out; kiem tra so dong cap nhat thay vi bao success mu.
   $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");

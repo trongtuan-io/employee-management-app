@@ -93,6 +93,7 @@ CREATE TABLE `employees` (
   `position_id` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `avatar_url` text DEFAULT NULL,
+  `hire_date` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `email` (`email`),
@@ -111,7 +112,7 @@ CREATE TABLE `employees` (
 
 LOCK TABLES `employees` WRITE;
 /*!40000 ALTER TABLE `employees` DISABLE KEYS */;
-INSERT INTO `employees` VALUES (1,'admin','$2y$10$Qh/mNWCKOm1QA9Ik3LPNvOtkXjDW4YvCyjV06vDmoZHevs3pCDOf2','Admin','','admin@cty.vn',0.00,1,1,1,NULL,'2026-10-02 01:57:01',NULL),(2,'tuannt03','$2y$10$XPSl6X689o3bBTTYI0V32OBBZcwrk5/k9qPfEzSSAQC4Ddxg7XsC2','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,1,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png'),(3,'sep_hr','$2y$10$PiKHDvIX4MLgMv37uXGQKuJdvvkhLoDWlJM7ARNHJR06nthxC5L2O','Sep Phong HR','0901111111','sephr@cty.vn',0.00,1,2,2,NULL,'2026-10-03 17:26:20',NULL),(4,'nv_hr','$2y$10$4kPudxQBb93iNsdO0iDcoOEq9lrSffh7d3U7VsuUZ0tc7SiJ0jNwm','Nhan Vien HR','0902222222','nvhr@cty.vn',0.00,1,3,2,NULL,'2026-10-03 17:26:20',NULL);
+INSERT INTO `employees` VALUES (1,'admin','$2y$10$UjWk/gZtLQXdPyeqfOPvcevweeLsg4X6kwYypEOim7GwSZzKfH8tG','Admin','','admin@cty.vn',0.00,1,1,1,NULL,'2026-10-02 01:57:01',NULL,NULL),(2,'tuannt03','$2y$10$XPSl6X689o3bBTTYI0V32OBBZcwrk5/k9qPfEzSSAQC4Ddxg7XsC2','Nguyen Trong Tuan','0975120205','tuannguyentrong1202@gmail.com',15000000.00,1,3,1,NULL,'2026-10-03 16:43:23','uploads/avatars/emp_2_1791022657.png',NULL),(3,'sep_hr','$2y$10$PiKHDvIX4MLgMv37uXGQKuJdvvkhLoDWlJM7ARNHJR06nthxC5L2O','Sep Phong HR','0901111111','sephr@cty.vn',0.00,1,2,2,NULL,'2026-10-03 17:26:20',NULL,NULL),(4,'nv_hr','$2y$10$4kPudxQBb93iNsdO0iDcoOEq9lrSffh7d3U7VsuUZ0tc7SiJ0jNwm','Nhan Vien HR','0902222222','nvhr@cty.vn',0.00,1,3,2,NULL,'2026-10-03 17:26:20',NULL,NULL);
 /*!40000 ALTER TABLE `employees` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -160,10 +161,11 @@ CREATE TABLE `password_resets` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(100) NOT NULL,
   `phone` varchar(15) DEFAULT NULL,
-  `code` varchar(10) NOT NULL,
+  `code` varchar(64) NOT NULL,
   `reset_token` varchar(64) DEFAULT NULL,
   `expires_at` datetime NOT NULL,
   `used` tinyint(4) DEFAULT 0,
+  `attempts` tinyint(4) NOT NULL DEFAULT 0,
   `created_at` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_email_code` (`email`,`code`)
@@ -176,7 +178,7 @@ CREATE TABLE `password_resets` (
 
 LOCK TABLES `password_resets` WRITE;
 /*!40000 ALTER TABLE `password_resets` DISABLE KEYS */;
-INSERT INTO `password_resets` VALUES (1,'admin@cty.vn',NULL,'283140',NULL,'2026-10-03 16:45:31',1,'2026-10-03 16:35:31'),(2,'admin@cty.vn',NULL,'614121','539232fdb67230e5c8a09027fdc10a1c66540522','2026-10-03 16:45:46',1,'2026-10-03 16:35:46'),(3,'admin@cty.vn',NULL,'182146','f6218982ca45d44bed5bcb3666038f6b4f6dfd02','2026-10-03 16:48:54',1,'2026-10-03 16:38:54'),(4,'tuannguyentrong1202@gmail.com',NULL,'833594',NULL,'2026-10-03 16:53:45',1,'2026-10-03 16:43:45'),(5,'tuannguyentrong1202@gmail.com',NULL,'355753',NULL,'2026-10-03 16:55:52',1,'2026-10-03 16:45:52'),(6,'tuannguyentrong1202@gmail.com','0975120205','693503','482bf2e0df6b8d4928c227639df38873fb634155','2026-10-03 17:00:03',1,'2026-10-03 16:50:03'),(7,'tuannguyentrong1202@gmail.com','0975120205','165579',NULL,'2026-10-03 17:01:38',1,'2026-10-03 16:51:38'),(8,'tuannguyentrong1202@gmail.com','0975120205','841685',NULL,'2026-10-03 17:07:51',1,'2026-10-03 16:57:51'),(9,'tuannguyentrong1202@gmail.com','0975120205','007694','3489d8f4351bf9f5ff3e7954a38b92686a36d71a','2026-10-03 17:11:08',1,'2026-10-03 17:01:08'),(10,'tuannguyentrong1202@gmail.com','0975120205','762261','8670e68cf68ad314dbc278bd03adb0d7654ef469','2026-10-03 17:17:18',1,'2026-10-03 17:07:18');
+INSERT INTO `password_resets` VALUES (1,'admin@cty.vn',NULL,'283140',NULL,'2026-10-03 16:45:31',1,'2026-10-03 16:35:31',0),(2,'admin@cty.vn',NULL,'614121','539232fdb67230e5c8a09027fdc10a1c66540522','2026-10-03 16:45:46',1,'2026-10-03 16:35:46',0),(3,'admin@cty.vn',NULL,'182146','f6218982ca45d44bed5bcb3666038f6b4f6dfd02','2026-10-03 16:48:54',1,'2026-10-03 16:38:54',0),(4,'tuannguyentrong1202@gmail.com',NULL,'833594',NULL,'2026-10-03 16:53:45',1,'2026-10-03 16:43:45',0),(5,'tuannguyentrong1202@gmail.com',NULL,'355753',NULL,'2026-10-03 16:55:52',1,'2026-10-03 16:45:52',0),(6,'tuannguyentrong1202@gmail.com','0975120205','693503','482bf2e0df6b8d4928c227639df38873fb634155','2026-10-03 17:00:03',1,'2026-10-03 16:50:03',0),(7,'tuannguyentrong1202@gmail.com','0975120205','165579',NULL,'2026-10-03 17:01:38',1,'2026-10-03 16:51:38',0),(8,'tuannguyentrong1202@gmail.com','0975120205','841685',NULL,'2026-10-03 17:07:51',1,'2026-10-03 16:57:51',0),(9,'tuannguyentrong1202@gmail.com','0975120205','007694','3489d8f4351bf9f5ff3e7954a38b92686a36d71a','2026-10-03 17:11:08',1,'2026-10-03 17:01:08',0),(10,'tuannguyentrong1202@gmail.com','0975120205','762261','8670e68cf68ad314dbc278bd03adb0d7654ef469','2026-10-03 17:17:18',1,'2026-10-03 17:07:18',0);
 /*!40000 ALTER TABLE `password_resets` ENABLE KEYS */;
 UNLOCK TABLES;
 

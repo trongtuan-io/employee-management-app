@@ -26,6 +26,8 @@ if ($a === "register" && $m === "POST") {
     $b["role_id"] = 3;
   }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
+  if (strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
+  if (isset($b["base_salary"]) && (!is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
   positions_ensure($pdo);
   $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
   $hash = password_hash($b["password"], PASSWORD_BCRYPT);
@@ -33,7 +35,10 @@ if ($a === "register" && $m === "POST") {
     $stmt = $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,role_id,department_id,position_id) VALUES(?,?,?,?,?,?,?,?,?,?)");
     $stmt->execute([$b["username"], $hash, $b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, 1, $b["role_id"] ?? 3, $b["department_id"] ?? null, $posId]);
     out(["id" => $pdo->lastInsertId()]);
-  } catch (Exception $e) { err("Username/Email da ton tai", 409); }
+  } catch (Exception $e) {
+    if ($e instanceof PDOException && $e->getCode() === "23000") err("Username/Email da ton tai", 409);
+    err("Khong tao duoc tai khoan", 500);
+  }
 }
 if ($a === "change-password" && $m === "POST") {
   $me = require_login($pdo); // Chi duoc doi mat khau cua chinh minh
@@ -43,8 +48,12 @@ if ($a === "change-password" && $m === "POST") {
   $stmt->execute([$b["employee_id"]]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$u || !password_verify($b["old_password"] ?? "", $u["password_hash"])) err("Mat khau cu sai", 401);
+  if (strlen($b["new_password"] ?? "") < 6) err("Mat khau moi it nhat 6 ky tu");
   $new = password_hash($b["new_password"], PASSWORD_BCRYPT);
   $pdo->prepare("UPDATE employees SET password_hash=? WHERE id=?")->execute([$new, $b["employee_id"]]);
+  // Doi mat khau xong: thu hoi cac phien dang nhap KHAC cua tai khoan (giu phien hien tai).
+  $pdo->prepare("DELETE FROM api_tokens WHERE employee_id=? AND token_hash<>?")
+      ->execute([$me["id"], hash("sha256", auth_bearer_token())]);
   out(["updated" => true]);
 }
 if ($a === "forgot-password" && $m === "POST") {
@@ -68,7 +77,8 @@ if ($a === "forgot-password" && $m === "POST") {
   if (!$u) err(($channel === "email" ? "Email" : "So dien thoai") . " khong ton tai trong he thong", 404);
   $code = str_pad((string)random_int(0, 999999), 6, "0", STR_PAD_LEFT);
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE (email=? OR phone=?) AND used=0")->execute([$u["email"], $u["phone"]]);
-  $pdo->prepare("INSERT INTO password_resets(email, phone, code, expires_at) VALUES(?,?,?,DATE_ADD(NOW(), INTERVAL 10 MINUTE))")->execute([$u["email"], $u["phone"], $code]);
+  // Chi luu HASH cua ma trong DB (ma tho chi ton tai trong email/SMS da gui).
+  $pdo->prepare("INSERT INTO password_resets(email, phone, code, expires_at) VALUES(?,?,?,DATE_ADD(NOW(), INTERVAL 10 MINUTE))")->execute([$u["email"], $u["phone"], hash("sha256", $code)]);
   if ($channel === "email") {
     $ok = send_reset_code($u["email"], $u["full_name"], $code);
     $res = ["sent" => true, "channel" => "email", "mail_ok" => $ok];
@@ -84,28 +94,36 @@ if ($a === "verify-code" && $m === "POST") {
   $b = body();
   $code = trim($b["code"] ?? "");
   if (isset($b["email"]) && trim($b["email"]) !== "") {
-    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE email=? AND code=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
-    $stmt->execute([trim($b["email"]), $code]);
+    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE email=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+    $stmt->execute([trim($b["email"])]);
   } else {
-    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE phone=? AND code=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
-    $stmt->execute([trim($b["phone"] ?? ""), $code]);
+    $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE phone=? AND used=0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+    $stmt->execute([trim($b["phone"] ?? "")]);
   }
   $r = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$r) err("Ma xac nhan sai hoac het han", 401);
+  if (!hash_equals($r["code"], hash("sha256", $code))) {
+    // Chong do ma: nhap sai 5 lan thi huy ma nay, bat buoc xin ma moi.
+    $att = (int)($r["attempts"] ?? 0) + 1;
+    $pdo->prepare("UPDATE password_resets SET attempts=?, used=? WHERE id=?")->execute([$att, $att >= 5 ? 1 : 0, $r["id"]]);
+    err("Ma xac nhan sai hoac het han", 401);
+  }
   $token = bin2hex(random_bytes(20));
-  $pdo->prepare("UPDATE password_resets SET reset_token=? WHERE id=?")->execute([$token, $r["id"]]);
+  $pdo->prepare("UPDATE password_resets SET reset_token=? WHERE id=?")->execute([hash("sha256", $token), $r["id"]]);
   out(["reset_token" => $token]);
 }
 if ($a === "reset-password" && $m === "POST") {
   $b = body();
   if (strlen($b["new_password"] ?? "") < 6) err("Mat khau moi it nhat 6 ky tu");
   $stmt = $pdo->prepare("SELECT * FROM password_resets WHERE reset_token=? AND used=0 AND expires_at > NOW() LIMIT 1");
-  $stmt->execute([$b["reset_token"] ?? ""]);
+  $stmt->execute([hash("sha256", $b["reset_token"] ?? "")]);
   $r = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$r) err("Phien doi mat khau het han, vui long lam lai", 401);
   $hash = password_hash($b["new_password"], PASSWORD_BCRYPT);
   $pdo->prepare("UPDATE employees SET password_hash=? WHERE email=?")->execute([$hash, $r["email"]]);
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE id=?")->execute([$r["id"]]);
+  // Dat lai mat khau xong: thu hoi MOI phien dang nhap cua tai khoan (phai dang nhap lai).
+  $pdo->prepare("DELETE tk FROM api_tokens tk JOIN employees e ON tk.employee_id=e.id WHERE e.email=?")->execute([$r["email"]]);
   out(["updated" => true]);
 }
 if ($a === "logout" && $m === "POST") {

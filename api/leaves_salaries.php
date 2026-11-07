@@ -16,6 +16,8 @@ if ($a === "leave-create" && $m === "POST") {
 if ($a === "leave-list" && $m === "GET") {
   $me = require_login($pdo);
   $emp = $_GET["employee_id"] ?? "";
+  // Nhan vien khong truyen employee_id: mac dinh xem don cua chinh minh (khong phai hang cho duyet).
+  if ($emp === "" && $me["role"] === "staff") $emp = (string)(int)$me["id"];
   if ($emp !== "") {
     if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen xem don cua nguoi khac", 403);
   } else {
@@ -52,18 +54,38 @@ if ($a === "leave-approve" && $m === "POST") {
 }
 if ($a === "salary-list" && $m === "GET") {
   $me = require_login($pdo);
-  if ((int)($_GET["employee_id"] ?? 0) !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen xem luong nguoi khac", 403);
+  // Khong truyen employee_id thi mac dinh xem cua chinh minh.
+  $empId = (int)($_GET["employee_id"] ?? $me["id"]);
+  if ($empId !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen xem luong nguoi khac", 403);
   $stmt = $pdo->prepare("SELECT s.*, e.full_name FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=? ORDER BY s.month DESC");
-  $stmt->execute([$_GET["employee_id"] ?? 0, $_GET["year"] ?? date("Y")]);
+  $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($a === "salary-create" && $m === "POST") {
-  require_role($pdo, ["admin", "manager"]);
+  $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
   if (empty($b["employee_id"]) || empty($b["month"]) || empty($b["year"])) err("Thieu employee_id/month/year");
-  $net = ($b["base_salary"] ?? 0) + ($b["allowance"] ?? 0) + ($b["overtime_pay"] ?? 0) + ($b["bonus"] ?? 0) - ($b["deduction"] ?? 0);
+  $month = (int)$b["month"]; $year = (int)$b["year"];
+  if ($month < 1 || $month > 12) err("Thang phai tu 1 den 12", 422);
+  if ($year < 2000 || $year > 2100) err("Nam khong hop le", 422);
+  // Moi khoan tien phai la so >= 0 (truoc day nhap so am van luu, ra luong thuc linh am).
+  $money = [];
+  foreach (["base_salary", "allowance", "overtime_pay", "bonus", "deduction"] as $k) {
+    $v = $b[$k] ?? 0;
+    if (!is_numeric($v) || (float)$v < 0) err("Khoan $k phai la so khong am", 422);
+    $money[$k] = (float)$v;
+  }
+  // Sep phong chi duoc tao luong cho nhan vien phong minh (nhat quan phan quyen theo phong).
+  if ($me["role"] === "manager") {
+    $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+    $st->execute([(int)$b["employee_id"]]);
+    $tgt = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$tgt) err("Khong tim thay nhan vien", 404);
+    if ((int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi duoc tao luong cho nhan vien phong minh", 403);
+  }
+  $net = $money["base_salary"] + $money["allowance"] + $money["overtime_pay"] + $money["bonus"] - $money["deduction"];
   $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,net_salary) VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE base_salary=VALUES(base_salary),allowance=VALUES(allowance),overtime_pay=VALUES(overtime_pay),bonus=VALUES(bonus),deduction=VALUES(deduction),net_salary=VALUES(net_salary)")
-    ->execute([$b["employee_id"], $b["month"], $b["year"], $b["base_salary"] ?? 0, $b["allowance"] ?? 0, $b["overtime_pay"] ?? 0, $b["bonus"] ?? 0, $b["deduction"] ?? 0, $net]);
+    ->execute([(int)$b["employee_id"], $month, $year, $money["base_salary"], $money["allowance"], $money["overtime_pay"], $money["bonus"], $money["deduction"], $net]);
   out(["net_salary" => $net]);
 }
 if ($a === "dashboard" && $m === "GET") {

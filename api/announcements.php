@@ -53,6 +53,8 @@ if ($a === "create" && $m === "POST") {
   $title = trim($b["title"] ?? "");
   $content = trim($b["content"] ?? "");
   if ($title === "" || $content === "") err("Thieu tieu de hoac noi dung");
+  if (strlen($title) > 255) err("Tieu de toi da 255 ky tu", 422);
+  if (strlen($content) > 10000) err("Noi dung qua dai", 422);
   $pdo->prepare("INSERT INTO announcements(title, content, created_by) VALUES(?,?,?)")
       ->execute([$title, $content, (int)$me["id"]]);
   out(["id" => (int)$pdo->lastInsertId()]);

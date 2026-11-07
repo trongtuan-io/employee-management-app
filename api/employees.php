@@ -94,6 +94,8 @@ if ($a === "create" && $m === "POST") {
   $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
   if (empty($b["username"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/full_name/email");
+  if (isset($b["base_salary"]) && (!is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
+  if (isset($b["password"]) && strlen((string)$b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
   // Manager chi tao nhan vien thuong cho phong minh.
   if ($me["role"] === "manager") {
     $b["department_id"] = (int)$me["department_id"];
@@ -124,6 +126,11 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   if ($me["role"] === "manager" && $reqId !== $id
       && (int)$cur["department_id"] !== (int)$me["department_id"]) {
     err("Chi sua duoc ho so nhan vien phong ban minh", 403);
+  }
+  // Manager khong duoc chuyen nhan vien (ke ca chinh minh) sang phong khac.
+  if ($me["role"] === "manager" && array_key_exists('department_id', $b) && $b['department_id'] !== null
+      && (int)$b['department_id'] !== (int)$me["department_id"]) {
+    err("Chi duoc giu nhan vien trong phong ban minh", 403);
   }
   try {
     $name = employee_name($b["full_name"] ?? $cur["full_name"]);
@@ -202,9 +209,11 @@ if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
   out(["updated" => true, "status" => $status ? 1 : 0]);
 }
 if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
-  require_role($pdo, ["admin"]);
+  $me = require_role($pdo, ["admin"]);
   $id = body()["id"] ?? $_GET["id"] ?? 0;
   if (!$id) err("Thieu id");
+  // Khong cho tu xoa chinh tai khoan dang dang nhap (se tu khoa minh ra khoi he thong).
+  if ((int)$id === (int)$me["id"]) err("Khong the xoa chinh tai khoan dang dang nhap", 400);
   $pdo->prepare("DELETE FROM employees WHERE id=?")->execute([$id]);
   out(["deleted" => true]);
 }
