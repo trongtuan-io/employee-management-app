@@ -1,13 +1,16 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/employee_validation.php';
+require_once __DIR__ . '/auth_guard.php';
 $action = $_GET['action'] ?? 'list';
 $method = $_SERVER['REQUEST_METHOD'];
 if ($action === 'list' && $method === 'GET') {
+    require_login($pdo);
     $query = $pdo->query('SELECT d.id,d.name,d.description,COUNT(e.id) AS member_count FROM departments d LEFT JOIN employees e ON e.department_id=d.id GROUP BY d.id,d.name,d.description ORDER BY d.name,d.id');
     out($query->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($action === 'members' && $method === 'GET') {
+    require_login($pdo);
     $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
     if (!$id) err('Thieu id phong ban', 422);
     $stmt = $pdo->prepare('SELECT 1 FROM departments WHERE id=?');
@@ -22,9 +25,8 @@ if (($action === 'create' && $method !== 'POST') || ($action === 'update' && !in
     err('Method not allowed', 405);
 }
 $b = body();
-$editor = (int)($b['requester_id'] ?? 0);
-// Project currently uses demo-token auth; replace this with VERIFIED identity once Auth is integrated.
-if (employee_editor_role($pdo, $editor) !== 'admin') err('Chi admin duoc quan ly phong ban', 403);
+// Danh tinh lay tu token da xac thuc (auth_guard.php), khong con tin requester_id.
+require_role($pdo, ['admin']);
 $id = filter_var($b['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
 if ($action !== 'create' && !$id) err('Thieu id phong ban', 422);
 try {

@@ -2,9 +2,9 @@
 // SMS OTP qua SpeedSMS.vn (co go trial mien phi de demo)
 // Dang ky tai https://speedsms.vn -> nap thu -> lay Access Token -> dien vao day.
 // Nguoi 1 phu trach. Tai lieu: https://speedsms.vn/tai-lieu-huong-dan
-const SMS_ACCESS_TOKEN = "access-token-cua-ban"; // <-- DOI THANH ACCESS TOKEN THAT
+const SMS_ACCESS_TOKEN = "DOI_TOKEN_MOI_TAI_speedsms.vn"; // Token cu da lo tren GitHub public: phai thu hoi va cap token moi // <-- DOI THANH ACCESS TOKEN THAT
 const SMS_BRANDNAME = "EmployeeApp"; // brandname da dang ky (type 2). Chua co thi dung type 5.
-const SMS_DEBUG_SHOW_CODE = true; // true = tra ma trong response de test. Demo that thi false.
+const SMS_DEBUG_SHOW_CODE = false; // true = tra ma trong response de test. Demo that thi false.
 
 // Chuan hoa SDT Viet Nam: 0xxx -> 84xxx (gateway yeu cau)
 function norm_phone($p) {

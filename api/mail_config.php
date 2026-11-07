@@ -3,12 +3,12 @@
 // Gmail: bat "Xac minh 2 buoc" -> Google Account > Bao mat > "Mat khau ung dung" -> tao 1 mat khau 16 ky tu -> dien vao SMTP_PASS.
 const SMTP_HOST = "smtp.gmail.com";
 const SMTP_PORT = 587;
-const SMTP_USER = "email.cua.ban@gmail.com";   // <-- DOI THANH GMAIL THAT
-const SMTP_PASS = "mat-khau-ung-dung-16-ky-tu"; // <-- DOI THANH APP PASSWORD
+const SMTP_USER = "dien-gmail-that-cua-ban@gmail.com";   // <-- DOI THANH GMAIL THAT
+const SMTP_PASS = "DIEN_APP_PASSWORD_16_KY_TU"; // <-- DOI THANH APP PASSWORD
 const MAIL_FROM_NAME = "Employee Management";
 // Che do test: tra ma code trong response de test khong can mail that.
 // Khi demo that: dien SMTP dung roi chuyen thanh false.
-const DEBUG_SHOW_CODE = true;
+const DEBUG_SHOW_CODE = false; // Da tat: bat len se lo ma reset trong response API
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;

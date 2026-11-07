@@ -1,4 +1,7 @@
 <?php
+// Moi gio giac trong he thong (cham cong, han token, ngay tao...) theo gio Viet Nam.
+// Truoc day PHP chay theo mui gio mac dinh cua XAMPP nen gio cham cong bi lech.
+date_default_timezone_set("Asia/Ho_Chi_Minh");
 header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
@@ -9,6 +12,8 @@ $host = "localhost"; $db = "employee_management"; $user = "root"; $pass = "";
 try {
   $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  // Dong bo mui gio phien MySQL voi PHP de NOW()/CURDATE() khop date().
+  $pdo->exec("SET time_zone = '+07:00'");
 } catch (Exception $e) {
   http_response_code(500);
   echo json_encode(["success" => false, "error" => "DB connect failed: " . $e->getMessage()]);

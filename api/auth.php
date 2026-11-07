@@ -1,5 +1,7 @@
 <?php
-require_once __DIR__ . "/../employee-api/db.php";
+require_once __DIR__ . "/db.php";
+require_once __DIR__ . "/auth_guard.php";
+require_once __DIR__ . "/positions_logic.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "login" && $m === "POST") {
@@ -10,21 +12,33 @@ if ($a === "login" && $m === "POST") {
   if (!$u || !password_verify($b["password"] ?? "", $u["password_hash"])) err("Sai tai khoan hoac mat khau", 401);
   if ((int)$u["status"] === 0) err("Tai khoan da bi khoa", 403);
   unset($u["password_hash"]);
-  $u["token"] = "demo-token-" . $u["id"];
+  $u["token"] = auth_issue_token($pdo, $u["id"]); // Token that ngau nhien, server luu hash (auth_guard.php)
   out($u);
 }
 if ($a === "register" && $m === "POST") {
+  // Tao tai khoan la viec cua admin/manager dang dang nhap (app mo man nay tu AdminActivity).
+  $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
+  if ((int)($b["role_id"] ?? 3) !== 3 && $me["role"] !== "admin") err("Chi admin moi tao duoc tai khoan admin/manager", 403);
+  // Manager chi tao nhan vien thuong cho phong minh.
+  if ($me["role"] === "manager") {
+    $b["department_id"] = (int)$me["department_id"];
+    $b["role_id"] = 3;
+  }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
+  positions_ensure($pdo);
+  $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
   $hash = password_hash($b["password"], PASSWORD_BCRYPT);
   try {
     $stmt = $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,role_id,department_id,position_id) VALUES(?,?,?,?,?,?,?,?,?,?)");
-    $stmt->execute([$b["username"], $hash, $b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, 1, $b["role_id"] ?? 3, $b["department_id"] ?? null, $b["position_id"] ?? null]);
+    $stmt->execute([$b["username"], $hash, $b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, 1, $b["role_id"] ?? 3, $b["department_id"] ?? null, $posId]);
     out(["id" => $pdo->lastInsertId()]);
   } catch (Exception $e) { err("Username/Email da ton tai", 409); }
 }
 if ($a === "change-password" && $m === "POST") {
+  $me = require_login($pdo); // Chi duoc doi mat khau cua chinh minh
   $b = body();
+  if ((int)($b["employee_id"] ?? 0) !== (int)$me["id"]) err("Khong co quyen doi mat khau tai khoan khac", 403);
   $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=?");
   $stmt->execute([$b["employee_id"]]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -34,8 +48,8 @@ if ($a === "change-password" && $m === "POST") {
   out(["updated" => true]);
 }
 if ($a === "forgot-password" && $m === "POST") {
-  require_once __DIR__ . "/../employee-api/mail_config.php";
-  require_once __DIR__ . "/../employee-api/sms_config.php";
+  require_once __DIR__ . "/mail_config.php";
+  require_once __DIR__ . "/sms_config.php";
   $b = body();
   // 2 kenh: email hoac phone. Bat buoc phai khop voi DB.
   $email = trim($b["email"] ?? "");
@@ -94,21 +108,9 @@ if ($a === "reset-password" && $m === "POST") {
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE id=?")->execute([$r["id"]]);
   out(["updated" => true]);
 }
-if ($a === "reset-password-by-phone" && $m === "POST") {
-  // Client da xac thuc SDT qua Firebase Phone Auth (SMS mien phi).
-  // Luu y bao cao: production can verify Firebase ID token server-side.
-  $b = body();
-  $phone = trim($b["phone"] ?? "");
-  $fbUid = trim($b["firebase_uid"] ?? "");
-  if ($phone === "" || $fbUid === "") err("Thieu phone/firebase_uid");
-  if (strlen($b["new_password"] ?? "") < 6) err("Mat khau moi it nhat 6 ky tu");
-  $stmt = $pdo->prepare("SELECT id FROM employees WHERE phone=? LIMIT 1");
-  $stmt->execute([$phone]);
-  if (!$stmt->fetch()) err("So dien thoai khong ton tai trong he thong", 404);
-  $hash = password_hash($b["new_password"], PASSWORD_BCRYPT);
-  $pdo->prepare("UPDATE employees SET password_hash=? WHERE phone=?")->execute([$hash, $phone]);
-  $pdo->prepare("UPDATE password_resets SET used=1 WHERE phone=? AND used=0")->execute([$phone]);
-  out(["updated" => true]);
+if ($a === "logout" && $m === "POST") {
+  auth_revoke_token($pdo);
+  out(["logged_out" => true]);
 }
 err("Unknown auth action");
 ?>

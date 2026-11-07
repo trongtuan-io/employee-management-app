@@ -25,17 +25,24 @@ api/       PHP REST API: auth.php (login, register, đổi/quên MK),
            employees.php (CRUD, upload avatar, khóa/mở),
            attendances.php (chấm công), leaves_salaries.php (phép, lương, dashboard)
 app/       App Android Studio (Java + Retrofit + Glide) — bản chính, mở folder gốc repo để chạy
-android/   Bản copy của nhóm (cũng dùng local.properties cho IP, giống bản chính)
+android/   Bản copy cũ của nhóm — tính năng đã được đồng bộ sang app/ (07/11/2026), giữ để tham khảo, không phát triển tiếp trên bản này
 ```
 
 ## Chạy dự án trên máy mới
 
 1. Cài Git, Android Studio, XAMPP. Clone repo.
-2. **DB:** XAMPP Start Apache + MySQL → `http://localhost/phpmyadmin` → Nhập file `database/employee_management.sql`.
+2. **DB:** XAMPP Start Apache + MySQL → `http://localhost/phpmyadmin` → Nhập file `database/employee_management.sql`. Bảng `api_tokens` (token đăng nhập) chạy thêm ở `database/migrations/002_api_tokens.sql`, hoặc sẽ tự được tạo ở lần đăng nhập đầu tiên.
 3. **API:** copy folder `api/` vào `htdocs/employee-api/` → test `http://localhost/employee-api/leaves_salaries.php?action=dashboard` phải ra JSON.
 4. **App:** mở **folder gốc repo** bằng Android Studio (module `:app`) → thêm IP máy mình vào `local.properties`: `apiUrl=http://<IP-cua-ban>/employee-api/` (`ipconfig getifaddr en0`; máy ảo dùng `10.0.2.2`) → Sync → Run. Không sửa code `ApiClient.java`.
 
 Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_hr` (NV/HR), `tuannt03` (NV/IT).
+
+## Bảo mật (đã sửa 07/11/2026)
+
+- Đăng nhập cấp **token ngẫu nhiên thật** (server lưu hash trong bảng `api_tokens`, hạn 7 ngày); phân quyền lấy danh tính từ token — client không tự khai `requester_id` được nữa. Xem `api/auth_guard.php`.
+- Tạo/xoá nhân viên, duyệt nghỉ phép, tạo bảng lương: bắt buộc token admin/manager.
+- Quên mật khẩu: chế độ debug trả mã trong response đã **tắt** (`DEBUG_SHOW_CODE` / `SMS_DEBUG_SHOW_CODE` = false). Muốn gửi mail thật phải điền SMTP thật trong `api/mail_config.php`; token SMS cũ trong `api/sms_config.php` đã bị lộ trên GitHub — phải thu hồi và thay token mới.
+- Endpoint `reset-password-by-phone` (đường tắt qua Firebase cũ) đã **xoá**.
 
 ## Quy trình nhóm
 

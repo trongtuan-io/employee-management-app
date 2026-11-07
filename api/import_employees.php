@@ -2,8 +2,9 @@
 /** Upload Excel .xlsx or UTF-8 CSV. Validate all rows BEFORE transaction commit. */
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/employee_validation.php';
+require_once __DIR__ . '/auth_guard.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') err('Method not allowed', 405);
-if (employee_editor_role($pdo, (int)($_POST['requester_id'] ?? 0)) !== 'admin') err('Chi admin duoc import', 403);
+require_role($pdo, ['admin']); // Danh tinh lay tu token, khong tin requester_id trong form nua
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) err('Chua chon file', 422);
 $f = $_FILES['file'];
 if ($f['size'] <= 0 || $f['size'] > 3*1024*1024) err('File toi da 3MB', 422);
