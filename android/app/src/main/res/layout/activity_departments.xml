@@ -3,39 +3,67 @@
     android:id="@+id/departmentRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_app"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="20dp"
+    android:fitsSystemWindows="true">
 
-    <Button
-        android:id="@+id/btnBackDepartments"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Quay lại"
-        android:contentDescription="Quay lại danh sách nhân viên" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/btnBackDepartments"
+            style="@style/AppButtonSmall"
+            android:text="← Quay lại"
+            android:contentDescription="Quay lại danh sách nhân viên" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:text="Phòng ban"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <Button
         android:id="@+id/btnAddDepartment"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Thêm phòng ban" />
+        style="@style/AppButtonPrimary"
+        android:layout_marginTop="16dp"
+        android:text="+ Thêm phòng ban" />
 
     <TextView
         android:id="@+id/tvDepartmentStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp"
+        android:layout_marginTop="12dp"
+        android:accessibilityLiveRegion="polite"
         android:text="Đang tải…"
-        android:accessibilityLiveRegion="polite" />
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
 
     <ListView
         android:id="@+id/lvDepartments"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card"
+        android:divider="@color/stroke"
+        android:dividerHeight="1dp"
+        android:padding="6dp" />
 
     <Button
         android:id="@+id/btnReloadDepartments"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/AppButtonSecondary"
+        android:layout_marginTop="12dp"
         android:text="Tải lại" />
 </LinearLayout>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_home" android:icon="@drawable/ic_nav_home" android:title="Trang chủ" />
+    <item android:id="@+id/nav_overview" android:icon="@drawable/ic_nav_dashboard" android:title="Tổng quan" />
+    <item android:id="@+id/nav_staff" android:icon="@drawable/ic_nav_group" android:title="Nhân viên" />
+    <item android:id="@+id/nav_leave" android:icon="@drawable/ic_nav_calendar" android:title="Duyệt phép" />
+    <item android:id="@+id/nav_profile" android:icon="@drawable/ic_nav_person" android:title="Hồ sơ" />
+</menu>

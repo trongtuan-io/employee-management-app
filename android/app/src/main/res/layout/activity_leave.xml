@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="20dp"
+    android:fitsSystemWindows="true">
+
+    <TextView
+        android:id="@+id/tvLeaveTitle"
+        style="@style/AppTitle"
+        android:textSize="20sp"
+        android:text="Đơn nghỉ phép" />
+
+    <LinearLayout
+        android:id="@+id/layoutLeaveForm"
+        style="@style/AppCard"
+        android:layout_marginTop="16dp">
+
+        <TextView style="@style/AppLabel" android:text="Ngày bắt đầu" />
+        <EditText
+            android:id="@+id/edtLeaveStart"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="YYYY-MM-DD"
+            android:inputType="date" />
+
+        <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Ngày kết thúc" />
+        <EditText
+            android:id="@+id/edtLeaveEnd"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="YYYY-MM-DD"
+            android:inputType="date" />
+
+        <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Lý do" />
+        <EditText
+            android:id="@+id/edtLeaveReason"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="Lý do nghỉ"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/btnSubmitLeave"
+            style="@style/AppButtonPrimary"
+            android:layout_marginTop="18dp"
+            android:text="Gửi đơn nghỉ phép" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/lvLeaves"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_card"
+        android:divider="@color/stroke"
+        android:dividerHeight="1dp"
+        android:padding="6dp" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="-20dp"
+        android:layout_marginEnd="-20dp"
+        android:layout_marginBottom="-20dp" />
+</LinearLayout>

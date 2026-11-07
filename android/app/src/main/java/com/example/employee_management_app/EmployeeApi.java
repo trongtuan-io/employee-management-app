@@ -47,6 +47,10 @@ public interface EmployeeApi {
     @GET("employees.php?action=positions")
     Call<PositionListResponse> getPositions();
 
+    // Chuc vu theo phong ban (kem chuc vu dung chung)
+    @GET("employees.php?action=positions")
+    Call<PositionListResponse> getPositions(@Query("dept_id") int departmentId);
+
     @GET("departments.php?action=list")
     Call<DepartmentListResponse> listDepartments();
 
@@ -82,4 +86,31 @@ public interface EmployeeApi {
             @Part("employee_id") okhttp3.RequestBody employeeId,
             @Part("requester_id") okhttp3.RequestBody requesterId,
             @Part okhttp3.MultipartBody.Part avatar);
+
+    // Nghi phep (leaves_salaries.php)
+    @POST("leaves_salaries.php?action=leave-create")
+    Call<ApiResponse> createLeave(@Body LeaveCreateRequest request);
+
+    @GET("leaves_salaries.php?action=leave-list")
+    Call<LeaveListResponse> getMyLeaves(@Query("employee_id") int employeeId);
+
+    @GET("leaves_salaries.php?action=leave-list")
+    Call<LeaveListResponse> getPendingLeaves();
+
+    @POST("leaves_salaries.php?action=leave-approve")
+    Call<ApiResponse> approveLeave(@Body LeaveApproveRequest request);
+
+    // Luong (leaves_salaries.php)
+    @GET("leaves_salaries.php?action=salary-list")
+    Call<SalaryListResponse> getSalaries(@Query("employee_id") int employeeId, @Query("year") int year);
+
+    @POST("leaves_salaries.php?action=salary-create")
+    Call<ApiResponse> createSalary(@Body SalaryCreateRequest request);
+
+    // Trang chu: trang thai cham cong hom nay + bang tin cong ty
+    @GET("attendances.php?action=today")
+    Call<AttendanceTodayResponse> getAttendanceToday();
+
+    @GET("announcements.php?action=list")
+    Call<AnnouncementResponse> getAnnouncements();
 }

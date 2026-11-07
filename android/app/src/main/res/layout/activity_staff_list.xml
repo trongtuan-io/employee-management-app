@@ -3,92 +3,169 @@
     android:id="@+id/staffListRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_app"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="12dp"
+    android:fitsSystemWindows="true">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/staff_title"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
         android:text="@string/staff_edit_hint"
-        android:layout_marginBottom="8dp" />
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
 
-    <EditText
-        android:id="@+id/edtSearchEmployee"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="48dp"
-        android:hint="@string/staff_search_hint"
-        android:importantForAutofill="no"
-        android:inputType="text"
-        android:singleLine="true"
-        android:imeOptions="actionSearch" />
-
-    <Button
-        android:id="@+id/btnSearchEmployee"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/staff_search" />
-
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/swFullTextSearch" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Tìm theo từ (Full-text)"
-        android:contentDescription="Chuyển chế độ tìm kiếm full-text" />
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
         android:orientation="horizontal">
-        <Button android:id="@+id/btnManageDepartments" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="Quản lý phòng" />
-        <Button android:id="@+id/btnImportEmployees" android:layout_width="0dp"
-            android:layout_height="wrap_content" android:layout_weight="1"
-            android:text="Nhập Excel" />
+
+        <EditText
+            android:id="@+id/edtSearchEmployee"
+            style="@style/AppInput"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:hint="@string/staff_search_hint"
+            android:imeOptions="actionSearch"
+            android:importantForAutofill="no"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/btnSearchEmployee"
+            android:layout_width="wrap_content"
+            android:layout_height="54dp"
+            android:background="@drawable/bg_button_primary"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:stateListAnimator="@null"
+            android:text="@string/staff_search"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:labelFor="@id/spStaffDepartment"
-        android:text="@string/staff_department" />
-
-    <Spinner
-        android:id="@+id/spStaffDepartment"
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/swFullTextSearch"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:saveEnabled="false"
-        android:spinnerMode="dropdown" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:contentDescription="Chuyển chế độ tìm kiếm full-text"
+        android:text="Tìm theo từ (Full-text)"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnManageDepartments"
+            style="@style/AppButtonSecondary"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginEnd="5dp"
+            android:layout_weight="1"
+            android:text="Quản lý phòng"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/btnImportEmployees"
+            style="@style/AppButtonSecondary"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="5dp"
+            android:layout_weight="1"
+            android:text="Nhập Excel"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="5dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/AppLabel"
+                android:labelFor="@id/spStaffDepartment"
+                android:text="@string/staff_department" />
+
+            <Spinner
+                android:id="@+id/spStaffDepartment"
+                style="@style/AppSpinner"
+                android:layout_marginTop="6dp"
+                android:saveEnabled="false"
+                android:spinnerMode="dropdown" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/AppLabel"
+                android:labelFor="@id/spStaffSort"
+                android:text="@string/staff_sort" />
+
+            <Spinner
+                android:id="@+id/spStaffSort"
+                style="@style/AppSpinner"
+                android:layout_marginTop="6dp"
+                android:saveEnabled="false"
+                android:spinnerMode="dropdown" />
+        </LinearLayout>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvDepartmentMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:accessibilityLiveRegion="polite"
+        android:textColor="@color/danger"
+        android:textSize="13sp"
         android:visibility="gone" />
 
     <Button
         android:id="@+id/btnRetryDepartments"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        style="@style/AppButtonSmall"
+        android:layout_marginTop="6dp"
         android:text="@string/staff_departments_retry"
         android:visibility="gone" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:labelFor="@id/spStaffSort"
-        android:text="@string/staff_sort" />
-
-    <Spinner
-        android:id="@+id/spStaffSort"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:saveEnabled="false"
-        android:spinnerMode="dropdown" />
 
     <ProgressBar
         android:id="@+id/progressStaff"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
+        android:layout_marginTop="10dp"
         android:indeterminate="true"
         android:visibility="gone" />
 
@@ -96,47 +173,68 @@
         android:id="@+id/tvStaffMessage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
-        android:accessibilityLiveRegion="polite"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
         android:visibility="gone" />
 
     <ListView
         android:id="@+id/lvStaff"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_card"
+        android:divider="@color/stroke"
+        android:dividerHeight="1dp"
+        android:padding="6dp" />
 
     <TextView
         android:id="@+id/tvStaffPage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
         android:gravity="center"
-        android:paddingTop="8dp"
-        android:accessibilityLiveRegion="polite" />
+        android:paddingTop="10dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
 
     <LinearLayout
-        style="?android:attr/buttonBarStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnPreviousPage"
-            style="?android:attr/buttonBarButtonStyle"
+            style="@style/AppButtonSecondary"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginEnd="5dp"
             android:layout_weight="1"
             android:enabled="false"
-            android:text="@string/staff_previous_page" />
+            android:text="@string/staff_previous_page"
+            android:textSize="13sp" />
 
         <Button
             android:id="@+id/btnNextPage"
-            style="?android:attr/buttonBarButtonStyle"
+            style="@style/AppButtonSecondary"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginStart="5dp"
             android:layout_weight="1"
             android:enabled="false"
-            android:text="@string/staff_next_page" />
+            android:text="@string/staff_next_page"
+            android:textSize="13sp" />
     </LinearLayout>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="-16dp"
+        android:layout_marginEnd="-16dp"
+        android:layout_marginBottom="-12dp" />
 </LinearLayout>

@@ -1,54 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#f1f5f9">
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="0dp" android:layout_weight="1"
+    android:background="@color/bg_app">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Banner xanh dam rieng cua Admin -->
+        <!-- Banner quan tri -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/header_admin"
-            android:padding="24dp"
-            android:paddingTop="40dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="48dp"
             android:paddingBottom="28dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="TRANG QUẢN TRỊ"
-                android:textColor="#ffffff"
-                android:textSize="24sp"
-                android:textStyle="bold"/>
+                android:textColor="#C7D2FE"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.12" />
 
             <TextView
                 android:id="@+id/tvAdminWelcome"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:text="Xin chào!"
-                android:textColor="#bfdbfe"
-                android:textSize="16sp"
-                android:layout_marginTop="4dp"/>
+                android:textColor="@color/white"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvAdminRole"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Vai trò: admin"
-                android:textColor="#ffffff"
-                android:textSize="14sp"
-                android:background="#2563eb"
-                android:paddingLeft="12dp"
-                android:paddingRight="12dp"
+                android:layout_marginTop="10dp"
+                android:background="#33FFFFFF"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
-                android:layout_marginTop="8dp"/>
+                android:text="Vai trò: admin"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- 3 the so lieu -->
@@ -56,140 +66,152 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="12dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp">
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="5dp"
                 android:layout_weight="1"
-                android:layout_margin="4dp"
-                android:orientation="vertical"
                 android:background="@drawable/card_admin"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="14dp">
 
                 <TextView
                     android:id="@+id/tvTotalStaff"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="..."
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:textColor="#1e3a8a"/>
+                    android:textColor="@color/primary_dark"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="NV đang làm"
-                    android:textSize="12sp"/>
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_marginEnd="5dp"
                 android:layout_weight="1"
-                android:layout_margin="4dp"
-                android:orientation="vertical"
                 android:background="@drawable/card_admin"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="14dp">
 
                 <TextView
                     android:id="@+id/tvPendingLeaves"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="..."
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:textColor="#b45309"/>
+                    android:textColor="@color/warning"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Đơn chờ duyệt"
-                    android:textSize="12sp"/>
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
                 android:layout_weight="1"
-                android:layout_margin="4dp"
-                android:orientation="vertical"
                 android:background="@drawable/card_admin"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="14dp">
 
                 <TextView
                     android:id="@+id/tvLateToday"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="..."
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:textColor="#b91c1c"/>
+                    android:textColor="@color/danger"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Đi muộn nay"
-                    android:textSize="12sp"/>
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="10dp"
             android:text="Chức năng quản trị"
+            android:textColor="@color/text_primary"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginLeft="16dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"/>
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:paddingBottom="24dp">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="28dp">
 
             <Button
                 android:id="@+id/btnAdminApprove"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Duyệt nghỉ phép"/>
+                style="@style/AppButtonPrimary"
+                android:text="Duyệt nghỉ phép" />
 
             <Button
                 android:id="@+id/btnAdminStaff"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Quản lý nhân viên"
-                android:layout_marginTop="8dp"/>
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Quản lý nhân viên" />
 
             <Button
                 android:id="@+id/btnAdminCreateAccount"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Tạo tài khoản nhân viên"
-                android:layout_marginTop="8dp"/>
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Tạo tài khoản nhân viên" />
+
+            <Button
+                android:id="@+id/btnAdminSalary"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Bảng lương" />
 
             <Button
                 android:id="@+id/btnAdminChangePass"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Đổi mật khẩu"
-                android:layout_marginTop="8dp"/>
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Đổi mật khẩu" />
 
             <Button
                 android:id="@+id/btnAdminLogout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Đăng xuất"
-                android:layout_marginTop="8dp"/>
-
+                style="@style/AppButtonDanger"
+                android:layout_marginTop="10dp"
+                android:text="Đăng xuất" />
         </LinearLayout>
-
     </LinearLayout>
 </ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

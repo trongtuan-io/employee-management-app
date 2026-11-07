@@ -20,6 +20,7 @@ public class AdminActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_admin);
+        BottomNavHelper.setup(this, R.id.nav_overview);
 
         tvTotalStaff = findViewById(R.id.tvTotalStaff);
         tvPendingLeaves = findViewById(R.id.tvPendingLeaves);

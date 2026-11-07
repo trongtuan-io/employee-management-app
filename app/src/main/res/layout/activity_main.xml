@@ -3,49 +3,46 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_app"
     android:orientation="vertical"
-    android:gravity="center"
-    android:padding="32dp">
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="56dp"
+    android:paddingBottom="32dp"
+    android:fitsSystemWindows="true">
 
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TRANG CHỦ"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#4CAF50"
-        android:layout_marginBottom="16dp" />
+        style="@style/AppTitle"
+        android:text="Trang chủ" />
 
     <TextView
         android:id="@+id/tvWelcome"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:text="Đăng nhập thành công!"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp" />
+        android:textColor="@color/text_primary"
+        android:textSize="16sp" />
 
     <TextView
         android:id="@+id/tvRole"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Vai trò: ---"
-        android:textSize="16sp"
-        android:textStyle="italic"
-        android:textColor="#555555"
-        android:layout_marginBottom="32dp" />
+        style="@style/AppChip"
+        android:layout_marginTop="10dp"
+        android:text="Vai trò: ---" />
 
-    <Button
-        android:id="@+id/btnChangePassword"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Đổi mật khẩu"
-        android:layout_marginBottom="8dp" />
+    <LinearLayout
+        style="@style/AppCard"
+        android:layout_marginTop="28dp">
 
-    <Button
-        android:id="@+id/btnLogout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Đăng xuất"
-        android:backgroundTint="#F44336" />
+        <Button
+            android:id="@+id/btnChangePassword"
+            style="@style/AppButtonSecondary"
+            android:text="Đổi mật khẩu" />
 
+        <Button
+            android:id="@+id/btnLogout"
+            style="@style/AppButtonDanger"
+            android:layout_marginTop="12dp"
+            android:text="Đăng xuất" />
+    </LinearLayout>
 </LinearLayout>

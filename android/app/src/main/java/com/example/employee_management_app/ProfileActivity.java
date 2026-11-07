@@ -58,6 +58,7 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText etHireDate;
     private Spinner spDepartment, spPosition;
     private boolean departmentsLoaded, positionsLoaded;
+    private boolean suppressDeptEvent;
     private final List<DepartmentListResponse.Item> departmentChoices = new ArrayList<>();
     private final List<PositionListResponse.Item> positionChoices = new ArrayList<>();
 
@@ -65,6 +66,18 @@ public class ProfileActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+        BottomNavHelper.setup(this, R.id.nav_profile);
+
+        Button btnProfileLogout = findViewById(R.id.btnProfileLogout);
+        if (btnProfileLogout != null) {
+            btnProfileLogout.setOnClickListener(v -> {
+                TokenManager.getInstance(this).clearToken();
+                Intent i = new Intent(this, LoginActivity.class);
+                i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(i);
+                finish();
+            });
+        }
         findViewById(R.id.btnBackProfile).setOnClickListener(v -> finish());
         View root = findViewById(R.id.profileRoot);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
@@ -116,11 +129,22 @@ public class ProfileActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.tvProfilePermissions)).setText(isAdminMode
                 ? "* Trường bắt buộc. Số điện thoại có thể để trống."
                 : "Bạn được sửa họ tên và ảnh đại diện. Liên hệ người quản lý để cập nhật thông tin khác.");
-        ((TextView) findViewById(R.id.tvProfileHireDate)).setText("Ngày vào làm: Chưa có dữ liệu");
+        ((TextView) findViewById(R.id.tvProfileHireDate)).setText("Chưa có dữ liệu");
         etHireDate.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         spDepartment.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         spPosition.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnRetryProfileLookups).setOnClickListener(v -> loadLookups());
+        // Doi phong ban -> tai lai chuc vu chi cua phong do (+ chuc vu dung chung).
+        spDepartment.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                if (suppressDeptEvent || !departmentsLoaded || pos < 0 || pos >= departmentChoices.size()) return;
+                loadPositions(departmentChoices.get(pos).getId());
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
         if (isAdminMode) loadLookups();
         etHireDate.setOnClickListener(v -> {
             java.util.Calendar calendar = java.util.Calendar.getInstance();
@@ -198,19 +222,24 @@ public class ProfileActivity extends AppCompatActivity {
                     etEmail.setText(ProfileValidation.text(d.getEmail()));
                     etPhone.setText(ProfileValidation.text(d.getPhone()));
                     ((TextView) findViewById(R.id.tvProfileCode)).setText(
-                            "Mã NV / Tên đăng nhập: " + ProfileValidation.display(d.getUsername()));
-                    ((TextView) findViewById(R.id.tvProfileId)).setText("ID nhân viên: " + d.getId());
+                            ProfileValidation.display(d.getUsername()));
+                    ((TextView) findViewById(R.id.tvProfileId)).setText(String.valueOf(d.getId()));
                     ((TextView) findViewById(R.id.tvProfileDepartment)).setText(ProfileValidation.display(d.getDeptName()));
                     ((TextView) findViewById(R.id.tvProfilePosition)).setText(ProfileValidation.display(d.getPositionName()));
                     ((TextView) findViewById(R.id.tvProfileCreatedAt)).setText(
-                            "Ngày tạo tài khoản: " + ProfileValidation.display(d.getCreatedAt()));
+                            ProfileValidation.display(d.getCreatedAt()));
                     ((TextView) findViewById(R.id.tvProfileHireDate)).setText(
-                            "Ngày vào làm: " + ProfileValidation.display(d.getHireDate()));
+                            ProfileValidation.display(d.getHireDate()));
                     etHireDate.setText(ProfileValidation.text(d.getHireDate()));
                     selectLookupValues();
+                    // Loc lai chuc vu theo dung phong ban cua ho so nay.
+                    if (isAdminMode && positionsLoaded) loadPositions(d.getDepartmentId());
                     currentStatus = d.getStatus();
-                    ((TextView) findViewById(R.id.tvProfileStatus)).setText("Trạng thái tài khoản: "
-                            + (currentStatus == 1 ? "Đang hoạt động" : currentStatus == 0 ? "Đã khóa" : "Chưa xác định"));
+                    TextView tvStatusBox = findViewById(R.id.tvProfileStatus);
+                    tvStatusBox.setText(
+                            currentStatus == 1 ? "Đang hoạt động" : currentStatus == 0 ? "Đã khóa" : "Chưa xác định");
+                    tvStatusBox.setTextColor(getColor(
+                            currentStatus == 1 ? R.color.success : currentStatus == 0 ? R.color.danger : R.color.text_secondary));
                     suppressLockEvent = true;
                     swLock.setChecked(currentStatus == 1);
                     suppressLockEvent = false;
@@ -334,7 +363,16 @@ public class ProfileActivity extends AppCompatActivity {
             }
             @Override public void onFailure(Call<DepartmentListResponse> c, Throwable e) { if (!isFinishing()) lookupError(); }
         });
-        api.getPositions().enqueue(new Callback<PositionListResponse>() {
+        loadPositions(loadedProfile != null ? loadedProfile.getDepartmentId() : 0);
+    }
+
+    // deptId = 0 -> tat ca chuc vu; > 0 -> chuc vu cua phong do + chuc vu dung chung.
+    private void loadPositions(int deptId) {
+        positionsLoaded = false;
+        updateControls();
+        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
+        Call<PositionListResponse> call = deptId > 0 ? api.getPositions(deptId) : api.getPositions();
+        call.enqueue(new Callback<PositionListResponse>() {
             @Override public void onResponse(Call<PositionListResponse> c, Response<PositionListResponse> r) {
                 if (isFinishing()) return;
                 if (!r.isSuccessful() || r.body() == null || !r.body().isSuccess() || r.body().getData() == null) {
@@ -355,12 +393,14 @@ public class ProfileActivity extends AppCompatActivity {
     }
     private void selectLookupValues() {
         if (loadedProfile == null) return;
+        suppressDeptEvent = true;
         if (departmentsLoaded) for (int i=0; i<departmentChoices.size(); i++) {
             if (departmentChoices.get(i).getId() == loadedProfile.getDepartmentId()) { spDepartment.setSelection(i); break; }
         }
         if (positionsLoaded) for (int i=0; i<positionChoices.size(); i++) {
             if (positionChoices.get(i).getId() == loadedProfile.getPositionId()) { spPosition.setSelection(i); break; }
         }
+        suppressDeptEvent = false;
     }
     private void lookupReady() {
         if (departmentsLoaded && positionsLoaded) {

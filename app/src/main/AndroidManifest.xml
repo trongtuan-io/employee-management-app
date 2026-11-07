@@ -47,7 +47,17 @@
         </activity>
 
         <activity
-            android:name=".EmployeeActivity"
+            android:name=".HomeActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".LeaveActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".SalaryActivity"
             android:exported="false">
         </activity>
 
@@ -63,6 +73,16 @@
 
         <activity
             android:name=".CreateAccountActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".DepartmentActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
+            android:name=".ImportEmployeesActivity"
             android:exported="false">
         </activity>
     </application>

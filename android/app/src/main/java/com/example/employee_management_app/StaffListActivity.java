@@ -63,6 +63,7 @@ public class StaffListActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_staff_list);
+        BottomNavHelper.setup(this, R.id.nav_staff);
         applyWindowInsets();
         setTitle(R.string.staff_title);
         api = ApiClient.getClient(this).create(EmployeeApi.class);

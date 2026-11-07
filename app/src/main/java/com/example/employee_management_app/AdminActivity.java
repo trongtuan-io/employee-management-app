@@ -20,6 +20,7 @@ public class AdminActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_admin);
+        BottomNavHelper.setup(this, R.id.nav_overview);
 
         tvTotalStaff = findViewById(R.id.tvTotalStaff);
         tvPendingLeaves = findViewById(R.id.tvPendingLeaves);
@@ -33,13 +34,15 @@ public class AdminActivity extends AppCompatActivity {
         Button btnStaff = findViewById(R.id.btnAdminStaff);
         Button btnCreateAccount = findViewById(R.id.btnAdminCreateAccount);
         Button btnPass = findViewById(R.id.btnAdminChangePass);
+        Button btnSalary = findViewById(R.id.btnAdminSalary);
         Button btnLogout = findViewById(R.id.btnAdminLogout);
 
         loadDashboard(btnApprove);
 
-        // Chuc nang cua ban D (duyet phep): man hinh chi tiet lam tiep
         btnApprove.setOnClickListener(v ->
-                Toast.makeText(this, "Mở danh sách duyệt phép (bạn D làm tiếp)", Toast.LENGTH_SHORT).show());
+                startActivity(new Intent(this, LeaveActivity.class)));
+        btnSalary.setOnClickListener(v ->
+                startActivity(new Intent(this, SalaryActivity.class)));
         btnStaff.setOnClickListener(v ->
                 startActivity(new Intent(this, StaffListActivity.class)));
         btnCreateAccount.setOnClickListener(v ->

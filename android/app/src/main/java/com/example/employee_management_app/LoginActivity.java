@@ -48,21 +48,19 @@ public class LoginActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null) {
                             LoginResponse loginResponse = response.body();
                             if (loginResponse.isSuccess()) {
-                                // 1 role = 1 man hinh: admin -> AdminActivity, con lai -> EmployeeActivity
+                                // Dang nhap xong vao Trang chu (HomeActivity) cho moi vai tro
                                 String role = "staff";
                                 if (loginResponse.getData() != null && loginResponse.getData().getRole() != null) {
                                     role = loginResponse.getData().getRole();
                                 }
                                 // Luu role de cac man hinh hien thi + phan quyen
                                 TokenManager.getInstance(LoginActivity.this).saveRole(role);
-                                Intent intent;
-                                if (role.equalsIgnoreCase("admin") || role.equalsIgnoreCase("manager")) {
-                                    Toast.makeText(LoginActivity.this, "Chào mừng Quản trị viên!", Toast.LENGTH_SHORT).show();
-                                    intent = new Intent(LoginActivity.this, AdminActivity.class);
-                                } else {
-                                    Toast.makeText(LoginActivity.this, "Chào mừng Nhân viên!", Toast.LENGTH_SHORT).show();
-                                    intent = new Intent(LoginActivity.this, EmployeeActivity.class);
-                                }
+                                // Moi vai tro deu vao Trang chu (Home) - thanh dieu huong duoi se dan toi cac muc theo vai tro
+                                boolean isManagerRole = role.equalsIgnoreCase("admin") || role.equalsIgnoreCase("manager");
+                                Toast.makeText(LoginActivity.this,
+                                        isManagerRole ? "Chào mừng Quản trị viên!" : "Chào mừng Nhân viên!",
+                                        Toast.LENGTH_SHORT).show();
+                                Intent intent = new Intent(LoginActivity.this, HomeActivity.class);
                                 
                                 // Lưu JWT Token vào điện thoại
                                 if (loginResponse.getToken() != null) {
