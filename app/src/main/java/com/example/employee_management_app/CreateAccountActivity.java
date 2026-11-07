@@ -27,8 +27,13 @@ public class CreateAccountActivity extends AppCompatActivity {
 
     private EditText etUsername, etPassword, etFullName, etPhone, etEmail;
     private Spinner spRole, spDept, spPosition;
+    private Button btnCreate;
     private final List<DepartmentListResponse.Item> deptChoices = new ArrayList<>();
     private final List<PositionListResponse.Item> positionChoices = new ArrayList<>();
+    private Call<PositionListResponse> positionsCall;
+    private int positionsForDept = -1;
+    private boolean isManagerRole;
+    private int myId;
 
     // Map spinner -> role_id backend: 1 = admin, 2 = manager, 3 = staff.
 
@@ -44,6 +49,8 @@ public class CreateAccountActivity extends AppCompatActivity {
             finish();
             return;
         }
+        isManagerRole = role.equalsIgnoreCase("manager");
+        myId = TokenManager.getInstance(this).getUserId();
 
         etUsername = findViewById(R.id.etNewUsername);
         etPassword = findViewById(R.id.etNewPassword);
@@ -53,9 +60,12 @@ public class CreateAccountActivity extends AppCompatActivity {
         spDept = findViewById(R.id.spNewDept);
         spPosition = findViewById(R.id.spNewPosition);
         spRole = findViewById(R.id.spNewRole);
-        Button btnCreate = findViewById(R.id.btnDoCreateAccount);
+        btnCreate = findViewById(R.id.btnDoCreateAccount);
 
-        String[] roleNames = {"Nhân viên (staff)", "Quản lý (manager)", "Quản trị (admin)"};
+        // Manager chi duoc tao tai khoan staff (server cung ep vay) - chi hien dung lua chon do.
+        String[] roleNames = isManagerRole
+                ? new String[]{"Nhân viên (staff)"}
+                : new String[]{"Nhân viên (staff)", "Quản lý (manager)", "Quản trị (admin)"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item, roleNames);
         spRole.setAdapter(adapter);
@@ -74,7 +84,35 @@ public class CreateAccountActivity extends AppCompatActivity {
         });
 
         loadDepartments();
+        if (isManagerRole) lockDepartmentToMine();
         btnCreate.setOnClickListener(v -> doCreate());
+    }
+
+    // Manager: khoa spinner Phong ve phong cua chinh minh (server cung ep nhu vay).
+    private void lockDepartmentToMine() {
+        if (myId <= 0) return;
+        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
+        api.getDetail(myId).enqueue(new Callback<EmployeeDetailResponse>() {
+            @Override
+            public void onResponse(Call<EmployeeDetailResponse> c, Response<EmployeeDetailResponse> r) {
+                if (isFinishing() || isDestroyed()) return;
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    Integer myDept = r.body().getData().getDepartmentId();
+                    if (myDept != null) {
+                        for (int i = 0; i < deptChoices.size(); i++) {
+                            if (deptChoices.get(i).getId() == myDept) {
+                                spDept.setSelection(i);
+                                break;
+                            }
+                        }
+                        spDept.setEnabled(false);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<EmployeeDetailResponse> c, Throwable t) { }
+        });
     }
 
     private void loadDepartments() {
@@ -106,12 +144,23 @@ public class CreateAccountActivity extends AppCompatActivity {
     }
 
     // deptId = 0 -> tat ca chuc vu; > 0 -> chuc vu cua phong do + chuc vu dung chung.
+    // Huy call cu + bo qua response ve tre cua phong truoc (tranh spinner chua chuc vu sai phong).
     private void loadPositions(int deptId) {
+        if (positionsCall != null) positionsCall.cancel();
+        positionsForDept = deptId;
+        positionChoices.clear();
+        positionChoices.add(new PositionListResponse.Item(0, "Đang tải..."));
+        ArrayAdapter<PositionListResponse.Item> loading = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_dropdown_item, positionChoices);
+        spPosition.setAdapter(loading);
+        spPosition.setEnabled(false);
         EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
-        Call<PositionListResponse> call = deptId > 0 ? api.getPositions(deptId) : api.getPositions();
-        call.enqueue(new Callback<PositionListResponse>() {
+        positionsCall = deptId > 0 ? api.getPositions(deptId) : api.getPositions();
+        positionsCall.enqueue(new Callback<PositionListResponse>() {
             @Override
             public void onResponse(Call<PositionListResponse> c, Response<PositionListResponse> r) {
+                if (isFinishing() || isDestroyed() || deptId != positionsForDept) return; // response cu, bo qua
+                spPosition.setEnabled(true);
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess() && r.body().getData() != null) {
                     positionChoices.clear();
                     positionChoices.add(new PositionListResponse.Item(0, "Không chỉ định"));
@@ -120,11 +169,22 @@ public class CreateAccountActivity extends AppCompatActivity {
                             CreateAccountActivity.this,
                             android.R.layout.simple_spinner_dropdown_item, positionChoices);
                     spPosition.setAdapter(a);
+                } else {
+                    positionChoices.clear();
+                    positionChoices.add(new PositionListResponse.Item(0, "Không tải được chức vụ"));
+                    spPosition.setAdapter(new ArrayAdapter<>(CreateAccountActivity.this,
+                            android.R.layout.simple_spinner_dropdown_item, positionChoices));
                 }
             }
 
             @Override
             public void onFailure(Call<PositionListResponse> c, Throwable t) {
+                if (isFinishing() || isDestroyed() || deptId != positionsForDept || c.isCanceled()) return;
+                spPosition.setEnabled(true);
+                positionChoices.clear();
+                positionChoices.add(new PositionListResponse.Item(0, "Không tải được chức vụ"));
+                spPosition.setAdapter(new ArrayAdapter<>(CreateAccountActivity.this,
+                        android.R.layout.simple_spinner_dropdown_item, positionChoices));
                 Toast.makeText(CreateAccountActivity.this,
                         "Lỗi kết nối khi tải chức vụ: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
@@ -133,7 +193,7 @@ public class CreateAccountActivity extends AppCompatActivity {
 
     private void doCreate() {
         String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String password = etPassword.getText().toString(); // khong trim mat khau
         String fullName = etFullName.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
@@ -144,6 +204,12 @@ public class CreateAccountActivity extends AppCompatActivity {
         }
         if (password.length() < 6) {
             Toast.makeText(this, "Mật khẩu tối thiểu 6 ký tự", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Server bat buoc email hop le (truoc day app cho bo trong roi bao loi sai nguyen nhan).
+        if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.setError("Email bắt buộc và phải đúng định dạng");
+            etEmail.requestFocus();
             return;
         }
 
@@ -168,26 +234,29 @@ public class CreateAccountActivity extends AppCompatActivity {
 
         RegisterRequest req = new RegisterRequest(username, password, fullName,
                 phone.isEmpty() ? null : phone,
-                email.isEmpty() ? null : email,
+                email,
                 roleId, deptId, posId);
 
+        btnCreate.setEnabled(false); // tranh bam dup tao 2 tai khoan
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
         api.register(req).enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                btnCreate.setEnabled(true);
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
                     Toast.makeText(CreateAccountActivity.this,
                             "Tạo tài khoản thành công!", Toast.LENGTH_SHORT).show();
                     finish();
                 } else {
                     String msg = (r.body() != null && r.body().getMessage() != null)
-                            ? r.body().getMessage() : "Tạo thất bại (trùng username?)";
+                            ? r.body().getMessage() : ApiError.message(r, "Tạo tài khoản thất bại");
                     Toast.makeText(CreateAccountActivity.this, msg, Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ApiResponse> c, Throwable t) {
+                btnCreate.setEnabled(true);
                 Toast.makeText(CreateAccountActivity.this,
                         "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }

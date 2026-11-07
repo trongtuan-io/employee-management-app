@@ -28,15 +28,27 @@ public class SalaryListResponse {
         public int getYear() { return year; }
         public String getNetSalary() { return net_salary; }
 
+        // Dinh dang tien kieu Viet Nam (5.000.000 ₫) thay vi chuoi tho "5000000.00".
+        private static String money(String raw) {
+            if (raw == null) return "0 ₫";
+            try {
+                double v = Double.parseDouble(raw);
+                return java.text.NumberFormat.getInstance(new java.util.Locale("vi", "VN"))
+                        .format(Math.round(v)) + " ₫";
+            } catch (NumberFormatException e) {
+                return raw;
+            }
+        }
+
         @Override
         public String toString() {
             return "Tháng " + month + "/" + year
-                    + "\nLương cơ bản: " + base_salary
-                    + " | Phụ cấp: " + allowance
-                    + " | Tăng ca: " + overtime_pay
-                    + " | Thưởng: " + bonus
-                    + " | Khấu trừ: " + deduction
-                    + "\nThực lĩnh: " + net_salary;
+                    + "\nLương cơ bản: " + money(base_salary)
+                    + " | Phụ cấp: " + money(allowance)
+                    + " | Tăng ca: " + money(overtime_pay)
+                    + " | Thưởng: " + money(bonus)
+                    + " | Khấu trừ: " + money(deduction)
+                    + "\nThực lĩnh: " + money(net_salary);
         }
     }
 }

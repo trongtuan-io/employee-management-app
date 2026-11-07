@@ -27,6 +27,16 @@ public class TokenManager {
         prefs.edit().putString(KEY_TOKEN, token).apply();
     }
 
+    // Luu ca phien dang nhap trong MOT lan ghi: tranh app bi kill giua chung
+    // de lai trang thai co token nhung mat user_id/role.
+    public void saveSession(String token, int userId, String role) {
+        prefs.edit()
+                .putString(KEY_TOKEN, token)
+                .putInt(KEY_USER_ID, userId)
+                .putString(KEY_ROLE, role)
+                .commit();
+    }
+
     public String getToken() {
         return prefs.getString(KEY_TOKEN, null);
     }

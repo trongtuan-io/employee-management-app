@@ -49,13 +49,16 @@ public class HomeActivity extends AppCompatActivity {
 
         tvHomeRole.setText(roleToVietnamese(TokenManager.getInstance(this).getRole()));
 
+        // Mac dinh khoa ca 2 nut cham cong; renderToday() se mo dung nut khi biet trang thai.
+        btnHomeCheckIn.setEnabled(false);
+        btnHomeCheckOut.setEnabled(false);
         btnHomeCheckIn.setOnClickListener(v -> doAttendance(true));
         btnHomeCheckOut.setOnClickListener(v -> doAttendance(false));
 
         BottomNavHelper.setup(this, R.id.nav_home);
         loadProfile();
-        loadToday();
         loadNews();
+        // loadToday() de onResume goi (tranh goi trung 2 lan khi vua mo man).
     }
 
     @Override
@@ -85,11 +88,17 @@ public class HomeActivity extends AppCompatActivity {
             public void onResponse(Call<AttendanceTodayResponse> c, Response<AttendanceTodayResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
                     renderToday(r.body().getData());
+                } else if (r.code() != 401) {
+                    tvAttStatus.setText("Không tải được trạng thái chấm công");
+                    tvAttDetail.setText(ApiError.message(r, "Vui lòng thử lại sau"));
                 }
             }
 
             @Override
-            public void onFailure(Call<AttendanceTodayResponse> c, Throwable t) { }
+            public void onFailure(Call<AttendanceTodayResponse> c, Throwable t) {
+                tvAttStatus.setText("Không tải được trạng thái chấm công");
+                tvAttDetail.setText("Kiểm tra kết nối mạng rồi mở lại Trang chủ.");
+            }
         });
     }
 
@@ -114,6 +123,13 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void doAttendance(boolean isIn) {
+        if (myId <= 0) {
+            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Khoa ca 2 nut trong luc cho server, tranh bam 2 lan gui trung request.
+        btnHomeCheckIn.setEnabled(false);
+        btnHomeCheckOut.setEnabled(false);
         Call<AttendanceResponse> call = isIn
                 ? api.checkIn(new CheckinRequest(myId))
                 : api.checkOut(new CheckinRequest(myId));
@@ -124,17 +140,19 @@ public class HomeActivity extends AppCompatActivity {
                     Toast.makeText(HomeActivity.this,
                             isIn ? "Chấm công vào thành công" : "Chấm công ra thành công",
                             Toast.LENGTH_SHORT).show();
-                    loadToday();
                 } else {
+                    // Hien dung loi server (409 da cham cong, 401 het phien...) thay vi doan sai.
                     Toast.makeText(HomeActivity.this,
-                            isIn ? "Hôm nay đã check-in rồi" : "Chưa check-in hôm nay",
-                            Toast.LENGTH_SHORT).show();
+                            ApiError.message(r, isIn ? "Không chấm công vào được" : "Không chấm công ra được"),
+                            Toast.LENGTH_LONG).show();
                 }
+                loadToday(); // renderToday se mo/khoa nut dung trang thai moi nhat
             }
 
             @Override
             public void onFailure(Call<AttendanceResponse> c, Throwable t) {
                 Toast.makeText(HomeActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                loadToday();
             }
         });
     }

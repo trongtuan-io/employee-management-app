@@ -4,5 +4,6 @@
     <item android:id="@+id/nav_overview" android:icon="@drawable/ic_nav_dashboard" android:title="Tổng quan" />
     <item android:id="@+id/nav_staff" android:icon="@drawable/ic_nav_group" android:title="Nhân viên" />
     <item android:id="@+id/nav_leave" android:icon="@drawable/ic_nav_calendar" android:title="Duyệt phép" />
+    <item android:id="@+id/nav_salary" android:icon="@drawable/ic_nav_money" android:title="Bảng lương" />
     <item android:id="@+id/nav_profile" android:icon="@drawable/ic_nav_person" android:title="Hồ sơ" />
 </menu>

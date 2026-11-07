@@ -58,22 +58,39 @@ public class SalaryActivity extends AppCompatActivity {
                     int empId = Integer.parseInt(edtEmp.getText().toString().trim());
                     int month = Integer.parseInt(edtMonth.getText().toString().trim());
                     int year = Integer.parseInt(edtYear.getText().toString().trim());
+                    if (empId <= 0) { edtEmp.setError("Mã nhân viên không hợp lệ"); return; }
+                    if (month < 1 || month > 12) { edtMonth.setError("Tháng phải từ 1 đến 12"); return; }
+                    if (year < 2000 || year > 2100) { edtYear.setError("Năm không hợp lệ"); return; }
+                    Double base = parseMoneyStrict(edtBase);
+                    Double allowance = parseMoneyStrict(edtAllowance);
+                    Double overtime = parseMoneyStrict(edtOvertime);
+                    Double bonus = parseMoneyStrict(edtBonus);
+                    Double deduction = parseMoneyStrict(edtDeduction);
+                    if (base == null || allowance == null || overtime == null || bonus == null || deduction == null) {
+                        return; // truong sai da duoc setError tai cho
+                    }
                     SalaryCreateRequest req = new SalaryCreateRequest(empId, month, year,
-                            parseMoney(edtBase), parseMoney(edtAllowance), parseMoney(edtOvertime),
-                            parseMoney(edtBonus), parseMoney(edtDeduction));
+                            base, allowance, overtime, bonus, deduction);
+                    btnCreate.setEnabled(false);
                     api.createSalary(req).enqueue(new Callback<ApiResponse>() {
                         @Override
                         public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                            btnCreate.setEnabled(true);
                             if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
-                                Toast.makeText(SalaryActivity.this, "Đã lưu bảng lương", Toast.LENGTH_SHORT).show();
-                                loadSalaries();
+                                Toast.makeText(SalaryActivity.this,
+                                        "Đã lưu bảng lương tháng " + month + "/" + year + " cho NV #" + empId,
+                                        Toast.LENGTH_SHORT).show();
+                                // Danh sach duoi la luong cua CHINH MINH: chi nap lai khi vua tao cho minh.
+                                if (empId == myId) loadSalaries();
                             } else {
-                                Toast.makeText(SalaryActivity.this, "Lưu bảng lương thất bại", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SalaryActivity.this,
+                                        ApiError.message(r, "Lưu bảng lương thất bại"), Toast.LENGTH_LONG).show();
                             }
                         }
 
                         @Override
                         public void onFailure(Call<ApiResponse> c, Throwable t) {
+                            btnCreate.setEnabled(true);
                             Toast.makeText(SalaryActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -86,13 +103,24 @@ public class SalaryActivity extends AppCompatActivity {
         loadSalaries();
     }
 
-    private double parseMoney(EditText edt) {
-        String s = edt.getText().toString().trim();
-        if (s.isEmpty()) return 0;
+    // Doc so tien kieu Viet Nam: "5.000.000" = 5000000, "5000000", "10,5" = 10.5.
+    // Sai dinh dang thi bao loi tai truong va tra null (truoc day nuot loi thanh 0 am tham).
+    private Double parseMoneyStrict(EditText edt) {
+        String s = edt.getText().toString().trim().replace(" ", "");
+        if (s.isEmpty()) return 0.0;
         try {
-            return Double.parseDouble(s);
+            double v;
+            if (s.matches("\\d{1,3}(\\.\\d{3})+")) {
+                v = Double.parseDouble(s.replace(".", "")); // dau cham la phan cach nghin
+            } else {
+                v = Double.parseDouble(s.replace(",", "."));
+            }
+            if (v < 0) throw new NumberFormatException("negative");
+            return v;
         } catch (NumberFormatException e) {
-            return 0;
+            edt.setError("Số tiền không hợp lệ (ví dụ đúng: 5.000.000)");
+            edt.requestFocus();
+            return null;
         }
     }
 
@@ -109,6 +137,9 @@ public class SalaryActivity extends AppCompatActivity {
                     if (items.isEmpty()) {
                         Toast.makeText(SalaryActivity.this, "Chưa có bảng lương nào trong năm nay", Toast.LENGTH_SHORT).show();
                     }
+                } else if (r.code() != 401) {
+                    Toast.makeText(SalaryActivity.this,
+                            ApiError.message(r, "Không tải được bảng lương"), Toast.LENGTH_SHORT).show();
                 }
             }
 

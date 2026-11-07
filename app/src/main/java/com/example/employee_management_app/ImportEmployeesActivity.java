@@ -25,6 +25,12 @@ public class ImportEmployeesActivity extends AppCompatActivity {
     private static final int REQUEST_FILE = 512;
     private TextView status;
     private Button choose;
+    private Call<EmployeeImportResponse> importCall;
+
+    @Override protected void onDestroy() {
+        if (importCall != null) importCall.cancel();
+        super.onDestroy();
+    }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -78,9 +84,10 @@ public class ImportEmployeesActivity extends AppCompatActivity {
             MultipartBody.Part file = MultipartBody.Part.createFormData("file", fileName, body);
             RequestBody requesterId = RequestBody.create(MediaType.parse("text/plain"),
                     String.valueOf(TokenManager.getInstance(this).getUserId()));
-            ApiClient.getClient(this).create(EmployeeApi.class).importEmployees(requesterId, file)
-                    .enqueue(new Callback<EmployeeImportResponse>() {
+            importCall = ApiClient.getClient(this).create(EmployeeApi.class).importEmployees(requesterId, file);
+            importCall.enqueue(new Callback<EmployeeImportResponse>() {
                         @Override public void onResponse(Call<EmployeeImportResponse> call, Response<EmployeeImportResponse> response) {
+                            if (isFinishing() || isDestroyed() || call.isCanceled()) return;
                             choose.setEnabled(true);
                             EmployeeImportResponse r = response.body();
                             if (!response.isSuccessful() || r == null || !r.isSuccess() || r.getData() == null) {
@@ -100,6 +107,7 @@ public class ImportEmployeesActivity extends AppCompatActivity {
                             }
                         }
                         @Override public void onFailure(Call<EmployeeImportResponse> call, Throwable t) {
+                            if (isFinishing() || isDestroyed() || call.isCanceled()) return;
                             choose.setEnabled(true); status.setText("Mất kết nối. Kiểm tra Database trước khi nhập lại để tránh trùng.");
                         }
                     });

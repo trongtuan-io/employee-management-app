@@ -19,6 +19,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     private LinearLayout step1, step2, step3;
     private EditText etEmail, etCode, etNewPass, etConfirmPass;
     private TextView tvHint2;
+    private Button btnSend;
     private String email, resetToken;
 
     @Override
@@ -35,7 +36,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         etNewPass = findViewById(R.id.etForgotNewPass);
         etConfirmPass = findViewById(R.id.etForgotConfirmPass);
         tvHint2 = findViewById(R.id.tvHint2);
-        Button btnSend = findViewById(R.id.btnSendCode);
+        btnSend = findViewById(R.id.btnSendCode);
         Button btnVerify = findViewById(R.id.btnVerifyCode);
         Button btnReset = findViewById(R.id.btnResetPass);
 
@@ -58,21 +59,32 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             Toast.makeText(this, "Vui lòng nhập email", Toast.LENGTH_SHORT).show();
             return;
         }
+        btnSend.setEnabled(false); // tranh bam 2 lan: ma sau se huy ma truoc
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
         api.forgotPassword(new ForgotRequest(email, true)).enqueue(new Callback<ForgotResponse>() {
             @Override
             public void onResponse(Call<ForgotResponse> c, Response<ForgotResponse> r) {
-                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
-                    tvHint2.setText("Mã đã gửi tới " + email + " (hiệu lực 10 phút)");
-                    showStep(2);
-                    Toast.makeText(ForgotPasswordActivity.this, "Đã gửi mã xác nhận!", Toast.LENGTH_SHORT).show();
+                btnSend.setEnabled(true);
+                if (r.isSuccessful() && r.body() != null && r.body().isSuccess() && r.body().getData() != null) {
+                    if (r.body().getData().isDelivered()) {
+                        tvHint2.setText("Mã đã gửi tới " + email + " (hiệu lực 10 phút). Nếu xin mã nhiều lần, chỉ mã MỚI NHẤT còn hiệu lực.");
+                        showStep(2);
+                        Toast.makeText(ForgotPasswordActivity.this, "Đã gửi mã xác nhận!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Server nhan yeu cau nhung chua gui duoc (SMTP chua cau hinh / email khong khop).
+                        Toast.makeText(ForgotPasswordActivity.this,
+                                "Chưa gửi được mã. Kiểm tra lại email hoặc liên hệ quản trị viên để được hỗ trợ.",
+                                Toast.LENGTH_LONG).show();
+                    }
                 } else {
-                    Toast.makeText(ForgotPasswordActivity.this, "Email không tồn tại trong hệ thống", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ForgotPasswordActivity.this,
+                            ApiError.message(r, "Không gửi được mã xác nhận"), Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onFailure(Call<ForgotResponse> c, Throwable t) {
+                btnSend.setEnabled(true);
                 Toast.makeText(ForgotPasswordActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
@@ -81,8 +93,8 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     // Buoc 2: doi chieu ma 6 so voi server
     private void verifyCode() {
         String code = etCode.getText().toString().trim();
-        if (code.length() != 6) {
-            Toast.makeText(this, "Mã gồm 6 số", Toast.LENGTH_SHORT).show();
+        if (!code.matches("\\d{6}")) {
+            etCode.setError("Mã gồm đúng 6 chữ số");
             return;
         }
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
@@ -90,7 +102,9 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<VerifyResponse> c, Response<VerifyResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()
-                        && r.body().getData() != null) {
+                        && r.body().getData() != null
+                        && r.body().getData().getResetToken() != null
+                        && !r.body().getData().getResetToken().isEmpty()) {
                     resetToken = r.body().getData().getResetToken();
                     showStep(3);
                 } else {
@@ -107,8 +121,14 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
     // Buoc 3: dat mat khau moi -> xong ve man login
     private void resetPassword() {
-        String p1 = etNewPass.getText().toString().trim();
-        String p2 = etConfirmPass.getText().toString().trim();
+        // Khong trim mat khau moi.
+        String p1 = etNewPass.getText().toString();
+        String p2 = etConfirmPass.getText().toString();
+        if (resetToken == null || resetToken.isEmpty()) {
+            Toast.makeText(this, "Phiên hết hạn, làm lại từ đầu", Toast.LENGTH_SHORT).show();
+            showStep(1);
+            return;
+        }
         if (p1.length() < 6) {
             Toast.makeText(this, "Mật khẩu ít nhất 6 ký tự", Toast.LENGTH_SHORT).show();
             return;

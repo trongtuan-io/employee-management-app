@@ -21,15 +21,20 @@ public class ForgotResponse {
         @SerializedName("sent")
         private boolean sent;
 
-        @SerializedName("debug_code")
-        private String debugCode;
+        // Ket qua gui that: false khi SMTP/SMS chua cau hinh hoac gui loi.
+        // (Da bo field debug_code: ma xac nhan khong bao gio duoc tra trong response.)
+        @SerializedName("mail_ok")
+        private Boolean mailOk;
+
+        @SerializedName("sms_ok")
+        private Boolean smsOk;
 
         public boolean isSent() {
             return sent;
         }
 
-        public String getDebugCode() {
-            return debugCode;
+        public boolean isDelivered() {
+            return Boolean.TRUE.equals(mailOk) || Boolean.TRUE.equals(smsOk);
         }
     }
 }

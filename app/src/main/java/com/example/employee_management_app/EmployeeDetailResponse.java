@@ -36,6 +36,16 @@ public class EmployeeDetailResponse {
         @SerializedName("position_name")
         private String positionName;
 
+        // Server co tra cac field nay (detail endpoint); truoc day model thieu nen app khong doc duoc.
+        private int department_id;
+        private int position_id;
+
+        @SerializedName("created_at")
+        private String createdAt;
+
+        @SerializedName("hire_date")
+        private String hireDate;
+
         public int getId() { return id; }
         public String getUsername() { return username; }
         public String getFullName() { return full_name; }
@@ -46,5 +56,9 @@ public class EmployeeDetailResponse {
         public int getStatus() { return status; }
         public String getDeptName() { return deptName; }
         public String getPositionName() { return positionName; }
+        public int getDepartmentId() { return department_id; }
+        public int getPositionId() { return position_id; }
+        public String getCreatedAt() { return createdAt; }
+        public String getHireDate() { return hireDate; }
     }
 }

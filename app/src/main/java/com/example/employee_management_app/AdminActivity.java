@@ -29,7 +29,7 @@ public class AdminActivity extends AppCompatActivity {
         tvRole.setText("Vai trò: " + TokenManager.getInstance(this).getRole());
         TextView tvWelcome = findViewById(R.id.tvAdminWelcome);
         String username = getIntent().getStringExtra("USERNAME");
-        tvWelcome.setText("Xin chào " + (username != null ? username : "") + "!");
+        tvWelcome.setText(username != null && !username.isEmpty() ? "Xin chào " + username + "!" : "Xin chào!");
         Button btnApprove = findViewById(R.id.btnAdminApprove);
         Button btnStaff = findViewById(R.id.btnAdminStaff);
         Button btnCreateAccount = findViewById(R.id.btnAdminCreateAccount);
@@ -50,6 +50,11 @@ public class AdminActivity extends AppCompatActivity {
         btnPass.setOnClickListener(v ->
                 startActivity(new Intent(this, ChangePasswordActivity.class)));
         btnLogout.setOnClickListener(v -> {
+            // Thu hoi token phia server truoc, roi moi xoa phien o client.
+            ApiClient.getClient(this).create(AuthApi.class).logout().enqueue(new Callback<ApiResponse>() {
+                @Override public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) { }
+                @Override public void onFailure(Call<ApiResponse> c, Throwable t) { }
+            });
             TokenManager.getInstance(this).clearToken();
             Intent i = new Intent(this, LoginActivity.class);
             i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -71,6 +76,9 @@ public class AdminActivity extends AppCompatActivity {
                     tvPendingLeaves.setText(String.valueOf(s.getPendingLeaves()));
                     tvLateToday.setText(String.valueOf(s.getLateToday()));
                     btnApprove.setText("Duyệt nghỉ phép (" + s.getPendingLeaves() + " đơn chờ)");
+                } else {
+                    Toast.makeText(AdminActivity.this,
+                            ApiError.message(r, "Không tải được số liệu tổng quan"), Toast.LENGTH_SHORT).show();
                 }
             }
 

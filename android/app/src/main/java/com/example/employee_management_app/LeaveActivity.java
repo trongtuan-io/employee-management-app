@@ -67,20 +67,42 @@ public class LeaveActivity extends AppCompatActivity {
                 Toast.makeText(this, "Nhập ngày bắt đầu và ngày kết thúc (YYYY-MM-DD)", Toast.LENGTH_SHORT).show();
                 return;
             }
+            // Validate ngay dung dinh dang va thu tu (server cung kiem tra lai).
+            java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+            fmt.setLenient(false);
+            try {
+                java.util.Date dStart = fmt.parse(start);
+                java.util.Date dEnd = fmt.parse(end);
+                if (dStart == null || dEnd == null
+                        || !fmt.format(dStart).equals(start) || !fmt.format(dEnd).equals(end)) {
+                    throw new java.text.ParseException("bad date", 0);
+                }
+                if (dEnd.before(dStart)) {
+                    Toast.makeText(this, "Ngày kết thúc không được trước ngày bắt đầu", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            } catch (java.text.ParseException e) {
+                Toast.makeText(this, "Ngày phải đúng định dạng YYYY-MM-DD và là ngày có thật", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            btnSubmit.setEnabled(false); // tranh bam 2 lan gui trung don
             api.createLeave(new LeaveCreateRequest(myId, start, end, reason))
                     .enqueue(new Callback<ApiResponse>() {
                         @Override
                         public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                            btnSubmit.setEnabled(true);
                             if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
                                 Toast.makeText(LeaveActivity.this, "Đã gửi đơn nghỉ phép", Toast.LENGTH_SHORT).show();
                                 loadLeaves();
                             } else {
-                                Toast.makeText(LeaveActivity.this, "Gửi đơn thất bại", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(LeaveActivity.this,
+                                        ApiError.message(r, "Gửi đơn thất bại"), Toast.LENGTH_LONG).show();
                             }
                         }
 
                         @Override
                         public void onFailure(Call<ApiResponse> c, Throwable t) {
+                            btnSubmit.setEnabled(true);
                             Toast.makeText(LeaveActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -104,6 +126,9 @@ public class LeaveActivity extends AppCompatActivity {
                                 isManager ? "Không có đơn nào chờ duyệt" : "Bạn chưa có đơn nghỉ phép nào",
                                 Toast.LENGTH_SHORT).show();
                     }
+                } else if (r.code() != 401) {
+                    Toast.makeText(LeaveActivity.this,
+                            ApiError.message(r, "Không tải được danh sách đơn"), Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -125,6 +150,9 @@ public class LeaveActivity extends AppCompatActivity {
     }
 
     private void approve(LeaveListResponse.Item item, String status) {
+        // Gỡ đơn khỏi danh sách ngay de khong bam duyet lan 2 trong luc cho server.
+        items.remove(item);
+        adapter.notifyDataSetChanged();
         api.approveLeave(new LeaveApproveRequest(item.getId(), status))
                 .enqueue(new Callback<ApiResponse>() {
                     @Override
@@ -133,10 +161,11 @@ public class LeaveActivity extends AppCompatActivity {
                             Toast.makeText(LeaveActivity.this,
                                     "approved".equals(status) ? "Đã duyệt đơn" : "Đã từ chối đơn",
                                     Toast.LENGTH_SHORT).show();
-                            loadLeaves();
                         } else {
-                            Toast.makeText(LeaveActivity.this, "Thao tác thất bại", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(LeaveActivity.this,
+                                    ApiError.message(r, "Thao tác thất bại"), Toast.LENGTH_LONG).show();
                         }
+                        loadLeaves();
                     }
 
                     @Override

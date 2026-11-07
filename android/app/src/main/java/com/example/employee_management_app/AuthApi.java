@@ -23,4 +23,8 @@ public interface AuthApi {
 
     @POST("auth.php?action=reset-password")
     Call<ApiResponse> resetPassword(@Body ResetRequest request);
+
+    // Thu hoi token phia server khi dang xuat (khong chi xoa o client).
+    @POST("auth.php?action=logout")
+    Call<ApiResponse> logout();
 }
