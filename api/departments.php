@@ -2,6 +2,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/employee_validation.php';
 require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/positions_logic.php';
 $action = $_GET['action'] ?? 'list';
 $method = $_SERVER['REQUEST_METHOD'];
 if ($action === 'list' && $method === 'GET') {
@@ -10,7 +11,7 @@ if ($action === 'list' && $method === 'GET') {
     out($query->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($action === 'members' && $method === 'GET') {
-    require_login($pdo);
+    require_role($pdo, ['admin', 'manager']); // danh sach kem email/SDT: chi quan ly xem
     $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
     if (!$id) err('Thieu id phong ban', 422);
     $stmt = $pdo->prepare('SELECT 1 FROM departments WHERE id=?');
@@ -53,6 +54,9 @@ try {
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM employees WHERE department_id=?');
     $stmt->execute([$id]);
     if ((int)$stmt->fetchColumn() > 0) err('Khong the xoa phong ban dang co nhan vien', 409);
+    // Chuc vu gan rieng phong nay thi dua ve "dung chung" de khong mo coi.
+    positions_ensure($pdo);
+    $pdo->prepare('UPDATE positions SET department_id=NULL WHERE department_id=?')->execute([$id]);
     $stmt = $pdo->prepare('DELETE FROM departments WHERE id=?');
     $stmt->execute([$id]);
     out(['deleted'=>true]);

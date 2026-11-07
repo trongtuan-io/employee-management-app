@@ -1,4 +1,13 @@
 <?php
+// Khong de loi PHP tho (message/path/SQL) lo ra response; loi chua bat se tra JSON 500 thong nhat.
+ini_set("display_errors", "0");
+error_reporting(E_ALL);
+set_exception_handler(function ($e) {
+  error_log("Unhandled exception: " . $e->getMessage());
+  if (!headers_sent()) http_response_code(500);
+  echo json_encode(["success" => false, "error" => "Loi he thong, vui long thu lai sau"]);
+  exit;
+});
 // Moi gio giac trong he thong (cham cong, han token, ngay tao...) theo gio Viet Nam.
 // Truoc day PHP chay theo mui gio mac dinh cua XAMPP nen gio cham cong bi lech.
 date_default_timezone_set("Asia/Ho_Chi_Minh");
@@ -15,8 +24,9 @@ try {
   // Dong bo mui gio phien MySQL voi PHP de NOW()/CURDATE() khop date().
   $pdo->exec("SET time_zone = '+07:00'");
 } catch (Exception $e) {
+  error_log("DB connect failed: " . $e->getMessage());
   http_response_code(500);
-  echo json_encode(["success" => false, "error" => "DB connect failed: " . $e->getMessage()]);
+  echo json_encode(["success" => false, "error" => "Khong ket noi duoc co so du lieu"]);
   exit;
 }
 function body() { return json_decode(file_get_contents("php://input"), true) ?? []; }

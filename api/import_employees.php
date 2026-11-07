@@ -3,6 +3,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/employee_validation.php';
 require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/positions_logic.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') err('Method not allowed', 405);
 require_role($pdo, ['admin']); // Danh tinh lay tu token, khong tin requester_id trong form nua
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) err('Chua chon file', 422);
@@ -99,6 +100,16 @@ try {
             $item['phone'] = employee_phone($item['phone']);
             $item['department_id'] = employee_optional_fk($pdo, $item['department_id'], 'departments');
             $item['position_id'] = employee_optional_fk($pdo, $item['position_id'], 'positions');
+            // Chuc vu phai thuoc phong ban cua nhan vien (nhat quan voi create/update).
+            if ($item['position_id'] !== null) {
+                positions_ensure($pdo);
+                $pq = $pdo->prepare('SELECT department_id FROM positions WHERE id=?');
+                $pq->execute([$item['position_id']]);
+                $pDept = $pq->fetchColumn();
+                if ($pDept !== false && $pDept !== null && (int)$pDept !== (int)$item['department_id']) {
+                    throw new InvalidArgumentException('Chuc vu khong thuoc phong ban cua nhan vien');
+                }
+            }
             // Excel may store dates as day serials, even when displayed as dates.
             if ($ext === 'xlsx' && is_string($item['hire_date']) && preg_match('/^\d{5}(?:\.0+)?$/', $item['hire_date'])) {
                 $origin = new DateTimeImmutable('1899-12-30');

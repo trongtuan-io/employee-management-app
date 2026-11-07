@@ -2,15 +2,30 @@
 require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/auth_guard.php";
 require_once __DIR__ . "/positions_logic.php";
+require_once __DIR__ . "/employee_validation.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "login" && $m === "POST") {
   $b = body();
+  $username = is_string($b["username"] ?? null) ? trim($b["username"]) : "";
+  $password = is_string($b["password"] ?? null) ? $b["password"] : "";
+  $ip = $_SERVER["REMOTE_ADDR"] ?? "";
+  // Khoa tam thoi khi dang nhap sai qua nhieu (chong brute-force mat khau).
+  $pdo->exec("CREATE TABLE IF NOT EXISTS login_attempts (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) NOT NULL, ip VARCHAR(45) NOT NULL, attempted_at DATETIME NOT NULL, INDEX idx_la_user (username, attempted_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+  $st = $pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE username=? AND ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
+  $st->execute([$username, $ip]);
+  if ((int)$st->fetchColumn() >= 10) err("Dang nhap sai qua nhieu lan, vui long thu lai sau 10 phut", 429);
   $stmt = $pdo->prepare("SELECT e.*, r.name AS role_name FROM employees e LEFT JOIN roles r ON e.role_id=r.id WHERE e.username=? LIMIT 1");
-  $stmt->execute([$b["username"] ?? ""]);
+  $stmt->execute([$username]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
-  if (!$u || !password_verify($b["password"] ?? "", $u["password_hash"])) err("Sai tai khoan hoac mat khau", 401);
+  // User khong ton tai van chay password_verify voi hash gia de thoi gian phan hoi deu nhau.
+  $hash = $u["password_hash"] ?? '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+  if (!$u || !password_verify($password, $hash)) {
+    $pdo->prepare("INSERT INTO login_attempts(username, ip, attempted_at) VALUES(?,?,NOW())")->execute([$username, $ip]);
+    err("Sai tai khoan hoac mat khau", 401);
+  }
   if ((int)$u["status"] === 0) err("Tai khoan da bi khoa", 403);
+  $pdo->prepare("DELETE FROM login_attempts WHERE username=? AND ip=?")->execute([$username, $ip]);
   unset($u["password_hash"]);
   $u["token"] = auth_issue_token($pdo, $u["id"]); // Token that ngau nhien, server luu hash (auth_guard.php)
   out($u);
@@ -26,8 +41,15 @@ if ($a === "register" && $m === "POST") {
     $b["role_id"] = 3;
   }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
-  if (strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
-  if (isset($b["base_salary"]) && (!is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
+  if (!is_string($b["password"]) || strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
+  if (isset($b["base_salary"]) && (!is_scalar($b["base_salary"]) || !is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
+  // Chuan hoa + validate dinh dang nhu duong import (truoc day email/username sai dinh dang van luu).
+  try {
+    $b["username"] = employee_username($b["username"]);
+    $b["full_name"] = employee_name($b["full_name"]);
+    $b["email"] = employee_email($b["email"]);
+    if (isset($b["phone"]) && $b["phone"] !== null && $b["phone"] !== "") $b["phone"] = employee_phone($b["phone"]);
+  } catch (InvalidArgumentException $e) { err($e->getMessage(), 422); }
   positions_ensure($pdo);
   $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
   $hash = password_hash($b["password"], PASSWORD_BCRYPT);
@@ -47,8 +69,9 @@ if ($a === "change-password" && $m === "POST") {
   $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=?");
   $stmt->execute([$b["employee_id"]]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
-  if (!$u || !password_verify($b["old_password"] ?? "", $u["password_hash"])) err("Mat khau cu sai", 401);
-  if (strlen($b["new_password"] ?? "") < 6) err("Mat khau moi it nhat 6 ky tu");
+  if (!$u || !password_verify(is_string($b["old_password"] ?? null) ? $b["old_password"] : "", $u["password_hash"])) err("Mat khau cu sai", 401);
+  if (!is_string($b["new_password"] ?? null) || strlen($b["new_password"]) < 6) err("Mat khau moi it nhat 6 ky tu");
+  if ($b["new_password"] === ($b["old_password"] ?? null)) err("Mat khau moi phai khac mat khau cu");
   $new = password_hash($b["new_password"], PASSWORD_BCRYPT);
   $pdo->prepare("UPDATE employees SET password_hash=? WHERE id=?")->execute([$new, $b["employee_id"]]);
   // Doi mat khau xong: thu hoi cac phien dang nhap KHAC cua tai khoan (giu phien hien tai).
@@ -74,7 +97,16 @@ if ($a === "forgot-password" && $m === "POST") {
     $channel = "sms";
   }
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
-  if (!$u) err(($channel === "email" ? "Email" : "So dien thoai") . " khong ton tai trong he thong", 404);
+  if (!$u) {
+    // Khong tiet lo email/SDT co ton tai hay khong: tra cung mot dang response nhu khi gui that.
+    out(["sent" => true, "channel" => $channel, $channel === "email" ? "mail_ok" : "sms_ok" => false]);
+  }
+  // Chong spam: toi da 5 ma moi gio cho mot tai khoan (ke ca ma chua dung).
+  $st = $pdo->prepare("SELECT COUNT(*) FROM password_resets WHERE (email=? OR phone=?) AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+  $st->execute([$u["email"], $u["phone"]]);
+  if ((int)$st->fetchColumn() >= 5) {
+    out(["sent" => true, "channel" => $channel, $channel === "email" ? "mail_ok" : "sms_ok" => false]);
+  }
   $code = str_pad((string)random_int(0, 999999), 6, "0", STR_PAD_LEFT);
   $pdo->prepare("UPDATE password_resets SET used=1 WHERE (email=? OR phone=?) AND used=0")->execute([$u["email"], $u["phone"]]);
   // Chi luu HASH cua ma trong DB (ma tho chi ton tai trong email/SMS da gui).

@@ -50,8 +50,8 @@ if ($a === "create" && $m === "POST") {
   $me = require_role($pdo, ["admin", "manager"]);
   announcements_ensure($pdo);
   $b = body();
-  $title = trim($b["title"] ?? "");
-  $content = trim($b["content"] ?? "");
+  $title = is_string($b["title"] ?? null) ? trim($b["title"]) : "";
+  $content = is_string($b["content"] ?? null) ? trim($b["content"]) : "";
   if ($title === "" || $content === "") err("Thieu tieu de hoac noi dung");
   if (strlen($title) > 255) err("Tieu de toi da 255 ky tu", 422);
   if (strlen($content) > 10000) err("Noi dung qua dai", 422);

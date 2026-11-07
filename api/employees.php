@@ -37,7 +37,7 @@ if ($a === "list" && $m === "GET") {
   ];
   if (!isset($orders[$sort])) err("sort khong hop le");
 
-  $s = "%" . $search . "%";
+  $s = "%" . addcslashes($search, '%_\\') . "%"; // escape ky tu dac biet cua LIKE
   // FULLTEXT needs migration 001; fall back to LIKE for short words/missing index.
   $useFulltext = false;
   if ($searchMode === "fulltext" && trim($search) !== "" && strlen(trim($search)) >= 3) {
@@ -94,8 +94,14 @@ if ($a === "create" && $m === "POST") {
   $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
   if (empty($b["username"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/full_name/email");
-  if (isset($b["base_salary"]) && (!is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
-  if (isset($b["password"]) && strlen((string)$b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
+  if (isset($b["base_salary"]) && (!is_scalar($b["base_salary"]) || !is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
+  if (isset($b["password"]) && (!is_string($b["password"]) || strlen($b["password"]) < 6)) err("Mat khau it nhat 6 ky tu");
+  try {
+    $b["username"] = employee_username($b["username"]);
+    $b["full_name"] = employee_name($b["full_name"]);
+    $b["email"] = employee_email($b["email"]);
+    if (isset($b["phone"]) && $b["phone"] !== null && $b["phone"] !== "") $b["phone"] = employee_phone($b["phone"]);
+  } catch (InvalidArgumentException $e) { err($e->getMessage(), 422); }
   // Manager chi tao nhan vien thuong cho phong minh.
   if ($me["role"] === "manager") {
     $b["department_id"] = (int)$me["department_id"];
@@ -103,12 +109,20 @@ if ($a === "create" && $m === "POST") {
   }
   positions_ensure($pdo);
   $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
-  $hash = password_hash($b["password"] ?? "123456", PASSWORD_BCRYPT);
+  // Khong con mat khau mac dinh "123456": thieu mat khau thi sinh ngau nhien, tra ve 1 lan.
+  $tempPw = null;
+  if (empty($b["password"])) { $tempPw = bin2hex(random_bytes(8)); $b["password"] = $tempPw; }
+  $hash = password_hash($b["password"], PASSWORD_BCRYPT);
   try {
     $stmt = $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,role_id,department_id,position_id) VALUES(?,?,?,?,?,?,?,?,?)");
     $stmt->execute([$b["username"], $hash, $b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, $b["role_id"] ?? 3, $b["department_id"] ?? null, $posId]);
-    out(["id" => $pdo->lastInsertId()]);
-  } catch (Exception $e) { err("Trung username/email", 409); }
+    $res = ["id" => $pdo->lastInsertId()];
+    if ($tempPw !== null) $res["temporary_password"] = $tempPw;
+    out($res);
+  } catch (Exception $e) {
+    if ($e instanceof PDOException && $e->getCode() === "23000") err("Trung username/email", 409);
+    err("Khong tao duoc nhan vien", 500);
+  }
 }
 if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   $b = body(); $id = (int)($b["id"] ?? $_GET["id"] ?? 0);
@@ -132,6 +146,12 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
       && (int)$b['department_id'] !== (int)$me["department_id"]) {
     err("Chi duoc giu nhan vien trong phong ban minh", 403);
   }
+  // Manager chi sua ho so nhan vien THUONG (khong sua manager/admin khac cung phong).
+  if ($me["role"] === "manager" && $reqId !== $id) {
+    $rq = $pdo->prepare("SELECT LOWER(name) AS role FROM roles WHERE id=?");
+    $rq->execute([$cur["role_id"]]);
+    if ((($rq->fetch(PDO::FETCH_ASSOC) ?: [])["role"] ?? "") !== "staff") err("Chi sua duoc ho so nhan vien thuong", 403);
+  }
   try {
     $name = employee_name($b["full_name"] ?? $cur["full_name"]);
     if ($isManager) {
@@ -142,6 +162,9 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
         ? employee_phone($b['phone']) : $cur['phone'];
       $dept = array_key_exists('department_id', $b) ? employee_optional_fk($pdo, $b['department_id'], 'departments') : $cur['department_id'];
       $pos = array_key_exists('position_id', $b) ? employee_optional_fk($pdo, $b['position_id'], 'positions') : $cur['position_id'];
+      // Client gui 0 (placeholder "khong chi dinh") thi giu nguyen gia tri cu, khong xoa phong/chuc vu.
+      if (array_key_exists('department_id', $b) && (int)($b['department_id'] ?? 0) === 0) $dept = $cur['department_id'];
+      if (array_key_exists('position_id', $b) && (int)($b['position_id'] ?? 0) === 0) $pos = $cur['position_id'];
       // Chuc vu phai thuoc phong ban (sau khi doi) cua nhan vien, hoac la chuc vu dung chung.
       if (array_key_exists('position_id', $b) || array_key_exists('department_id', $b)) {
         positions_ensure($pdo);
@@ -170,6 +193,13 @@ if ($a === "upload-avatar" && $m === "POST") {
   $reqRole = strtolower(($stmt->fetch(PDO::FETCH_ASSOC) ?: [])["name"] ?? "");
   $isAdmin = in_array($reqRole, ["admin", "manager"]);
   if ($reqId !== $empId && !$isAdmin) err("Khong co quyen", 403);
+  // Manager up avatar ho thi cung chi trong phong minh.
+  if ($reqRole === "manager" && $reqId !== $empId) {
+    $dq = $pdo->prepare("SELECT department_id FROM employees WHERE id IN (?,?)");
+    $dq->execute([$reqId, $empId]);
+    $rows = $dq->fetchAll(PDO::FETCH_COLUMN);
+    if (count($rows) === 2 && (int)$rows[0] !== (int)$rows[1]) err("Chi up duoc avatar cho nhan vien phong minh", 403);
+  }
   if (!isset($_FILES["avatar"]) || $_FILES["avatar"]["error"] !== UPLOAD_ERR_OK) err("Chua chon anh");
   $f = $_FILES["avatar"];
   $mime = (new finfo(FILEINFO_MIME_TYPE))->file($f["tmp_name"]);
@@ -178,11 +208,19 @@ if ($a === "upload-avatar" && $m === "POST") {
   $ext = $extensions[$mime];
   if ($f["size"] > 2 * 1024 * 1024) err("Anh toi da 2MB");
   $dir = __DIR__ . "/uploads/avatars";
-  if (!is_dir($dir)) mkdir($dir, 0777, true);
+  if (!is_dir($dir)) mkdir($dir, 0755, true);
   $name = "emp_" . $empId . "_" . bin2hex(random_bytes(8)) . "." . $ext;
   if (!move_uploaded_file($f["tmp_name"], $dir . "/" . $name)) err("Luu anh that bai", 500);
   $url = "uploads/avatars/" . $name;
+  $old = $pdo->prepare("SELECT avatar_url FROM employees WHERE id=?");
+  $old->execute([$empId]);
+  $oldUrl = ($old->fetch(PDO::FETCH_ASSOC) ?: [])["avatar_url"] ?? null;
   $pdo->prepare("UPDATE employees SET avatar_url=? WHERE id=?")->execute([$url, $empId]);
+  // Xoa file avatar cu cua chinh nhan vien nay (tranh rac dia).
+  if ($oldUrl && $oldUrl !== $url && strpos($oldUrl, "uploads/avatars/") === 0) {
+    $oldPath = __DIR__ . "/" . $oldUrl;
+    if (is_file($oldPath)) @unlink($oldPath);
+  }
   out(["avatar_url" => $url]);
 }
 if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
@@ -214,7 +252,9 @@ if ($a === "delete" && ($m === "DELETE" || $m === "POST")) {
   if (!$id) err("Thieu id");
   // Khong cho tu xoa chinh tai khoan dang dang nhap (se tu khoa minh ra khoi he thong).
   if ((int)$id === (int)$me["id"]) err("Khong the xoa chinh tai khoan dang dang nhap", 400);
-  $pdo->prepare("DELETE FROM employees WHERE id=?")->execute([$id]);
+  $del = $pdo->prepare("DELETE FROM employees WHERE id=?");
+  $del->execute([(int)$id]);
+  if ($del->rowCount() === 0) err("Khong tim thay nhan vien", 404);
   out(["deleted" => true]);
 }
 if ($a === "departments" && $m === "GET") {

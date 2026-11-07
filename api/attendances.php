@@ -12,7 +12,12 @@ if ($a === "checkin" && $m === "POST") {
   try {
     $pdo->prepare("INSERT INTO attendances(employee_id,work_date,check_in_time,status) VALUES(?,?,?,?)")->execute([$emp, $today, $now, $late]);
     out(["check_in" => $now, "status" => $late]);
-  } catch (Exception $e) { err("Hom nay da check-in roi", 409); }
+  } catch (PDOException $e) {
+    // Chi loi trung khoa (da check-in) moi la 409; loi DB khac phai lo ra dung ban chat.
+    if ($e->getCode() === "23000") err("Hom nay da check-in roi", 409);
+    error_log("checkin failed: " . $e->getMessage());
+    err("Khong check-in duoc, vui long thu lai", 500);
+  }
 }
 if ($a === "checkout" && $m === "POST") {
   $me = require_login($pdo);
@@ -21,7 +26,12 @@ if ($a === "checkout" && $m === "POST") {
   // Chi check-out duoc khi da check-in va chua check-out; kiem tra so dong cap nhat thay vi bao success mu.
   $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");
   $stmt->execute([$now, $emp, $today]);
-  if ($stmt->rowCount() === 0) err("Chua check-in hom nay hoac da check-out roi", 409);
+  if ($stmt->rowCount() === 0) {
+    // Quen checkout hom qua: dong not phien dang mo cua HOM QUA (khong dong ho phien cu hon).
+    $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=? WHERE employee_id=? AND check_out_time IS NULL AND work_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) ORDER BY work_date DESC, id DESC LIMIT 1");
+    $stmt->execute([$now, $emp]);
+    if ($stmt->rowCount() === 0) err("Chua check-in hom nay hoac da check-out roi", 409);
+  }
   out(["check_out" => $now]);
 }
 if ($a === "history" && $m === "GET") {
