@@ -42,7 +42,7 @@ Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_
 - Cập nhật 08/11/2026 (sau rà soát toàn diện + bộ test API tự động 93 trường hợp): admin không còn tự xoá được tài khoản của chính mình; tạo bảng lương chặn số âm và sếp phòng chỉ tạo lương cho nhân viên phòng mình; mã đặt lại mật khẩu lưu dạng hash sha256, nhập sai 5 lần bị huỷ, đặt lại/đổi mật khẩu xong sẽ thu hồi các phiên đăng nhập khác; đăng ký tài khoản bắt mật khẩu ≥ 6 ký tự và lương cơ bản hợp lệ; sửa file dump để tài khoản `admin` đăng nhập được bằng mật khẩu demo như tài liệu ghi.
 
 - Đăng nhập cấp **token ngẫu nhiên thật** (server lưu hash trong bảng `api_tokens`, hạn 7 ngày); phân quyền lấy danh tính từ token — client không tự khai `requester_id` được nữa. Xem `api/auth_guard.php`.
-- Tạo/xoá nhân viên, duyệt nghỉ phép, tạo bảng lương: bắt buộc token admin/manager.
+- Tạo/xoá nhân viên, duyệt nghỉ phép: bắt buộc token admin/manager. (Chức năng tạo bảng lương đã gỡ bỏ ngày 08/11/2026 theo yêu cầu — bảng lương chỉ còn để xem.)
 - Quên mật khẩu: chế độ debug trả mã trong response đã **tắt** (`DEBUG_SHOW_CODE` / `SMS_DEBUG_SHOW_CODE` = false). Muốn gửi mail thật phải điền SMTP thật trong `api/mail_config.php`; token SMS cũ trong `api/sms_config.php` đã bị lộ trên GitHub — phải thu hồi và thay token mới.
 - Endpoint `reset-password-by-phone` (đường tắt qua Firebase cũ) đã **xoá**.
 

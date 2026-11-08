@@ -97,33 +97,6 @@ if ($a === "salary-list" && $m === "GET") {
   $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
-if ($a === "salary-create" && $m === "POST") {
-  $me = require_role($pdo, ["admin", "manager"]);
-  $b = body();
-  if (empty($b["employee_id"]) || empty($b["month"]) || empty($b["year"])) err("Thieu employee_id/month/year");
-  $month = (int)$b["month"]; $year = (int)$b["year"];
-  if ($month < 1 || $month > 12) err("Thang phai tu 1 den 12", 422);
-  if ($year < 2000 || $year > 2100) err("Nam khong hop le", 422);
-  // Moi khoan tien phai la so >= 0 (truoc day nhap so am van luu, ra luong thuc linh am).
-  $money = [];
-  foreach (["base_salary", "allowance", "overtime_pay", "bonus", "deduction"] as $k) {
-    $v = $b[$k] ?? 0;
-    if (!is_scalar($v) || !is_numeric($v) || (float)$v < 0) err("Khoan $k phai la so khong am", 422);
-    $money[$k] = (float)$v;
-  }
-  // Sep phong chi duoc tao luong cho nhan vien phong minh (nhat quan phan quyen theo phong).
-  if ($me["role"] === "manager") {
-    $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
-    $st->execute([(int)$b["employee_id"]]);
-    $tgt = $st->fetch(PDO::FETCH_ASSOC);
-    if (!$tgt) err("Khong tim thay nhan vien", 404);
-    if ((int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi duoc tao luong cho nhan vien phong minh", 403);
-  }
-  $net = $money["base_salary"] + $money["allowance"] + $money["overtime_pay"] + $money["bonus"] - $money["deduction"];
-  $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,net_salary) VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE base_salary=VALUES(base_salary),allowance=VALUES(allowance),overtime_pay=VALUES(overtime_pay),bonus=VALUES(bonus),deduction=VALUES(deduction),net_salary=VALUES(net_salary)")
-    ->execute([(int)$b["employee_id"], $month, $year, $money["base_salary"], $money["allowance"], $money["overtime_pay"], $money["bonus"], $money["deduction"], $net]);
-  out(["net_salary" => $net]);
-}
 if ($a === "dashboard" && $m === "GET") {
   $me = require_login($pdo);
   if ($me["role"] === "admin") {

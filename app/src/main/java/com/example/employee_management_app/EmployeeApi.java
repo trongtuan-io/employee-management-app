@@ -90,9 +90,6 @@ public interface EmployeeApi {
     @GET("leaves_salaries.php?action=salary-list")
     Call<SalaryListResponse> getSalaries(@Query("employee_id") int employeeId, @Query("year") int year);
 
-    @POST("leaves_salaries.php?action=salary-create")
-    Call<ApiResponse> createSalary(@Body SalaryCreateRequest request);
-
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")
     Call<AttendanceTodayResponse> getAttendanceToday();

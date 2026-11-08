@@ -40,49 +40,6 @@
             android:dividerHeight="1dp"
             android:padding="6dp" />
 
-        <LinearLayout
-            android:id="@+id/layoutSalaryForm"
-            style="@style/AppCard"
-            android:layout_marginTop="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tạo bảng lương (admin/manager)"
-                android:textColor="@color/text_primary"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Mã nhân viên (id)" />
-            <EditText android:id="@+id/edtSalEmpId" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="Ví dụ: 5" android:inputType="number" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Tháng" />
-            <EditText android:id="@+id/edtSalMonth" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="1 - 12" android:inputType="number" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Năm" />
-            <EditText android:id="@+id/edtSalYear" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="Ví dụ: 2026" android:inputType="number" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Lương cơ bản" />
-            <EditText android:id="@+id/edtSalBase" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="0" android:inputType="numberDecimal" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Phụ cấp" />
-            <EditText android:id="@+id/edtSalAllowance" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="0" android:inputType="numberDecimal" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Tiền tăng ca" />
-            <EditText android:id="@+id/edtSalOvertime" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="0" android:inputType="numberDecimal" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Thưởng" />
-            <EditText android:id="@+id/edtSalBonus" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="0" android:inputType="numberDecimal" />
-
-            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Khấu trừ" />
-            <EditText android:id="@+id/edtSalDeduction" style="@style/AppInput" android:layout_marginTop="8dp" android:hint="0" android:inputType="numberDecimal" />
-
-            <Button
-                android:id="@+id/btnCreateSalary"
-                style="@style/AppButtonPrimary"
-                android:layout_marginTop="20dp"
-                android:text="Lưu bảng lương" />
-        </LinearLayout>
     </LinearLayout>
 </ScrollView>
 

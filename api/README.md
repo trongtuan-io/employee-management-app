@@ -11,7 +11,7 @@ Chạy trên XAMPP, kết nối MySQL `employee_management` (xem `../database/`)
 - `auth.php` (Người 1): `?action=login | register | change-password`
 - `employees.php` (Người 2): `?action=list | detail | create | update | delete | departments | positions`
 - `attendances.php` (Người 3): `?action=checkin | checkout | history | report`
-- `leaves_salaries.php` (Người 4): `?action=leave-create | leave-list | leave-approve | salary-list | salary-create | dashboard`
+- `leaves_salaries.php` (Người 4): `?action=leave-create | leave-list | leave-approve | salary-list | dashboard` (salary-create đã gỡ bỏ 08/11/2026)
 
 ## Test nhanh (đã verify 2026-10-02)
 - Đăng ký: `POST auth.php?action=register {"username":"admin","password":"123456","full_name":"Admin","email":"admin@cty.vn"}`
