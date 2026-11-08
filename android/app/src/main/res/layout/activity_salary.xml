@@ -30,6 +30,66 @@
             android:layout_marginTop="4dp"
             android:text="Các tháng lương trong năm nay" />
 
+        <LinearLayout
+            android:id="@+id/layoutSalaryAdmin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/AppLabel"
+                android:text="Xem lương của nhân viên (Quản lý)" />
+
+            <Spinner
+                android:id="@+id/spSalaryEmployee"
+                style="@style/AppSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                style="@style/AppLabel"
+                android:layout_marginTop="12dp"
+                android:text="Tính lương tự động theo ngày công" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etSalaryMonth"
+                    style="@style/AppInput"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:hint="Tháng"
+                    android:inputType="number" />
+
+                <EditText
+                    android:id="@+id/etSalaryYear"
+                    style="@style/AppInput"
+                    android:layout_width="0dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:hint="Năm"
+                    android:inputType="number" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnGenerateSalary"
+                style="@style/AppButtonPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Tính lương tháng này" />
+
+            <TextView
+                style="@style/AppSubtitle"
+                android:layout_marginTop="8dp"
+                android:text="Lương = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Chạm vào một dòng lương để sửa thưởng/phụ cấp hoặc chốt." />
+        </LinearLayout>
+
         <ListView
             android:id="@+id/lvSalaries"
             android:layout_width="match_parent"

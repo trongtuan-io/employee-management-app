@@ -90,6 +90,18 @@ public interface EmployeeApi {
     @GET("leaves_salaries.php?action=salary-list")
     Call<SalaryListResponse> getSalaries(@Query("employee_id") int employeeId, @Query("year") int year);
 
+    // Tinh luong tu dong theo ngay cong cho ca thang (chi admin/manager)
+    @POST("leaves_salaries.php?action=salary-generate")
+    Call<SalaryGenerateResponse> generateSalaries(@Body SalaryGenerateRequest request);
+
+    // Sua phu cap/tang ca/thuong/khau tru cua bang luong nhap (chi admin/manager)
+    @POST("leaves_salaries.php?action=salary-adjust")
+    Call<ApiResponse> adjustSalary(@Body SalaryAdjustRequest request);
+
+    // Chot 1 dong bang luong (chi admin/manager)
+    @POST("leaves_salaries.php?action=salary-finalize")
+    Call<ApiResponse> finalizeSalary(@Body SalaryFinalizeRequest request);
+
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")
     Call<AttendanceTodayResponse> getAttendanceToday();

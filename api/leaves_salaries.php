@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/auth_guard.php";
+require_once __DIR__ . "/salary_calc.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "leave-create" && $m === "POST") {
@@ -96,6 +97,110 @@ if ($a === "salary-list" && $m === "GET") {
   $stmt = $pdo->prepare("SELECT s.*, e.full_name FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=? ORDER BY s.month DESC");
   $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+// Tinh luong TU DONG theo ngay cong cho ca thang (admin: toan cong ty, manager: phong minh).
+// Sinh bang luong NHAP: dong da CHOT (finalized=1) khong bi ghi de; phu cap/tang ca/
+// thuong/khau tru cua dong cu duoc GIU NGUYEN, chi tinh lai phan luong theo cong va thuc linh.
+if ($a === "salary-generate" && $m === "POST") {
+  $me = require_role($pdo, ["admin", "manager"]);
+  salary_ensure_columns($pdo);
+  $b = body();
+  $month = (int)($b["month"] ?? date("n")); $year = (int)($b["year"] ?? date("Y"));
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $std = isset($b["standard_days"]) && is_numeric($b["standard_days"]) ? (int)$b["standard_days"] : salary_standard_days($year, $month);
+  if ($std <= 0 || $std > 31) err("Ngay cong chuan khong hop le", 422);
+  $monthStart = sprintf("%04d-%02d-01", $year, $month);
+  $monthEnd = date("Y-m-t", strtotime($monthStart));
+  if ($me["role"] === "manager") {
+    $emps = $pdo->prepare("SELECT id, full_name, base_salary FROM employees WHERE status=1 AND department_id=? ORDER BY id");
+    $emps->execute([(int)$me["department_id"]]);
+  } else {
+    $emps = $pdo->query("SELECT id, full_name, base_salary FROM employees WHERE status=1 ORDER BY id");
+  }
+  $attStmt = $pdo->prepare("SELECT COUNT(*) FROM attendances WHERE employee_id=? AND work_date BETWEEN ? AND ? AND check_in_time IS NOT NULL");
+  $leaveStmt = $pdo->prepare("SELECT start_date, end_date FROM leave_requests WHERE employee_id=? AND status='approved' AND start_date<=? AND end_date>=?");
+  $findStmt = $pdo->prepare("SELECT * FROM salaries WHERE employee_id=? AND month=? AND year=?");
+  $items = []; $generated = 0; $skipped = 0;
+  foreach ($emps->fetchAll(PDO::FETCH_ASSOC) as $e) {
+    $empId = (int)$e["id"];
+    $attStmt->execute([$empId, $monthStart, $monthEnd]);
+    $attDays = (int)$attStmt->fetchColumn();
+    $leaveStmt->execute([$empId, $monthEnd, $monthStart]);
+    $leaveDays = 0;
+    foreach ($leaveStmt->fetchAll(PDO::FETCH_ASSOC) as $lv) {
+      $leaveDays += salary_leave_workdays($lv["start_date"], $lv["end_date"], $monthStart, $monthEnd);
+    }
+    $paidDays = min($std, $attDays + $leaveDays);
+    $earned = salary_earned_base($e["base_salary"], $paidDays, $std);
+    $findStmt->execute([$empId, $month, $year]);
+    $old = $findStmt->fetch(PDO::FETCH_ASSOC);
+    if ($old && (int)$old["finalized"] === 1) { $skipped++; continue; }
+    if ($old) {
+      $net = salary_net($earned, $old["allowance"], $old["overtime_pay"], $old["bonus"], $old["deduction"]);
+      $pdo->prepare("UPDATE salaries SET base_salary=?, work_days=?, standard_days=?, net_salary=? WHERE id=?")
+        ->execute([$earned, $paidDays, $std, $net, (int)$old["id"]]);
+    } else {
+      $net = $earned;
+      $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,net_salary,work_days,standard_days,finalized) VALUES(?,?,?, ?,0,0,0,0, ?,?,?,0)")
+        ->execute([$empId, $month, $year, $earned, $net, $paidDays, $std]);
+    }
+    $generated++;
+    $items[] = ["employee_id" => $empId, "full_name" => $e["full_name"], "attendance_days" => $attDays,
+      "leave_days" => $leaveDays, "work_days" => $paidDays, "standard_days" => $std,
+      "base_salary" => $earned, "net_salary" => $net];
+  }
+  out(["month" => $month, "year" => $year, "standard_days" => $std,
+    "generated" => $generated, "skipped_finalized" => $skipped, "items" => $items]);
+}
+// Quan ly sua cac khoan cong/tru cua 1 dong bang luong NHAP (thuong, phu cap, tang ca, khau tru).
+if ($a === "salary-adjust" && $m === "POST") {
+  $me = require_role($pdo, ["admin", "manager"]);
+  salary_ensure_columns($pdo);
+  $b = body();
+  if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
+  $stmt = $pdo->prepare("SELECT s.*, e.department_id FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.id=?");
+  $stmt->execute([(int)$b["id"]]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row) err("Khong tim thay bang luong", 404);
+  if ($me["role"] === "manager" && (int)$row["department_id"] !== (int)$me["department_id"]) err("Chi sua duoc bang luong nhan vien phong minh", 403);
+  if ((int)$row["finalized"] === 1) err("Bang luong da chot, khong sua duoc", 409);
+  $fields = ["allowance", "overtime_pay", "bonus", "deduction"];
+  foreach ($fields as $f) {
+    if (isset($b[$f])) {
+      if (!is_numeric($b[$f]) || (float)$b[$f] < 0) err("So tien $f khong hop le", 422);
+      $row[$f] = (float)$b[$f];
+    }
+  }
+  $net = salary_net($row["base_salary"], $row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"]);
+  $pdo->prepare("UPDATE salaries SET allowance=?, overtime_pay=?, bonus=?, deduction=?, net_salary=? WHERE id=?")
+    ->execute([$row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"], $net, (int)$row["id"]]);
+  out(["id" => (int)$row["id"], "net_salary" => $net]);
+}
+// Chot bang luong: theo tung dong (id) hoac ca thang (month+year, trong pham vi vai tro).
+if ($a === "salary-finalize" && $m === "POST") {
+  $me = require_role($pdo, ["admin", "manager"]);
+  salary_ensure_columns($pdo);
+  $b = body();
+  if (!empty($b["id"]) && is_numeric($b["id"])) {
+    $stmt = $pdo->prepare("SELECT e.department_id FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.id=?");
+    $stmt->execute([(int)$b["id"]]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) err("Khong tim thay bang luong", 404);
+    if ($me["role"] === "manager" && (int)$row["department_id"] !== (int)$me["department_id"]) err("Chi chot duoc bang luong nhan vien phong minh", 403);
+    $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE id=?");
+    $upd->execute([(int)$b["id"]]);
+    out(["id" => (int)$b["id"], "finalized" => 1]);
+  }
+  $month = (int)($b["month"] ?? 0); $year = (int)($b["year"] ?? 0);
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Can id hoac month/year hop le", 422);
+  if ($me["role"] === "manager") {
+    $upd = $pdo->prepare("UPDATE salaries s JOIN employees e ON s.employee_id=e.id SET s.finalized=1 WHERE s.month=? AND s.year=? AND e.department_id=?");
+    $upd->execute([$month, $year, (int)$me["department_id"]]);
+  } else {
+    $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE month=? AND year=?");
+    $upd->execute([$month, $year]);
+  }
+  out(["month" => $month, "year" => $year, "finalized_count" => $upd->rowCount()]);
 }
 if ($a === "dashboard" && $m === "GET") {
   $me = require_login($pdo);
