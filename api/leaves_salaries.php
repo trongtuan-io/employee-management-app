@@ -130,6 +130,18 @@ if ($a === "salary-list" && $m === "GET") {
   $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
+// Bang luong TONG HOP toan cong ty theo thang: moi nhan vien dang hoat dong
+// mot dong (kem dong luong cua thang neu da tinh) — Ke toan mo ra xem het
+// mot luot, khoi chon tung nguoi. Chi Admin + phong Ke toan (nhom soan nhap).
+if ($a === "salary-overview" && $m === "GET") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_columns($pdo);
+  $month = (int)($_GET["month"] ?? date("n")); $year = (int)($_GET["year"] ?? date("Y"));
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $stmt = $pdo->prepare("SELECT e.id AS employee_id, e.full_name, d.name AS dept_name, e.base_salary AS full_base_salary, s.id AS salary_id, s.base_salary, s.allowance, s.overtime_pay, s.bonus, s.deduction, s.net_salary, s.work_days, s.standard_days, s.finalized FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN salaries s ON s.employee_id=e.id AND s.month=? AND s.year=? WHERE e.status=1 ORDER BY d.name, e.full_name");
+  $stmt->execute([$month, $year]);
+  out($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
 // Tinh luong TU DONG theo ngay cong cho ca thang: Admin + phong Ke toan
 // (soan nhap), pham vi TOAN CONG TY.
 // Sinh bang luong NHAP: dong da CHOT (finalized=1) khong bi ghi de; phu cap/tang ca/

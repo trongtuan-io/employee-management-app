@@ -96,6 +96,10 @@ public interface EmployeeApi {
     @GET("leaves_salaries.php?action=salary-list")
     Call<SalaryListResponse> getSalaries(@Query("employee_id") int employeeId, @Query("year") int year);
 
+    // Bang luong tong hop toan cong ty theo thang (chi Admin + phong Ke toan)
+    @GET("leaves_salaries.php?action=salary-overview")
+    Call<SalaryOverviewResponse> getSalaryOverview(@Query("month") int month, @Query("year") int year);
+
     // Tinh luong tu dong theo ngay cong cho ca thang (chi admin/manager)
     @POST("leaves_salaries.php?action=salary-generate")
     Call<SalaryGenerateResponse> generateSalaries(@Body SalaryGenerateRequest request);

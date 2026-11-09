@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="20dp"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            style="@style/AppTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Bảng lương toàn công ty"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/btnOverviewBack"
+            style="@style/AppButtonSecondary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Quay lại" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/etOverviewMonth"
+            style="@style/AppInput"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:hint="Tháng"
+            android:inputType="number" />
+
+        <EditText
+            android:id="@+id/etOverviewYear"
+            style="@style/AppInput"
+            android:layout_width="0dp"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:hint="Năm"
+            android:inputType="number" />
+
+        <Button
+            android:id="@+id/btnOverviewLoad"
+            style="@style/AppButtonPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="Xem" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvOverviewSummary"
+        style="@style/AppSubtitle"
+        android:layout_marginTop="12dp"
+        android:text="Mỗi nhân viên một dòng. Chạm vào dòng đã tính lương để xem chi tiết, sửa các khoản hoặc chốt." />
+
+    <ListView
+        android:id="@+id/lvOverview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:dividerHeight="1dp" />
+
+    <TextView
+        android:id="@+id/tvOverviewTotal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+</LinearLayout>

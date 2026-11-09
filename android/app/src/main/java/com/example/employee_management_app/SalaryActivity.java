@@ -80,6 +80,14 @@ public class SalaryActivity extends AppCompatActivity {
         if (canManage) {
             findViewById(R.id.layoutSalaryAdmin).setVisibility(View.VISIBLE);
             findViewById(R.id.btnGenerateSalary).setOnClickListener(v -> generateSalaries());
+            findViewById(R.id.btnSalaryOverview).setOnClickListener(v -> {
+                Intent oi = new Intent(this, SalaryOverviewActivity.class);
+                try {
+                    oi.putExtra("month", Integer.parseInt(etMonth.getText().toString().trim()));
+                    oi.putExtra("year", Integer.parseInt(etYear.getText().toString().trim()));
+                } catch (NumberFormatException ignored) { }
+                startActivity(oi);
+            });
             setupEmployeeSpinner();
         }
 
