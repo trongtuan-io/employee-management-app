@@ -94,6 +94,30 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Khoi nghiep vu theo phong ban (chi hien voi quan ly / phong chuyen mon) -->
+        <LinearLayout
+            android:id="@+id/layoutDeptSection"
+            style="@style/AppCard"
+            android:layout_marginTop="18dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvDeptTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDeptDesc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

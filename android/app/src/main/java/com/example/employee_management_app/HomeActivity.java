@@ -47,7 +47,11 @@ public class HomeActivity extends AppCompatActivity {
         newsAdapter = new NewsAdapter();
         lvNews.setAdapter(newsAdapter);
 
-        tvHomeRole.setText(roleToVietnamese(TokenManager.getInstance(this).getRole()));
+        String myRole = TokenManager.getInstance(this).getRole();
+        String myDept = TokenManager.getInstance(this).getDepartmentName();
+        tvHomeRole.setText(roleToVietnamese(myRole)
+                + (myDept != null && !myDept.isEmpty() ? " · " + deptToVietnamese(myDept) : ""));
+        setupDeptSection(myRole, myDept);
 
         // Mac dinh khoa ca 2 nut cham cong; renderToday() se mo dung nut khi biet trang thai.
         btnHomeCheckIn.setEnabled(false);
@@ -65,6 +69,56 @@ public class HomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadToday();
+    }
+
+    // Khoi nghiep vu theo phong: Trang chu chi hien khoi dung phong/vai tro cua
+    // nguoi dang nhap (Ke toan thay khoi luong, Nhan su thay khoi ho so...).
+    // Day chi la hien thi - API tu kiem tra quyen that o moi thao tac.
+    private void setupDeptSection(String role, String dept) {
+        View section = findViewById(R.id.layoutDeptSection);
+        TextView tvTitle = findViewById(R.id.tvDeptTitle);
+        TextView tvDesc = findViewById(R.id.tvDeptDesc);
+        String title = null, desc = null;
+        boolean isAdmin = "admin".equalsIgnoreCase(role);
+        boolean isManager = "manager".equalsIgnoreCase(role);
+        if (isAdmin) {
+            title = "Quản trị hệ thống";
+            desc = "Toàn quyền: phòng ban, tài khoản, bảng lương và dữ liệu toàn công ty.";
+        } else if ("ACC".equalsIgnoreCase(dept)) {
+            title = "Phòng Kế toán";
+            desc = isManager
+                    ? "Tính lương, điều chỉnh và chốt bảng lương toàn công ty tại tab Bảng lương."
+                    : "Soạn bảng lương nháp và điều chỉnh tại tab Bảng lương; chốt lương do Kế toán trưởng thực hiện.";
+        } else if ("HR".equalsIgnoreCase(dept)) {
+            title = "Phòng Nhân sự";
+            desc = isManager
+                    ? "Quản lý hồ sơ nhân viên toàn công ty, tạo/import nhân viên và đặt lương cơ bản."
+                    : "Xem danh sách nhân viên toàn công ty và tổng hợp chấm công tại tab Nhân viên.";
+        } else if (isManager) {
+            title = "Quản lý phòng ban";
+            desc = "Quản lý nhân viên, duyệt nghỉ và báo cáo chấm công của phòng mình tại các tab Tổng quan, Nhân viên, Duyệt phép.";
+        }
+        if (title == null) {
+            section.setVisibility(View.GONE);
+        } else {
+            section.setVisibility(View.VISIBLE);
+            tvTitle.setText(title);
+            tvDesc.setText(desc);
+        }
+    }
+
+    private String deptToVietnamese(String dept) {
+        if (dept == null) return "";
+        switch (dept.toUpperCase()) {
+            case "IT": return "Phòng IT";
+            case "HR": return "Phòng Nhân sự";
+            case "ACC": return "Phòng Kế toán";
+            case "SALES": return "Phòng Kinh doanh";
+            case "MKT": return "Phòng Marketing";
+            case "OPS": return "Phòng Hành chính";
+            case "CS": return "Phòng CSKH";
+            default: return "Phòng " + dept;
+        }
     }
 
     private void loadProfile() {

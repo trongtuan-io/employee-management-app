@@ -61,9 +61,10 @@ public class LoginActivity extends AppCompatActivity {
                         LoginResponse loginResponse = response.body();
                         String role = loginResponse.getData().getRole() != null
                                 ? loginResponse.getData().getRole() : "staff";
-                        // Luu ca phien trong mot lan ghi (token + id + role).
+                        // Luu ca phien trong mot lan ghi (token + id + role + phong ban).
                         TokenManager.getInstance(LoginActivity.this).saveSession(
-                                loginResponse.getToken(), loginResponse.getData().getId(), role);
+                                loginResponse.getToken(), loginResponse.getData().getId(), role,
+                                loginResponse.getData().getDepartmentName());
                         boolean isManagerRole = role.equalsIgnoreCase("admin") || role.equalsIgnoreCase("manager");
                         Toast.makeText(LoginActivity.this,
                                 isManagerRole ? "Chào mừng Quản trị viên!" : "Chào mừng Nhân viên!",

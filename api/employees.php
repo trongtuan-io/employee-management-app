@@ -7,12 +7,20 @@ positions_ensure($pdo); // Tu ap dung migration 003 + seed/backfill chuc vu (chi
 $a = $_GET["action"] ?? "list"; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "list" && $m === "GET") {
-  $me = require_role($pdo, ["admin", "manager"]); // Danh sach kem email/SDT/luong: chi quan ly xem
+  // Danh sach nhan vien theo Role x Phong:
+  // - admin + phong HR (ca manager lan staff): xem TOAN cong ty.
+  // - phong Ke toan (ACC): xem toan cong ty nhung RUT GON (an email/SDT/luong co ban
+  //   trong danh sach; xem day du qua salary-list/detail theo quyen luong).
+  // - manager phong nghiep vu: chi phong minh. Nhan vien thuong: khong xem.
+  $me = require_login($pdo);
+  $isGlobalViewer = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  if (!$isGlobalViewer && $me["role"] !== "manager") err("Khong co quyen xem danh sach nhan vien", 403);
+  $listRestricted = is_accounting($me) || (is_hr($me) && $me["role"] === "staff");
   $search = $_GET["search"] ?? "";
   $dept = $_GET["dept_id"] ?? "";
-  // Sep phong nao chi xem duoc nhan vien phong do: ep bo loc phong theo token,
-  // bo qua dept_id client gui (admin xem tat ca).
-  if ($me["role"] === "manager") $dept = (string)(int)$me["department_id"];
+  // Sep phong nghiep vu chi xem duoc nhan vien phong do: ep bo loc phong theo token,
+  // bo qua dept_id client gui (admin/HR/Ke toan xem tat ca).
+  if ($me["role"] === "manager" && !$isGlobalViewer) $dept = (string)(int)$me["department_id"];
   $sort = $_GET["sort"] ?? "id_desc";
   $searchMode = $_GET["search_mode"] ?? "like";
   if (!in_array($searchMode, ["like", "fulltext"], true)) err("search_mode khong hop le");
@@ -65,10 +73,16 @@ if ($a === "list" && $m === "GET") {
       . $where . " ORDER BY " . $orders[$sort] . " LIMIT $limit OFFSET $off";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Nguoi xem RUT GON (Ke toan, NV Nhan su): an cac truong nhay cam trong danh sach.
+    if ($listRestricted) {
+      foreach ($rows as &$row) { $row["email"] = null; $row["phone"] = null; $row["base_salary"] = null; }
+      unset($row);
+    }
     // Giu data la mang de khong lam hong client cu; them metadata rieng.
     echo json_encode([
       "success" => true,
-      "data" => $stmt->fetchAll(PDO::FETCH_ASSOC),
+      "data" => $rows,
       "pagination" => ["page" => $page, "limit" => $limit, "total" => $total, "total_pages" => $totalPages]
     ]);
     exit;
@@ -78,15 +92,23 @@ if ($a === "list" && $m === "GET") {
 }
 if ($a === "detail" && $m === "GET") {
   $me = require_login($pdo);
-  if ((int)($_GET["id"] ?? 0) !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen xem ho so nguoi khac", 403);
+  if ((int)($_GET["id"] ?? 0) !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)
+      && !is_hr($me) && !is_accounting($me)) err("Khong co quyen xem ho so nguoi khac", 403);
   $stmt = $pdo->prepare("SELECT e.*, d.name AS dept_name, p.title AS position_name FROM employees e LEFT JOIN departments d ON e.department_id=d.id LEFT JOIN positions p ON e.position_id=p.id WHERE e.id=?");
   $stmt->execute([$_GET["id"] ?? 0]);
   $r = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$r) err("Khong tim thay NV", 404);
-  // Manager chi xem duoc ho so nhan vien phong minh (tru ho so cua chinh minh).
-  if ($me["role"] === "manager" && (int)$r["id"] !== (int)$me["id"]
+  // Manager phong nghiep vu chi xem duoc ho so nhan vien phong minh (tru ho so
+  // cua chinh minh). Phong HR va Ke toan duoc xem ho so toan cong ty theo nghiep vu.
+  if ($me["role"] === "manager" && !is_hr($me) && !is_accounting($me)
+      && (int)$r["id"] !== (int)$me["id"]
       && (int)$r["department_id"] !== (int)$me["department_id"]) {
     err("Chi xem duoc ho so nhan vien phong ban minh", 403);
+  }
+  // Nhan vien phong HR/Ke toan (staff) xem ho so nguoi khac theo nghiep vu duoc,
+  // nhan vien thuong thi chi xem ho so cua minh (da chan o tren).
+  if ($me["role"] === "staff" && (int)$r["id"] !== (int)$me["id"] && !is_hr($me) && !is_accounting($me)) {
+    err("Khong co quyen xem ho so nguoi khac", 403);
   }
   unset($r["password_hash"]); out($r);
 }
@@ -102,10 +124,13 @@ if ($a === "create" && $m === "POST") {
     $b["email"] = employee_email($b["email"]);
     if (isset($b["phone"]) && $b["phone"] !== null && $b["phone"] !== "") $b["phone"] = employee_phone($b["phone"]);
   } catch (InvalidArgumentException $e) { err($e->getMessage(), 422); }
-  // Manager chi tao nhan vien thuong cho phong minh.
+  // Phong Ke toan khong tao nhan vien (tach nhiem vu voi quy trinh luong).
+  if ($me["role"] === "manager" && is_accounting($me)) err("Phong Ke toan khong duoc tao tai khoan nhan vien", 403);
+  // Manager chi tao nhan vien thuong. Truong phong HR tao duoc cho MOI phong;
+  // truong phong nghiep vu chi tao cho phong minh.
   if ($me["role"] === "manager") {
-    $b["department_id"] = (int)$me["department_id"];
     $b["role_id"] = 3;
+    if (!is_hr($me)) $b["department_id"] = (int)$me["department_id"];
   }
   positions_ensure($pdo);
   $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
@@ -136,21 +161,36 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   $stmt->execute([$id]);
   $cur = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$cur) err("Khong tim thay nhan vien", 404);
-  // Manager chi sua duoc nhan vien phong minh.
-  if ($me["role"] === "manager" && $reqId !== $id
+  $hrManager = is_hr_manager($me);
+  // Phong Ke toan khong sua ho so nguoi khac (chi tu sua ten hien thi cua minh
+  // theo nhanh staff ben duoi).
+  if ($me["role"] === "manager" && is_accounting($me) && $reqId !== $id) {
+    err("Phong Ke toan khong duoc sua ho so nhan vien", 403);
+  }
+  // Manager phong nghiep vu chi sua duoc nhan vien phong minh.
+  // Admin va Truong phong HR sua duoc ho so toan cong ty.
+  if ($me["role"] === "manager" && !$hrManager && $reqId !== $id
       && (int)$cur["department_id"] !== (int)$me["department_id"]) {
     err("Chi sua duoc ho so nhan vien phong ban minh", 403);
   }
-  // Manager khong duoc chuyen nhan vien (ke ca chinh minh) sang phong khac.
-  if ($me["role"] === "manager" && array_key_exists('department_id', $b) && $b['department_id'] !== null
+  // Manager phong nghiep vu khong duoc chuyen nhan vien sang phong khac.
+  // Admin/Truong phong HR duoc chuyen phong (viec cua Nhan su).
+  if ($me["role"] === "manager" && !$hrManager && array_key_exists('department_id', $b) && $b['department_id'] !== null
       && (int)$b['department_id'] !== (int)$me["department_id"]) {
     err("Chi duoc giu nhan vien trong phong ban minh", 403);
   }
-  // Manager chi sua ho so nhan vien THUONG (khong sua manager/admin khac cung phong).
-  if ($me["role"] === "manager" && $reqId !== $id) {
+  // Manager phong nghiep vu chi sua ho so nhan vien THUONG (khong sua manager/admin
+  // khac cung phong). Truong phong HR sua duoc ca staff lan manager (tru admin).
+  if ($me["role"] === "manager" && !$hrManager && $reqId !== $id) {
     $rq = $pdo->prepare("SELECT LOWER(name) AS role FROM roles WHERE id=?");
     $rq->execute([$cur["role_id"]]);
     if ((($rq->fetch(PDO::FETCH_ASSOC) ?: [])["role"] ?? "") !== "staff") err("Chi sua duoc ho so nhan vien thuong", 403);
+  }
+  // Truong phong HR khong sua duoc tai khoan admin.
+  if ($me["role"] === "manager" && $hrManager && $reqId !== $id) {
+    $rq = $pdo->prepare("SELECT LOWER(name) AS role FROM roles WHERE id=?");
+    $rq->execute([$cur["role_id"]]);
+    if ((($rq->fetch(PDO::FETCH_ASSOC) ?: [])["role"] ?? "") === "admin") err("Khong duoc sua tai khoan admin", 403);
   }
   try {
     $name = employee_name($b["full_name"] ?? $cur["full_name"]);
@@ -171,8 +211,16 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
         $pos = validate_position_for_department($pdo, $pos, $dept);
       }
       $hire = array_key_exists('hire_date', $b) ? employee_hire_date($b['hire_date']) : ($cur['hire_date'] ?? null);
-      $pdo->prepare("UPDATE employees SET full_name=?,email=?,phone=?,department_id=?,position_id=?,hire_date=? WHERE id=?")
-        ->execute([$name, $email, $phone, $dept, $pos, $hire, $id]);
+      // Luong co ban: CHI admin va Truong phong HR duoc doi (ke toan chi duoc xem).
+      // Truoc day UPDATE khong co cot nay nen luong chi dat duoc luc tao tai khoan.
+      $salary = $cur['base_salary'];
+      if (array_key_exists('base_salary', $b) && $b['base_salary'] !== null) {
+        if (!$hrManager) err("Chi admin va Truong phong HR moi duoc doi luong co ban", 403);
+        if (!is_numeric($b['base_salary']) || (float)$b['base_salary'] < 0) err("Luong co ban khong hop le", 422);
+        $salary = (float)$b['base_salary'];
+      }
+      $pdo->prepare("UPDATE employees SET full_name=?,email=?,phone=?,department_id=?,position_id=?,hire_date=?,base_salary=? WHERE id=?")
+        ->execute([$name, $email, $phone, $dept, $pos, $hire, $salary, $id]);
     } else {
       $pdo->prepare("UPDATE employees SET full_name=? WHERE id=?")->execute([$name, $id]);
     }
@@ -240,8 +288,15 @@ if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
   $target = $q->fetch(PDO::FETCH_ASSOC);
   if (!$target) err("Khong tim thay nhan vien", 404);
   if ($req["role"] === "manager") {
-    if ((int)$target["department_id"] !== (int)$req["department_id"]) err("Chi duoc khoa mo nhan vien phong ban minh", 403);
-    if ($target["role"] !== "staff") err("Chi duoc khoa mo nhan vien thuong", 403);
+    // Phong Ke toan khong khoa/mo tai khoan.
+    if (is_accounting($me)) err("Phong Ke toan khong duoc khoa/mo tai khoan", 403);
+    // Truong phong HR khoa/mo duoc toan cong ty (tru tai khoan admin).
+    if (is_hr_manager($me)) {
+      if ($target["role"] === "admin") err("Khong duoc khoa tai khoan admin", 403);
+    } else {
+      if ((int)$target["department_id"] !== (int)$req["department_id"]) err("Chi duoc khoa mo nhan vien phong ban minh", 403);
+      if ($target["role"] !== "staff") err("Chi duoc khoa mo nhan vien thuong", 403);
+    }
   }
   $pdo->prepare("UPDATE employees SET status=? WHERE id=?")->execute([$status ? 1 : 0, $id]);
   out(["updated" => true, "status" => $status ? 1 : 0]);

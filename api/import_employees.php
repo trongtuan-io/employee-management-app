@@ -5,7 +5,10 @@ require_once __DIR__ . '/employee_validation.php';
 require_once __DIR__ . '/auth_guard.php';
 require_once __DIR__ . '/positions_logic.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') err('Method not allowed', 405);
-require_role($pdo, ['admin']); // Danh tinh lay tu token, khong tin requester_id trong form nua
+// Import nhan vien: admin hoac Truong phong HR (viec cua Nhan su).
+// Danh tinh lay tu token, khong tin requester_id trong form nua.
+$importer = require_login($pdo);
+if (!is_hr_manager($importer)) err("Chi admin va Truong phong HR moi duoc import nhan vien", 403);
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) err('Chua chon file', 422);
 $f = $_FILES['file'];
 if ($f['size'] <= 0 || $f['size'] > 3*1024*1024) err('File toi da 3MB', 422);

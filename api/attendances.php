@@ -37,9 +37,11 @@ if ($a === "checkout" && $m === "POST") {
 if ($a === "history" && $m === "GET") {
   $me = require_login($pdo);
   $emp = $_GET["employee_id"] ?? $me["id"];
-  if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen xem lich su nguoi khac", 403);
-  // Manager chi xem duoc lich su cham cong cua nhan vien phong minh.
-  if ($me["role"] === "manager" && (int)$emp !== (int)$me["id"]) {
+  if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)
+      && !is_hr($me) && !is_accounting($me)) err("Khong co quyen xem lich su nguoi khac", 403);
+  // Manager phong nghiep vu chi xem duoc lich su cham cong cua nhan vien phong minh.
+  // Phong HR (tong hop cong) va Ke toan (doi chieu luong) xem duoc toan cong ty.
+  if ($me["role"] === "manager" && !is_hr($me) && !is_accounting($me) && (int)$emp !== (int)$me["id"]) {
     $chk = $pdo->prepare("SELECT department_id FROM employees WHERE id=? LIMIT 1");
     $chk->execute([(int)$emp]);
     $t = $chk->fetch(PDO::FETCH_ASSOC);
@@ -51,10 +53,14 @@ if ($a === "history" && $m === "GET") {
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($a === "report" && $m === "GET") {
-  $me = require_role($pdo, ["admin", "manager"]);
+  // Bao cao cham cong: admin/HR/Ke toan xem tat ca (HR tong hop, Ke toan doi chieu
+  // luong - chi XEM, khong sua cong); sep phong nghiep vu chi xem phong minh;
+  // nhan vien thuong khong xem.
+  $me = require_login($pdo);
+  $isGlobal = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  if (!$isGlobal && $me["role"] !== "manager") err("Khong co quyen xem bao cao cham cong", 403);
   $date = $_GET["date"] ?? date("Y-m-d");
-  // Bao cao cham cong: admin xem tat ca, sep phong chi xem phong minh.
-  if ($me["role"] === "manager") {
+  if ($me["role"] === "manager" && !$isGlobal) {
     $stmt = $pdo->prepare("SELECT a.*, e.full_name FROM attendances a JOIN employees e ON a.employee_id=e.id WHERE a.work_date=? AND e.department_id=? ORDER BY a.id DESC");
     $stmt->execute([$date, (int)$me["department_id"]]);
   } else {

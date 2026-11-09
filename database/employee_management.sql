@@ -68,7 +68,7 @@ CREATE TABLE `departments` (
 
 LOCK TABLES `departments` WRITE;
 /*!40000 ALTER TABLE `departments` DISABLE KEYS */;
-INSERT INTO `departments` VALUES (1,'IT','Cong nghe thong tin'),(2,'HR','Nhan su');
+INSERT INTO `departments` VALUES (1,'IT','Cong nghe thong tin'),(2,'HR','Nhan su'),(3,'ACC','Ke toan - Tai chinh'),(4,'SALES','Kinh doanh'),(5,'MKT','Marketing'),(6,'OPS','Hanh chinh - Van hanh'),(7,'CS','Cham soc khach hang');
 /*!40000 ALTER TABLE `departments` ENABLE KEYS */;
 UNLOCK TABLES;
 

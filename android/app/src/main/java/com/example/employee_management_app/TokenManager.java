@@ -8,6 +8,7 @@ public class TokenManager {
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_ROLE = "user_role";
+    private static final String KEY_DEPT = "user_department";
 
     private SharedPreferences prefs;
     private static TokenManager instance;
@@ -30,11 +31,22 @@ public class TokenManager {
     // Luu ca phien dang nhap trong MOT lan ghi: tranh app bi kill giua chung
     // de lai trang thai co token nhung mat user_id/role.
     public void saveSession(String token, int userId, String role) {
+        saveSession(token, userId, role, null);
+    }
+
+    // Ban luu them ma phong ban (IT/HR/ACC...) de app phan luong giao dien theo
+    // Role x Phong. Server van tu kiem tra quyen o moi API, day chi la hien thi.
+    public void saveSession(String token, int userId, String role, String departmentName) {
         prefs.edit()
                 .putString(KEY_TOKEN, token)
                 .putInt(KEY_USER_ID, userId)
                 .putString(KEY_ROLE, role)
+                .putString(KEY_DEPT, departmentName)
                 .commit();
+    }
+
+    public String getDepartmentName() {
+        return prefs.getString(KEY_DEPT, null);
     }
 
     public String getToken() {
@@ -58,6 +70,6 @@ public class TokenManager {
     }
 
     public void clearToken() {
-        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).remove(KEY_ROLE).apply();
+        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).remove(KEY_ROLE).remove(KEY_DEPT).apply();
     }
 }

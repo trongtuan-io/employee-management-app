@@ -9,12 +9,20 @@ App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới d�
 
 | Vai trò | Màn hình | Chức năng |
 |---|---|---|
-| Admin | Trang quản trị | Xem tổng quan (NV đang làm, đơn chờ duyệt, đi muộn), quản lý nhân viên, tạo tài khoản NV, sửa mọi thông tin, khóa/mở TK mọi phòng ban |
-| Sếp (manager) | Trang quản trị | Như admin nhưng chỉ khóa/mở NV thường cùng phòng mình |
-| Nhân viên (staff) | Trang nhân viên | Xem hồ sơ, chấm công vào/ra, xin nghỉ phép, đổi mật khẩu |
+| Admin | Trang quản trị | Xem tổng quan (NV đang làm, đơn chờ duyệt, đi muộn), quản lý nhân viên, tạo tài khoản NV, sửa mọi thông tin, khóa/mở TK mọi phòng ban, mở lại bảng lương đã chốt |
+| Sếp (manager) | Trang quản trị | Quản lý NV thường cùng phòng mình, duyệt đơn nghỉ của phòng mình |
+| Nhân viên (staff) | Trang nhân viên | Xem hồ sơ, chấm công vào/ra, xin nghỉ phép, xem lương của mình (tháng đã chốt), đổi mật khẩu |
 | Chung | Đăng nhập, Quên mật khẩu | Login phân quyền; quên MK bằng mã 6 số qua Email |
 
-Quyền khóa/mở và khóa sửa mail/SĐT được chặn ở **server**, app không qua mặt được.
+**Phân quyền theo phòng ban (từ 09/11/2026)** — quyền = Vai trò × Phòng, server quyết định từ token:
+
+| Phòng | Chức năng riêng |
+|---|---|
+| Nhân sự (HR) | Trưởng phòng HR: tạo/import NV cho mọi phòng, đặt/đổi lương cơ bản, xem lương toàn công ty (chỉ xem). NV HR: xem danh sách rút gọn + tổng hợp chấm công |
+| Kế toán (ACC) | Tính lương tự động + điều chỉnh cho **toàn công ty** (NV Kế toán soạn nháp, **Kế toán trưởng** mới được chốt), xem báo cáo chấm công để đối chiếu |
+| IT / Kinh doanh (SALES) / Marketing (MKT) / Hành chính (OPS) / CSKH (CS) | Trưởng phòng chỉ quản lý đội của phòng mình; không xem/tính lương của người khác |
+
+Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
 
 ## Cấu trúc repo
 
@@ -36,6 +44,7 @@ android/   Bản copy thứ hai của app — hai cây app/ và android/ đượ
 4. **App:** mở **folder gốc repo** bằng Android Studio (module `:app`) → thêm IP máy mình vào `local.properties`: `apiUrl=http://<IP-cua-ban>/employee-api/` (`ipconfig getifaddr en0`; máy ảo dùng `10.0.2.2`) → Sync → Run. Không sửa code `ApiClient.java`.
 
 Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_hr` (NV/HR), `tuannt03` (NV/IT).
+Tài khoản demo theo phòng mới (migration 007): `ketoan_truong` / `ketoan123` (Kế toán trưởng), `ketoan_vien` / `ketoan123` (NV Kế toán), `quang_hr` / `nhansu123` (Trưởng phòng HR), `sep_sales` / `sales123` (Trưởng phòng Kinh doanh). DB cũ nâng cấp: chạy thêm `database/migrations/006_salary_auto_calc.sql` và `007_departments_payroll_scope.sql`.
 
 ## Bảo mật (đã sửa 07/11/2026, bổ sung 08/11/2026)
 

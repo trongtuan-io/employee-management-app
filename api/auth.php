@@ -15,7 +15,7 @@ if ($a === "login" && $m === "POST") {
   $st = $pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE username=? AND ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
   $st->execute([$username, $ip]);
   if ((int)$st->fetchColumn() >= 10) err("Dang nhap sai qua nhieu lan, vui long thu lai sau 10 phut", 429);
-  $stmt = $pdo->prepare("SELECT e.*, r.name AS role_name FROM employees e LEFT JOIN roles r ON e.role_id=r.id WHERE e.username=? LIMIT 1");
+  $stmt = $pdo->prepare("SELECT e.*, r.name AS role_name, d.name AS department_name FROM employees e LEFT JOIN roles r ON e.role_id=r.id LEFT JOIN departments d ON d.id=e.department_id WHERE e.username=? LIMIT 1");
   $stmt->execute([$username]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
   // User khong ton tai van chay password_verify voi hash gia de thoi gian phan hoi deu nhau.
@@ -35,10 +35,13 @@ if ($a === "register" && $m === "POST") {
   $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
   if ((int)($b["role_id"] ?? 3) !== 3 && $me["role"] !== "admin") err("Chi admin moi tao duoc tai khoan admin/manager", 403);
-  // Manager chi tao nhan vien thuong cho phong minh.
+  // Phong Ke toan khong tao tai khoan (tach nhiem vu voi quy trinh luong).
+  if ($me["role"] === "manager" && is_accounting($me)) err("Phong Ke toan khong duoc tao tai khoan nhan vien", 403);
+  // Manager chi tao nhan vien thuong. Truong phong HR tao duoc cho MOI phong;
+  // truong phong nghiep vu chi tao cho phong minh.
   if ($me["role"] === "manager") {
-    $b["department_id"] = (int)$me["department_id"];
     $b["role_id"] = 3;
+    if (!is_hr($me)) $b["department_id"] = (int)$me["department_id"];
   }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
   if (!is_string($b["password"]) || strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");

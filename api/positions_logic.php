@@ -27,6 +27,18 @@ function positions_ensure(PDO $pdo) {
       return $v === false ? null : (int)$v;
     };
     $it = $deptId("IT"); $hr = $deptId("HR");
+    // Seed cac phong ban nghiep vu (migration 007): Ke toan, Kinh doanh,
+    // Marketing, Hanh chinh - Van hanh, Cham soc khach hang. INSERT IGNORE theo
+    // UNIQUE name nen goi lai nhieu lan van an toan; phong da co thi giu nguyen.
+    $deptSeed = [
+      ["ACC", "Ke toan - Tai chinh"], ["SALES", "Kinh doanh"],
+      ["MKT", "Marketing"], ["OPS", "Hanh chinh - Van hanh"],
+      ["CS", "Cham soc khach hang"],
+    ];
+    $deptIns = $pdo->prepare("INSERT IGNORE INTO departments(name, description) VALUES(?, ?)");
+    foreach ($deptSeed as [$dName, $dDesc]) $deptIns->execute([$dName, $dDesc]);
+    $acc = $deptId("ACC"); $sales = $deptId("SALES"); $mkt = $deptId("MKT");
+    $ops = $deptId("OPS"); $cs = $deptId("CS");
     // Gan phong cho cac chuc vu seed san co (chi khi chua gan).
     if ($it) $pdo->prepare("UPDATE positions SET department_id = ? WHERE title IN ('Developer','Tester') AND department_id IS NULL")->execute([$it]);
     if ($hr) $pdo->prepare("UPDATE positions SET department_id = ? WHERE title = 'HR Staff' AND department_id IS NULL")->execute([$hr]);
@@ -34,6 +46,13 @@ function positions_ensure(PDO $pdo) {
     $seed = [
       ["Trưởng phòng IT", $it], ["Trưởng phòng HR", $hr],
       ["Thực tập sinh", null], ["Quản trị hệ thống", null],
+      // Chuc vu cac phong nghiep vu moi (migration 007).
+      ["Kế toán trưởng", $acc], ["Kế toán viên", $acc], ["Kế toán lương", $acc],
+      ["Trưởng phòng Kinh doanh", $sales], ["Nhân viên kinh doanh", $sales],
+      ["Trưởng phòng Marketing", $mkt], ["Nhân viên Marketing", $mkt],
+      ["Trưởng phòng Hành chính", $ops], ["Nhân viên Hành chính", $ops],
+      ["Trưởng nhóm CSKH", $cs], ["Nhân viên CSKH", $cs],
+      ["Nhân viên tuyển dụng", $hr],
     ];
     $ins = $pdo->prepare("INSERT IGNORE INTO positions(title, department_id) VALUES(?, ?)");
     foreach ($seed as [$title, $d]) $ins->execute([$title, $d]);

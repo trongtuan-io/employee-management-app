@@ -11,13 +11,22 @@ if ($action === 'list' && $method === 'GET') {
     out($query->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($action === 'members' && $method === 'GET') {
-    require_role($pdo, ['admin', 'manager']); // danh sach kem email/SDT: chi quan ly xem
+    // Thanh vien phong ban theo Role x Phong (TRUOC DAY chi kiem tra "la manager"
+    // nen manager phong nay xem duoc email/SDT cua phong khac - da siet lai):
+    // - admin + phong HR: xem moi phong, day du thong tin.
+    // - phong Ke toan: xem moi phong nhung RUT GON (khong email/SDT).
+    // - manager phong nghiep vu: chi xem phong cua minh.
+    $me = require_login($pdo);
+    $isGlobal = $me['role'] === 'admin' || is_hr($me) || is_accounting($me);
+    if (!$isGlobal && $me['role'] !== 'manager') err('Khong co quyen xem thanh vien phong ban', 403);
     $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
     if (!$id) err('Thieu id phong ban', 422);
+    if (!$isGlobal && (int)$id !== (int)$me['department_id']) err('Chi xem duoc thanh vien phong ban minh', 403);
     $stmt = $pdo->prepare('SELECT 1 FROM departments WHERE id=?');
     $stmt->execute([$id]);
     if (!$stmt->fetchColumn()) err('Khong tim thay phong ban', 404);
-    $stmt = $pdo->prepare('SELECT id,username,full_name,email,phone,status FROM employees WHERE department_id=? ORDER BY full_name,id');
+    $cols = is_accounting($me) ? 'id,username,full_name,status' : 'id,username,full_name,email,phone,status';
+    $stmt = $pdo->prepare("SELECT $cols FROM employees WHERE department_id=? ORDER BY full_name,id");
     $stmt->execute([$id]);
     out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }

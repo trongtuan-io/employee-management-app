@@ -22,16 +22,18 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-// Bang luong: nhan vien xem luong cua minh; admin/manager co them panel tinh luong
-// TU DONG theo ngay cong (salary-generate), xem luong nhan vien trong pham vi,
-// sua thuong/phu cap cua ban nhap va chot bang luong (salary-adjust / salary-finalize).
+// Bang luong theo Role x Phong: nhan vien chi xem luong CUA MINH da chot;
+// chi admin + phong KE TOAN moi co panel tinh luong TU DONG theo ngay cong
+// (salary-generate), dieu chinh ban nhap (salary-adjust); rieng CHOT bang luong
+// (salary-finalize) chi admin + KE TOAN TRUONG (manager phong ACC).
 public class SalaryActivity extends AppCompatActivity {
     private final List<SalaryListResponse.Item> items = new ArrayList<>();
     private final List<EmployeeListResponse.Item> employees = new ArrayList<>();
     private ArrayAdapter<SalaryListResponse.Item> adapter;
     private EmployeeApi api;
     private int myId;
-    private boolean isManager;
+    private boolean canPayroll;
+    private boolean canFinalize;
     private int selectedEmpId;
     private EditText etMonth, etYear;
 
@@ -44,7 +46,11 @@ public class SalaryActivity extends AppCompatActivity {
         api = ApiClient.getClient(this).create(EmployeeApi.class);
         myId = TokenManager.getInstance(this).getUserId();
         String role = TokenManager.getInstance(this).getRole();
-        isManager = "admin".equalsIgnoreCase(role) || "manager".equalsIgnoreCase(role);
+        String dept = TokenManager.getInstance(this).getDepartmentName();
+        boolean isAdmin = "admin".equalsIgnoreCase(role);
+        boolean isAccounting = "ACC".equalsIgnoreCase(dept);
+        canPayroll = isAdmin || isAccounting;
+        canFinalize = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
         selectedEmpId = myId;
 
         ListView lv = findViewById(R.id.lvSalaries);
@@ -58,7 +64,7 @@ public class SalaryActivity extends AppCompatActivity {
         etMonth.setText(String.valueOf(now.get(Calendar.MONTH) + 1));
         etYear.setText(String.valueOf(now.get(Calendar.YEAR)));
 
-        if (isManager) {
+        if (canPayroll) {
             findViewById(R.id.layoutSalaryAdmin).setVisibility(View.VISIBLE);
             findViewById(R.id.btnGenerateSalary).setOnClickListener(v -> generateSalaries());
             setupEmployeeSpinner();
@@ -104,7 +110,7 @@ public class SalaryActivity extends AppCompatActivity {
     }
 
     private int viewYear() {
-        if (isManager && etYear != null) {
+        if (canPayroll && etYear != null) {
             try {
                 int y = Integer.parseInt(etYear.getText().toString().trim());
                 if (y >= 2000 && y <= 2100) return y;
@@ -198,7 +204,7 @@ public class SalaryActivity extends AppCompatActivity {
     }
 
     private void onSalaryClicked(SalaryListResponse.Item item) {
-        if (!isManager) return; // Nhan vien chi xem
+        if (!canPayroll) return; // Chi Ke toan/Admin moi sua bang luong
         if (item.isFinalized()) {
             Toast.makeText(this, "Bảng lương này đã chốt, không sửa được", Toast.LENGTH_SHORT).show();
             return;
@@ -215,7 +221,7 @@ public class SalaryActivity extends AppCompatActivity {
         box.addView(etBonus);
         box.addView(etDeduction);
 
-        new AlertDialog.Builder(this)
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle("Bảng lương tháng " + item.getMonth() + "/" + item.getYear())
                 .setView(box)
                 .setPositiveButton("Lưu", (dialog, which) -> {
@@ -246,9 +252,12 @@ public class SalaryActivity extends AppCompatActivity {
                                 }
                             });
                 })
-                .setNeutralButton("Chốt bảng lương", (dialog, which) -> confirmFinalize(item))
-                .setNegativeButton("Đóng", null)
-                .show();
+                .setNegativeButton("Đóng", null);
+        // Chi Ke toan truong/Admin moi thay nut Chot (NV Ke toan chi soan nhap).
+        if (canFinalize) {
+            builder.setNeutralButton("Chốt bảng lương", (dialog, which) -> confirmFinalize(item));
+        }
+        builder.show();
     }
 
     private void confirmFinalize(SalaryListResponse.Item item) {
