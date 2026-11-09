@@ -88,7 +88,7 @@ public class HomeActivity extends AppCompatActivity {
             title = "Phòng Kế toán";
             desc = isManager
                     ? "Tính lương, điều chỉnh và chốt bảng lương toàn công ty tại tab Bảng lương."
-                    : "Soạn bảng lương nháp và điều chỉnh tại tab Bảng lương; chốt lương do Kế toán trưởng thực hiện.";
+                    : "Xem bảng lương đã chốt của chính mình tại tab Bảng lương; việc tính và chốt lương do Kế toán trưởng thực hiện.";
         } else if ("HR".equalsIgnoreCase(dept)) {
             title = "Phòng Nhân sự";
             desc = isManager
