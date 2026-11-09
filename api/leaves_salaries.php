@@ -214,9 +214,9 @@ if ($a === "salary-unfinalize" && $m === "POST") {
 }
 if ($a === "dashboard" && $m === "GET") {
   $me = require_login($pdo);
-  // So lieu TOAN cong ty: admin, phong HR (tong hop), Ke toan truong (quy luong).
-  // Con lai: chi trong phong ban cua minh.
-  if ($me["role"] === "admin" || is_hr($me) || (is_accounting($me) && $me["role"] === "manager")) {
+  // Chi admin xem so lieu TOAN cong ty. Moi manager/staff (ke ca HR va Ke toan)
+  // chi thay so lieu phong ban cua minh — cung quy tac siet danh sach nhan vien.
+  if ($me["role"] === "admin") {
     $total = $pdo->query("SELECT COUNT(*) c FROM employees WHERE status=1")->fetch()["c"];
     $pending = $pdo->query("SELECT COUNT(*) c FROM leave_requests WHERE status='pending'")->fetch()["c"];
     $todayLate = $pdo->query("SELECT COUNT(*) c FROM attendances WHERE work_date=CURDATE() AND status='late'")->fetch()["c"];
