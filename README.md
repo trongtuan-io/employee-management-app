@@ -1,103 +1,156 @@
 # Employee Management App
 
-Phần mềm nội bộ quản lý nhân viên — Đồ án môn Thiết kế phần mềm di động (nhóm 4 người).
+Phần mềm nội bộ **quản lý nhân viên** — đồ án môn *Thiết kế phần mềm di động* (nhóm 4 người).
 
-Kiến trúc: **App Android (Java + Retrofit) → REST API (PHP + XAMPP) → MySQL**.
-App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới dạng JSON.
+## Kiến trúc & công nghệ
 
-## Tính năng theo vai trò
+```
+App Android (Java + Retrofit + Glide)  →  REST API (PHP, chạy trên XAMPP)  →  MySQL
+```
 
-| Vai trò | Màn hình | Chức năng |
-|---|---|---|
-| Admin | Trang quản trị | Xem tổng quan (NV đang làm, đơn chờ duyệt, đi muộn), quản lý nhân viên, tạo tài khoản NV, sửa mọi thông tin, khóa/mở TK mọi phòng ban, mở lại bảng lương đã chốt |
-| Sếp (manager) | Trang quản trị | Quản lý NV thường cùng phòng mình, duyệt đơn nghỉ của phòng mình |
-| Nhân viên (staff) | Trang nhân viên | Xem hồ sơ, chấm công vào/ra, xin nghỉ phép, xem lương của mình (tháng đã chốt), đổi mật khẩu |
-| Chung | Đăng nhập, Quên mật khẩu | Login phân quyền; quên MK bằng mã 6 số qua Email |
+- App **không** nối trực tiếp vào database; mọi dữ liệu đi qua API dưới dạng JSON.
+- Đăng nhập cấp **token Bearer** (server lưu hash SHA-256 trong bảng `api_tokens`, hạn 7 ngày). Mọi quyết định phân quyền đều do **server** suy ra từ token — client không tự khai danh tính.
+- Toàn bộ giờ giấc hệ thống (chấm công, hạn token, thời điểm xử lý đơn…) theo múi giờ **Asia/Ho_Chi_Minh**.
 
-**Phân quyền theo phòng ban (từ 09/11/2026)** — quyền = Vai trò × Phòng, server quyết định từ token:
+## Tính năng
 
-| Phòng | Chức năng riêng |
+### 1. Tài khoản & phân quyền theo phòng ban
+
+Quyền = **Vai trò × Phòng ban** (3 vai trò × 7 phòng: IT, HR, ACC, SALES, MKT, OPS, CS).
+
+| Vai trò | Chức năng chính |
 |---|---|
-| Nhân sự (HR) | Trưởng phòng HR: quản lý hồ sơ nhân viên **phòng mình**, đặt/đổi lương cơ bản cho nhân viên phòng mình. Tạo NV cho phòng khác và import hàng loạt do Admin phụ trách |
-| Kế toán (ACC) | Phòng Kế toán **soạn nháp**: tính lương tự động + điều chỉnh các khoản cho **toàn công ty** (cả NV Kế toán), xem báo cáo chấm công để đối chiếu; **chốt bảng lương chỉ Kế toán trưởng** mới được làm |
-| IT / Kinh doanh (SALES) / Marketing (MKT) / Hành chính (OPS) / CSKH (CS) | Trưởng phòng chỉ quản lý đội của phòng mình; không xem/tính lương của người khác |
+| **Admin** | Xem tổng quan toàn công ty; quản lý nhân viên mọi phòng; tạo/khoá/mở tài khoản; import hàng loạt; chốt/mở lại bảng lương; quản lý phụ cấp chính sách |
+| **Trưởng phòng (manager)** | Quản lý nhân viên **phòng mình** (xem/sửa/tạo/khoá); duyệt đơn nghỉ + đơn giải trình của phòng mình; xem tổng quan số liệu phòng mình |
+| **Nhân viên (staff)** | Xem hồ sơ; chấm công; xin nghỉ; giải trình quên chấm công; xem lương của mình (sau khi đã chốt); đổi mật khẩu |
 
-Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi trưởng phòng chỉ thấy nhân viên phòng mình; nhân viên (staff) không truy cập được trang này. Màn Bảng lương: danh sách các tháng trong năm, chạm vào một tháng để xem chi tiết (lương cơ bản gốc, ngày công, các khoản cộng/trừ, thực lĩnh). Nhân viên các phòng khác **chỉ xem được bảng lương của chính mình**; phòng Kế toán có khu quản lý (chọn nhân viên qua danh bạ riêng `employees.php?action=directory`, tính lương, sửa các khoản) và Kế toán trưởng/Admin mới có nút chốt. Nút **"Xem bảng lương toàn công ty"** trong khu quản lý mở bảng tổng hợp theo tháng (`salary-overview`): mọi nhân viên một dòng kèm ngày công, thực lĩnh, trạng thái chốt và tổng quỹ lương — khỏi chọn xem từng người.
+Quy tắc theo phòng:
 
-Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Đơn đã duyệt/từ chối **không biến mất**: vẫn nằm lại trong tab Chờ duyệt kèm tên người duyệt và thời điểm xử lý (cột `processed_at`, API tự bổ sung) để truy vết. Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
+- **Trang Quản lý nhân viên**: chỉ Admin thấy toàn công ty; trưởng phòng chỉ thấy phòng mình; staff không truy cập được trang này.
+- **Nhân sự (HR)**: trưởng phòng HR đổi lương cơ bản cho nhân viên phòng mình; nhân viên HR được xem hàng chờ duyệt phép/giải trình để theo dõi. Tạo NV cho phòng khác và import hàng loạt do Admin phụ trách.
+- **Kế toán (ACC)**: cả phòng Kế toán **soạn nháp** — tính lương tự động + điều chỉnh các khoản cho **toàn công ty**, xem báo cáo chấm công để đối chiếu, xuất Excel; **chốt và đánh dấu đã trả lương chỉ Kế toán trưởng** (và Admin).
 
-**Hoàn thiện kế toán lương (2026-11-09, 6 mục):**
+### 2. Chấm công & GPS
 
-1. **BHXH + thuế TNCN tự động**: mỗi lần tính/sửa lương, server tự tính bảo hiểm = 10,5% lương đóng bảo hiểm (mức riêng trong hồ sơ `employees.insurance_salary`, để trống = lương cơ bản, trần 20 × lương cơ sở 2.340.000; tháng 0 ngày công thì không khấu trừ; **nghỉ việc không hưởng lương từ 14 ngày làm việc trở lên trong tháng cũng được miễn đóng bảo hiểm cả tháng** theo Luật BHXH — hệ thống tính ngày nghỉ không lương = ngày công chuẩn − ngày công được trả lương (chấm công + phép đã duyệt)) và thuế TNCN lũy tiến 7 bậc sau giảm trừ 11 triệu + 4,4 triệu/người phụ thuộc (`employees.dependents`). Thực lĩnh = tổng thu nhập − khấu trừ khác − bảo hiểm − thuế. Dòng đã chốt giữ nguyên số cũ, không bị tính lại. Lương đóng BH và số người phụ thuộc sửa ngay trong dialog "Sửa các khoản" của màn chi tiết.
-2. **Xuất bảng lương ra Excel**: nút "Xuất Excel (CSV)" ở màn tổng hợp tải file CSV (UTF-8, mở bằng Excel) của tháng đang xem về thư mục Tải xuống (`salary-export`), đủ cột BH/thuế/trạng thái kèm dòng tổng.
-3. **Lịch sử thay đổi bảng lương**: mọi thao tác tính lại/sửa khoản/chốt/mở lại/trả lương đều ghi vào `salary_audit_logs`; màn chi tiết có nút "Lịch sử thay đổi" (nhân viên xem được lịch sử lương của chính mình).
-4. **Trạng thái đã trả lương**: sau khi chốt, Kế toán trưởng/Admin đánh dấu `salary-paid` kèm `paid_at`; badge ưu tiên "Đã trả lương" ở cả 3 màn lương.
-5. **Báo cáo quỹ lương**: màn tổng hợp nhóm dòng theo phòng ban kèm tổng từng phòng, chân trang có tổng toàn công ty + chênh lệch so với tháng trước.
-6. **Phụ cấp cố định theo chính sách**: bảng `salary_policies` (toàn công ty hoặc theo phòng, bật/tắt) do Admin + Kế toán trưởng quản lý ở màn "Phụ cấp cố định"; khi tính lương **tạo dòng mới**, phụ cấp khởi tạo = tổng các khoản chính sách đang áp dụng (dòng đã có giữ nguyên). Cột/bảng mới đều do API tự bổ sung — file `database/migrations/008_salary_payroll_complete.sql` chỉ để đối chiếu/cài mới.
+- Chấm công vào/ra ngay ở Trang chủ; vào sau **08:15** tính là đi muộn. Tổng quan của quản lý hiện: NV đang làm, đơn chờ duyệt, số người đi muộn hôm nay (theo phạm vi phòng).
+- App xin quyền vị trí và gửi kèm `lat/lng` khi chấm công (không có vị trí vẫn chấm được). Server đối chiếu với toạ độ văn phòng (hằng `OFFICE_LAT` / `OFFICE_LNG` / `OFFICE_RADIUS_M` trong `api/attendances.php`): xa hơn bán kính chỉ **gắn cờ "Ngoài văn phòng"** để quản lý đối chiếu, **không chặn** chấm công.
+- Mốc hiện tại: **Trường Đại học Sư phạm Hà Nội, 136 Xuân Thủy, Cầu Giấy** — `21.0378, 105.7830`, bán kính **500m**. Đổi địa điểm chỉ cần sửa 3 hằng số này.
 
-**Trung tâm thông báo trong app (2026-11-09):**
+### 3. Xin nghỉ & quỹ phép năm
 
-- Bảng `notifications` do API tự tạo (`database/migrations/009_notifications.sql` để đối chiếu). Mỗi thông báo thuộc về đúng 1 người nhận; `notify-list` chỉ trả thông báo của chính người đăng nhập kèm số chưa đọc, `notify-read` đánh dấu đã đọc theo từng cái hoặc tất cả.
-- Sự kiện tự sinh thông báo: (1) có **đơn nghỉ mới** → gửi Admin + trưởng phòng của người nộp + cả phòng Nhân sự; (2) đơn **được duyệt / bị từ chối** → gửi người nộp kèm tên người xử lý; (3) bảng lương **được chốt** (theo dòng hoặc cả tháng) → gửi nhân viên kèm số thực lĩnh; (4) lương **đã trả** → gửi nhân viên; (5) bảng lương **mở lại** sau khi chốt → gửi nhân viên.
-- Android: chuông 🔔 ở Trang chủ kèm badge đỏ số chưa đọc (tải lại mỗi lần quay về Trang chủ); màn **Thông báo** liệt kê mới nhất trước, chấm đỏ = chưa đọc, chạm vào 1 thông báo sẽ đánh dấu đã đọc và mở màn liên quan (Xin nghỉ / Bảng lương), có nút "Đánh dấu tất cả đã đọc".
+- Màn hình theo mẫu cổng nghỉ phép: 2 tab **Đơn của tôi / Chờ duyệt**, thẻ thống kê bấm để lọc, lọc theo khoảng ngày, tạo đơn bằng DatePicker.
+- Mỗi đơn có **loại nghỉ**: `annual` phép năm · `sick` nghỉ ốm · `personal` việc riêng · `unpaid` nghỉ không lương.
+- **Quỹ phép: 12 ngày phép năm/năm** (đếm ngày làm việc, trừ Chủ nhật). Màn Xin nghỉ hiện số dư của mình; tạo đơn phép năm vượt số dư bị server từ chối (HTTP 422) kèm thông báo còn bao nhiêu ngày. Endpoint `leave-balance` trả `{quota, used, pending, remaining}`.
+- Đơn đã duyệt/từ chối **không biến mất**: vẫn ở tab Chờ duyệt kèm tên người xử lý + thời điểm (`processed_at`) để truy vết.
+- Đơn nghỉ không lương **không** được tính ngày công khi tính lương.
+
+### 4. Giải trình quên chấm công
+
+- Nhân viên tạo đơn giải trình (ngày, quên vào/ra/cả hai, giờ đề xuất, lý do) từ nút ở thẻ chấm công Trang chủ.
+- Duyệt theo kỷ luật phòng như đơn nghỉ (Admin + trưởng phòng của người nộp; HR xem theo dõi). Khi được duyệt, hệ thống **bổ sung giờ đề xuất vào bảng chấm công** — chỉ điền phần đang thiếu, không ghi đè dữ liệu chấm thật.
+
+### 5. Trung tâm thông báo
+
+Bảng `notifications` do API tự tạo; mỗi thông báo thuộc về đúng 1 người nhận. Sự kiện tự sinh:
+
+| Sự kiện | Người nhận |
+|---|---|
+| Có đơn nghỉ mới | Admin + trưởng phòng của người nộp + toàn bộ phòng HR |
+| Đơn nghỉ được duyệt / bị từ chối | Người nộp (kèm tên người xử lý) |
+| Có đơn giải trình mới / được duyệt / bị từ chối | Như đơn nghỉ / người nộp |
+| Bảng lương được chốt · đã trả · mở lại | Nhân viên chủ dòng lương (kèm số thực lĩnh) |
+
+Android: chuông 🔔 ở Trang chủ kèm badge số chưa đọc; màn Thông báo chạm vào là đánh dấu đã đọc và mở màn liên quan (Xin nghỉ / Giải trình / Bảng lương).
+
+### 6. Bảng lương
+
+- **Tính lương tự động** từ chấm công: ngày công chuẩn = số ngày trong tháng trừ Chủ nhật; ngày công thực tế = ngày đã chấm công + ngày nghỉ phép **có lương** đã duyệt (trừ phần trùng). Lương theo công = lương cơ bản × công / chuẩn.
+- **BHXH tự động**: 10,5% lương đóng bảo hiểm (`employees.insurance_salary`, để trống = lương cơ bản, trần 20 × lương cơ sở). Tháng 0 ngày công không khấu trừ; **nghỉ không hưởng lương ≥ 14 ngày làm việc trong tháng được miễn đóng BH cả tháng** theo Luật BHXH.
+- **Thuế TNCN tự động**: lũy tiến 7 bậc sau giảm trừ 11 triệu + 4,4 triệu × số người phụ thuộc (`employees.dependents`). Thực lĩnh = tổng thu nhập − khấu trừ khác − BHXH − thuế. Dòng lương đã chốt giữ nguyên số, không tính lại.
+- **Phụ cấp theo chính sách** (`salary_policies`): khoản cố định toàn công ty hoặc theo phòng, bật/tắt, do Admin + Kế toán trưởng quản lý; tự cộng vào phụ cấp khi tính lương tạo dòng mới.
+- **Quy trình**: Kế toán soạn nháp (tính + sửa các khoản trong dialog có nhãn rõ ràng từng ô) → Kế toán trưởng chốt → đánh dấu **đã trả lương**. Admin có thể mở lại dòng đã chốt.
+- **Màn hình**: danh sách các tháng trong năm (badge Đã chốt / Bản nháp / Đã trả lương) → chạm vào xem chi tiết; **bảng lương tổng hợp toàn công ty** theo tháng (mỗi nhân viên 1 dòng, nhóm theo phòng kèm tổng từng phòng, so sánh tháng trước, chạm dòng mở chi tiết); **lịch sử thay đổi** từng dòng lương (`salary_audit_logs`); **xuất Excel (CSV)** bảng lương và bảng công về thư mục Tải xuống.
+- Nhân viên thường chỉ xem được lương **của chính mình** và chỉ sau khi đã chốt.
+
+### 7. Lịch vắng & báo cáo
+
+- **Lịch vắng**: lưới tháng tô màu ngày có người vắng (đơn đã duyệt) + danh sách chi tiết; phạm vi: Admin/HR/Kế toán xem toàn công ty, còn lại xem phòng mình.
+- **Xuất bảng công tháng** (CSV): ngày có mặt, đi muộn, nghỉ phép có lương, nghỉ không lương, tổng ngày công của từng nhân viên.
+- Bảng tin công ty (thông báo nội bộ) ở Trang chủ do Admin đăng (`announcements.php`).
 
 ## Cấu trúc repo
 
 ```
-database/  SQL full 8 bảng (roles, departments, positions, employees,
-           attendances, leave_requests, salaries, password_resets)
-api/       PHP REST API: auth.php (login, register, đổi/quên MK),
-           employees.php (CRUD, upload avatar, khóa/mở),
-           attendances.php (chấm công), leaves_salaries.php (phép, lương, dashboard)
-app/       App Android Studio (Java + Retrofit + Glide) — bản chính, mở folder gốc repo để chạy
-android/   Bản copy thứ hai của app — hai cây app/ và android/ được giữ ĐỒNG BỘ mọi thay đổi; máy demo của nhóm mở project ở thư mục android/
+api/            PHP REST API
+  auth.php            đăng nhập, đăng ký, đổi mật khẩu, quên MK (mã 6 số qua email)
+  auth_guard.php      kiểm tra token, helper phân quyền + thông báo dùng chung
+  employees.php       CRUD nhân viên, avatar, khoá/mở TK, danh bạ (directory)
+  import_employees.php  import nhân viên hàng loạt (Admin)
+  departments.php     phòng ban + thành viên (theo phạm vi quyền)
+  attendances.php     chấm công + GPS, giải trình, báo cáo, xuất bảng công
+  leaves_salaries.php đơn nghỉ + quỹ phép, lịch vắng, bảng lương, dashboard, thông báo
+  salary_calc.php     công thức tính lương, BHXH, thuế TNCN
+  announcements.php   bảng tin công ty
+database/       employee_management.sql (dump đầy đủ) + migrations/
+app/            App Android — một bản của ứng dụng
+android/        App Android — bản thứ hai; hai cây app/ và android/ được giữ ĐỒNG BỘ
+                mọi thay đổi; máy demo của nhóm mở project ở thư mục android/
 ```
 
 ## Chạy dự án trên máy mới
 
 1. Cài Git, Android Studio, XAMPP. Clone repo.
-2. **DB:** XAMPP Start Apache + MySQL → `http://localhost/phpmyadmin` → Nhập file `database/employee_management.sql` (bản hiện tại đã gồm cột `hire_date`, bảng `api_tokens` tự tạo ở lần đăng nhập đầu tiên, và bảng `password_resets` đã nới cột mã + cột đếm lần nhập sai). Các file trong `database/migrations/` (001–005) CHỈ dùng khi nâng cấp một DB cũ đã tạo từ bản dump trước đây — chạy theo thứ tự và bỏ qua file nào đã áp dụng.
-3. **API:** copy folder `api/` vào `htdocs/employee-api/` → test `http://localhost/employee-api/leaves_salaries.php?action=dashboard` phải ra JSON.
-4. **App:** mở **folder gốc repo** bằng Android Studio (module `:app`) → thêm IP máy mình vào `local.properties`: `apiUrl=http://<IP-cua-ban>/employee-api/` (`ipconfig getifaddr en0`; máy ảo dùng `10.0.2.2`) → Sync → Run. Không sửa code `ApiClient.java`.
+2. **Database**: XAMPP Start Apache + MySQL → mở `http://localhost/phpmyadmin` → nhập file `database/employee_management.sql`. Nếu nâng cấp một DB cũ, chạy thêm các file trong `database/migrations/` theo thứ tự số **chưa** áp dụng (002 token, 005 bảo mật reset, 006 tính lương tự động, 007 phân quyền theo phòng, 008 hoàn thiện lương, 009 thông báo, 010 quỹ phép/GPS/giải trình). Nhiều cột/bảng mới (thông báo, giải trình, lịch sử lương…) API cũng **tự bổ sung khi chạy lần đầu** nên migration chủ yếu để đối chiếu/cài mới.
+3. **API**: copy thư mục `api/` vào `htdocs/employee-api/`. File cấu hình mail/SMS **không nằm trong repo** — copy `api/mail_config.example.php` → `api/mail_config.php` (và tương tự `sms_config`) rồi điền thông tin thật ngay trên máy chạy server. Test: mở `http://localhost/employee-api/attendances.php?action=today` phải trả JSON.
+4. **App**: mở project bằng Android Studio → thêm IP máy vào `local.properties` (file này đã gitignore, mỗi máy tự giữ):
+   ```
+   apiUrl=http://<IP-LAN-cua-may>/employee-api/
+   ```
+   → Sync → Run. Không sửa `ApiClient.java`.
 
-Tài khoản demo (pass `123456`): `admin` (admin/IT), `sep_hr` (sếp/HR), `nv_hr` (NV/HR), `tuannt03` (NV/IT).
-Tài khoản demo theo phòng mới (migration 007): `ketoan_truong` / `ketoan123` (Kế toán trưởng), `ketoan_vien` / `ketoan123` (NV Kế toán), `quang_hr` / `nhansu123` (Trưởng phòng HR), `sep_sales` / `sales123` (Trưởng phòng Kinh doanh). DB cũ nâng cấp: chạy thêm `database/migrations/006_salary_auto_calc.sql` và `007_departments_payroll_scope.sql`.
+### ⚠️ Lưu ý IP khi chạy máy ảo / điện thoại thật
 
-## Bảo mật (đã sửa 07/11/2026, bổ sung 08/11/2026)
+App **không** kết nối được tới `localhost` của máy tính. Bắt buộc dùng **IP LAN (Wi-Fi)** và điện thoại/máy ảo phải cùng mạng với laptop.
 
-- Cập nhật 08/11/2026 (sau rà soát toàn diện + bộ test API tự động 93 trường hợp): admin không còn tự xoá được tài khoản của chính mình; tạo bảng lương chặn số âm và sếp phòng chỉ tạo lương cho nhân viên phòng mình; mã đặt lại mật khẩu lưu dạng hash sha256, nhập sai 5 lần bị huỷ, đặt lại/đổi mật khẩu xong sẽ thu hồi các phiên đăng nhập khác; đăng ký tài khoản bắt mật khẩu ≥ 6 ký tự và lương cơ bản hợp lệ; sửa file dump để tài khoản `admin` đăng nhập được bằng mật khẩu demo như tài liệu ghi.
+- Lấy IP: Mac — Terminal `ipconfig getifaddr en0`; Windows — cmd `ipconfig`, xem `IPv4 Address` của Wi-Fi.
+- Đổi Wi-Fi hoặc bị cấp IP mới sẽ gặp lỗi "failed to connect" → lấy lại IP, sửa `local.properties`, Run lại.
 
-- Đăng nhập cấp **token ngẫu nhiên thật** (server lưu hash trong bảng `api_tokens`, hạn 7 ngày); phân quyền lấy danh tính từ token — client không tự khai `requester_id` được nữa. Xem `api/auth_guard.php`.
-- Tạo/xoá nhân viên, duyệt nghỉ phép: bắt buộc token admin/manager. (Chức năng tạo bảng lương đã gỡ bỏ ngày 08/11/2026 theo yêu cầu — bảng lương chỉ còn để xem.)
-- Quên mật khẩu: chế độ debug trả mã trong response đã **tắt** (`DEBUG_SHOW_CODE` / `SMS_DEBUG_SHOW_CODE` = false). Muốn gửi mail thật phải điền SMTP thật trong `api/mail_config.php`; token SMS cũ trong `api/sms_config.php` đã bị lộ trên GitHub — phải thu hồi và thay token mới.
-- Endpoint `reset-password-by-phone` (đường tắt qua Firebase cũ) đã **xoá**.
+## Tài khoản demo
 
-## Quy trình nhóm
+| Tài khoản | Mật khẩu | Vai trò |
+|---|---|---|
+| `admin` | `123456` | Admin (IT) |
+| `tuannt03` | `123456` | Trưởng phòng IT |
+| `sep_hr` | `123456` | Trưởng phòng HR |
+| `nv_hr` | `123456` | Nhân viên HR |
+| `ketoan_truong` | `ketoan123` | Kế toán trưởng (ACC) |
+| `ketoan_vien` | `ketoan123` | Nhân viên Kế toán (ACC) |
+| `quang_hr` | `nhansu123` | Trưởng phòng HR |
+| `sep_sales` | `sales123` | Trưởng phòng Kinh doanh (SALES) |
 
-Mỗi việc 1 nhánh (`ten-viec`) → push nhánh → Pull Request → review → merge vào `main`. Không push thẳng `main`. Chi tiết xem `HUONG-DAN-GITHUB-NHOM.md`.
+## API chính (tham khảo nhanh)
 
-## ⚠️ Lưu ý khi chạy trên máy ảo (Emulator)
+Mọi request (trừ login/register/quên mật khẩu) cần header `Authorization: Bearer <token>`. Response: `{"success": true, "data": ...}` hoặc `{"success": false, "error": "..."}`.
 
-Máy ảo Android **KHÔNG** kết nối được tới `localhost` hay `127.0.0.1` của máy tính. Bắt buộc dùng **IP LAN (Wi-Fi)** thực tế.
+| Endpoint | Chức năng |
+|---|---|
+| `auth.php?action=login` / `register` / `change-password` / `forgot-*` | Xác thực tài khoản |
+| `employees.php?action=list/get/create/update/lock/directory/avatar` | Quản lý nhân viên |
+| `attendances.php?action=today/checkin/checkout/report/attendance-export` | Chấm công & báo cáo |
+| `attendances.php?action=explanation-create/list/approve` | Giải trình quên chấm công |
+| `leaves_salaries.php?action=leave-create/list/approve/balance/calendar` | Nghỉ phép & quỹ phép |
+| `leaves_salaries.php?action=salary-generate/adjust/finalize/unfinalize/paid/overview/export/history/policies` | Bảng lương |
+| `leaves_salaries.php?action=notify-list/notify-read` | Thông báo |
+| `leaves_salaries.php?action=dashboard` | Số liệu tổng quan theo phạm vi |
 
-Khi Wi-Fi đổi mạng hoặc cấp lại IP sẽ lỗi **"failed to connect" / "Lỗi kết nối"** → lấy lại IP và cập nhật app.
+## Bảo mật
 
-**B1 - Lấy IP (Mac):** mở Terminal, chạy `ipconfig getifaddr en0` → ghi dãy `192.168.x.x`. (Windows: mở cmd, gõ `ipconfig`, tìm `IPv4 Address` mục Wi-Fi). Điện thoại phải bắt **cùng Wi-Fi** với laptop.
+- Token đăng nhập ngẫu nhiên, server chỉ lưu **hash SHA-256**, hạn 7 ngày; đổi/đặt lại mật khẩu sẽ thu hồi các phiên đăng nhập khác.
+- Mã đặt lại mật khẩu lưu dạng hash, nhập sai 5 lần bị huỷ; chế độ debug trả mã trong response đã **tắt**.
+- File cấu hình chứa secret (`mail_config.php`, `sms_config.php`) **không được commit** (đã khai `.gitignore`, chỉ giữ file `.example.php` làm mẫu). *Lưu ý: các bản config cũ từng xuất hiện trong lịch sử Git trước đây — khi dùng thật phải thu hồi/đổi mới thông tin đăng nhập đó.*
+- Endpoint đặt lại mật khẩu qua số điện thoại (đường tắt cũ) đã xoá; quên mật khẩu chỉ qua email.
 
-**B2 - Cập nhật app:** thêm/sửa 1 dòng trong `local.properties` (file này gitignore, mỗi máy tự giữ), ví dụ `apiUrl=http://192.168.11.3/employee-api/` → Sync Gradle.
+## Ghi chú khác
 
-**B3 - Run lại** app trong Android Studio.
-
-## Quỹ phép + GPS chấm công + giải trình + lịch vắng/xuất bảng công (2026-11-09)
-
-**Quỹ phép năm:** mỗi nhân viên có **12 ngày phép năm/năm** (hằng `LEAVE_ANNUAL_QUOTA`). Đơn nghỉ có cột `leave_type` (API tự thêm — migration đối chiếu `010_leave_gps_expl.sql`): `annual` phép năm, `sick` nghỉ ốm, `personal` việc riêng, `unpaid` nghỉ không lương. Số ngày đếm theo ngày làm việc (trừ Chủ nhật) như chuẩn tính lương. Endpoint `leave-balance` trả `{quota, used (đã duyệt), pending (đang chờ), remaining}` — đơn `annual` mới bị chặn 422 nếu vượt số dư; đơn `unpaid` khi tính lương **không** được tính ngày công. App: màn Xin nghỉ hiện dòng số dư phép của mình, dialog tạo đơn có chọn loại nghỉ, danh sách/chi tiết hiện nhãn loại.
-
-**GPS chấm công:** app xin quyền vị trí và gửi kèm `lat/lng` khi chấm công (không có vị trí vẫn chấm được). API lưu `check_in/out_lat/lng` và cờ `check_in/out_remote` đối chiếu toạ độ văn phòng (hằng `OFFICE_LAT/LNG`, bán kính `OFFICE_RADIUS_M` trong `attendances.php` — đổi theo địa điểm công ty thật); xa hơn bán kính chỉ **gắn cờ "Ngoài văn phòng"**, không chặn chấm công. Thẻ chấm công ở Trang chủ hiện cờ này.
-
-**Giải trình quên chấm công:** bảng `attendance_explanations` (API tự tạo). Nhân viên tạo đơn (ngày, loại vào/ra/cả hai, giờ đề xuất, lý do) qua nút ở Trang chủ — màn `ExplanationActivity` có tab Của tôi / Chờ duyệt giống Xin nghỉ. Người duyệt = Admin + manager cùng phòng (+ HR xem theo dõi). Duyệt xong hệ thống **bổ sung giờ đề xuất vào bảng `attendances`** (chỉ điền phần đang thiếu, không ghi đè dữ liệu chấm thật), kèm thông báo `expl_new` / `expl_approved` / `expl_rejected`.
-
-**Lịch vắng + xuất bảng công:** endpoint `leave-calendar` (tháng/năm) trả đơn đã duyệt + đang chờ trong phạm vi (Admin/HR/Kế toán: toàn công ty; còn lại: phòng mình) — màn `AbsenceCalendarActivity` vẽ lưới tháng tô màu ngày có người vắng + danh sách chi tiết, mở từ nút "Lịch vắng" ở màn Xin nghỉ. Endpoint `attendance-export` xuất CSV bảng công 1 tháng (ngày có mặt, đi muộn, nghỉ phép có lương, nghỉ không lương, tổng ngày công) theo cùng phạm vi — nút "Xuất Excel bảng công tháng này" ở màn Tổng quan.
-
-## Ghi chú: đã gỡ Firebase
-
-Quên mật khẩu chỉ dùng Email (server gửi mã 6 số). Kênh SMS Firebase đã gỡ nên clone về build chạy ngay, không cần `google-services.json`.
+- **Đã gỡ Firebase**: clone về build chạy ngay, không cần `google-services.json`.
+- **Quy trình nhóm**: mỗi việc 1 nhánh (`ten-viec`) → push nhánh → Pull Request → review → merge vào `main`. Chi tiết xem `HUONG-DAN-GITHUB-NHOM.md`.
