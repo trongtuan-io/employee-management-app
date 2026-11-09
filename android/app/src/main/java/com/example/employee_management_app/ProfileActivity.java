@@ -47,6 +47,7 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText etName, etEmail, etPhone;
     private int targetId, myId, currentStatus = 1;
     private boolean isAdminMode, suppressLockEvent;
+    private boolean readOnlyOtherProfile;
     private androidx.appcompat.widget.SwitchCompat swLock;
     private TextView tvLockStatus;
     private Button btnSave, btnAvatar;
@@ -119,16 +120,12 @@ public class ProfileActivity extends AppCompatActivity {
         String role = TokenManager.getInstance(this).getRole();
         boolean isAdmin = "admin".equalsIgnoreCase(role) || "manager".equalsIgnoreCase(role);
 
-        // Admin mo tu danh sach NV kem EMPLOYEE_ID -> sua duoc het. Con lai la tu sua.
-        if (getIntent().hasExtra("EMPLOYEE_ID") && isAdmin) {
-            targetId = getIntent().getIntExtra("EMPLOYEE_ID", myId);
-            isAdminMode = true;
-            setTitle("Sửa hồ sơ nhân viên");
-        } else {
-            targetId = myId;
-            isAdminMode = false;
-            setTitle("Hồ sơ của tôi");
-        }
+        // Manager xem ho so manager/admin khac: chi xem, khong duoc sua/khoa.
+        targetId = getIntent().hasExtra("EMPLOYEE_ID") && isAdmin
+                ? getIntent().getIntExtra("EMPLOYEE_ID", myId) : myId;
+        findViewById(R.id.btnProfileLogout).setVisibility(
+                getIntent().hasExtra("EMPLOYEE_ID") ? View.GONE : View.VISIBLE
+        );
         etEmail.setEnabled(isAdminMode);
         etPhone.setEnabled(isAdminMode);
         // Cum khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
@@ -181,6 +178,10 @@ public class ProfileActivity extends AppCompatActivity {
 
     // Gat cong tac: server tu chan theo quyen (admin moi phong / sep cung phong)
     private void setLock(boolean enable) {
+        if (!isAdminMode || readOnlyOtherProfile || targetId == myId) {
+            revertLock(enable);
+            return;
+        }
         if (lockInFlight) { // dang cho server: bo qua lan gat them, giu nguyen trang thai cong tac
             revertLock(enable);
             return;
@@ -240,6 +241,18 @@ public class ProfileActivity extends AppCompatActivity {
                         && r.body().getData() != null && r.body().getData().getId() == targetId) {
                     EmployeeDetailResponse.Detail d = r.body().getData();
                     loadedProfile = d;
+                    String myRole = TokenManager.getInstance(ProfileActivity.this).getRole();
+                    readOnlyOtherProfile = targetId != myId
+                            && "manager".equalsIgnoreCase(myRole) && d.getRoleId() != 3;
+                    if (readOnlyOtherProfile) {
+                        isAdminMode = false;
+                        findViewById(R.id.layoutLock).setVisibility(View.GONE);
+                        etHireDate.setVisibility(View.GONE);
+                        spDepartment.setVisibility(View.GONE);
+                        spPosition.setVisibility(View.GONE);
+                        ((TextView) findViewById(R.id.tvProfilePermissions))
+                                .setText("Bạn chỉ được xem hồ sơ quản lý khác.");
+                    }
                     etName.setText(ProfileValidation.text(d.getFullName()));
                     etEmail.setText(ProfileValidation.text(d.getEmail()));
                     etPhone.setText(ProfileValidation.text(d.getPhone()));
@@ -296,7 +309,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void saveProfile() {
-        if (loadedProfile == null || loading || saving) return;
+        if (loadedProfile == null || loading || saving || readOnlyOtherProfile) return;
         String name = etName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
@@ -329,7 +342,8 @@ public class ProfileActivity extends AppCompatActivity {
         boolean dateChanged = isAdminMode && ProfileValidation.changed(date, loadedProfile.getHireDate());
         UpdateEmployeeRequest req = new UpdateEmployeeRequest(targetId, myId, name,
                 emailChanged ? email : null, phoneChanged ? phone : null,
-                isAdminMode && departmentId != loadedProfile.getDepartmentId() ? departmentId : null,
+                isAdminMode && "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole())
+                        && departmentId != loadedProfile.getDepartmentId() ? departmentId : null,
                 isAdminMode && positionId != loadedProfile.getPositionId() ? positionId : null,
                 dateChanged ? date : null);
         saveCall = api.updateEmployee(req);
@@ -444,16 +458,18 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void updateControls() {
-        boolean editable = loadedProfile != null && !loading && !saving;
+        boolean editable = loadedProfile != null && !loading && !saving && !readOnlyOtherProfile;
         etName.setEnabled(editable);
         etEmail.setEnabled(editable && isAdminMode);
         etPhone.setEnabled(editable && isAdminMode);
         btnSave.setEnabled(editable);
         btnAvatar.setEnabled(editable);
         // Khong cho tu khoa chinh minh (server cung chan) + khoa cong tac khi dang cho ket qua.
-        swLock.setEnabled(editable && targetId != myId && !lockInFlight);
+        swLock.setEnabled(editable && isAdminMode && targetId != myId && !lockInFlight);
         etHireDate.setEnabled(editable && isAdminMode);
-        spDepartment.setEnabled(editable && isAdminMode && departmentsLoaded);
+        // Chuyen phong ban la quyen cua Admin, khong phai Manager.
+        boolean adminRole = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        spDepartment.setEnabled(editable && isAdminMode && adminRole && departmentsLoaded);
         spPosition.setEnabled(editable && isAdminMode && positionsLoaded);
         findViewById(R.id.progressProfile).setVisibility(loading || saving ? View.VISIBLE : View.GONE);
     }

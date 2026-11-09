@@ -20,7 +20,7 @@ if ($action === 'members' && $method === 'GET') {
     if (!$isGlobal && $me['role'] !== 'manager') err('Khong co quyen xem thanh vien phong ban', 403);
     $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
     if (!$id) err('Thieu id phong ban', 422);
-    if (!$isGlobal && (int)$id !== (int)$me['department_id']) err('Chi xem duoc thanh vien phong ban minh', 403);
+    if (!$isGlobal && ($me['department_id'] === null || (int)$id !== (int)$me['department_id'])) err('Chi xem duoc thanh vien phong ban minh', 403);
     $stmt = $pdo->prepare('SELECT 1 FROM departments WHERE id=?');
     $stmt->execute([$id]);
     if (!$stmt->fetchColumn()) err('Khong tim thay phong ban', 404);

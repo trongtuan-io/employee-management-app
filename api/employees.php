@@ -21,14 +21,17 @@ if ($a === "list" && $m === "GET") {
   // - admin: xem TOAN cong ty.
   // - manager (MOI phong, ke ca HR va Ke toan): CHI nhan vien phong minh.
   // - staff (nhan vien thuong): KHONG xem duoc danh sach nay (403).
-  $me = require_login($pdo);
-  if ($me["role"] === "staff") err("Nhan vien khong co quyen xem danh sach nhan vien", 403);
-  $listRestricted = false;
+  $me = require_role($pdo, ["admin", "manager"]);
+  // Manager ngoai phong HR khong xem luong co ban qua API danh sach.
+  $listRestricted = $me["role"] === "manager" && !is_hr($me);
   $search = $_GET["search"] ?? "";
   $dept = $_GET["dept_id"] ?? "";
   // Manager chi xem duoc nhan vien phong minh: ep bo loc phong theo token,
   // bo qua dept_id client gui (chi admin xem duoc tat ca).
-  if ($me["role"] === "manager") $dept = (string)(int)$me["department_id"];
+  if ($me["role"] === "manager") {
+    if ($me["department_id"] === null) err("Tai khoan quan ly chua duoc gan phong ban", 403);
+    $dept = (string)(int)$me["department_id"];
+  }
   $sort = $_GET["sort"] ?? "id_desc";
   $searchMode = $_GET["search_mode"] ?? "like";
   if (!in_array($searchMode, ["like", "fulltext"], true)) err("search_mode khong hop le");
@@ -111,8 +114,13 @@ if ($a === "detail" && $m === "GET") {
   // chinh minh. Chi admin xem duoc ho so toan cong ty.
   if ($me["role"] === "manager"
       && (int)$r["id"] !== (int)$me["id"]
-      && (int)$r["department_id"] !== (int)$me["department_id"]) {
+      && ($me["department_id"] === null || $r["department_id"] === null
+          || (int)$r["department_id"] !== (int)$me["department_id"])) {
     err("Chi xem duoc ho so nhan vien phong ban minh", 403);
+  }
+  // Luong co ban khong nam trong quyen xem ho so cua truong phong thong thuong.
+  if ($me["role"] === "manager" && !is_hr($me) && (int)$r["id"] !== (int)$me["id"]) {
+    $r["base_salary"] = null;
   }
   unset($r["password_hash"]); out($r);
 }
@@ -131,8 +139,10 @@ if ($a === "create" && $m === "POST") {
   // Manager (MOI phong) chi tao nhan vien thuong cho PHONG MINH; tao nhan vien
   // cho phong khac la viec cua admin (siet chat 09/11/2026).
   if ($me["role"] === "manager") {
+    if ($me["department_id"] === null) err("Tai khoan quan ly chua duoc gan phong ban", 403);
     $b["role_id"] = 3;
     $b["department_id"] = (int)$me["department_id"];
+    if (!is_hr_manager($me)) $b["base_salary"] = 0;
   }
   positions_ensure($pdo);
   $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
@@ -159,6 +169,8 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   $reqRole = employee_editor_role($pdo, $reqId);
   $isManager = in_array($reqRole, ["admin", "manager"], true);
   if (!$reqRole || ($reqId !== $id && !$isManager)) err("Khong co quyen", 403);
+  // Manager tu sua ho so minh chi duoc thay doi thong tin ca nhan co ban.
+  $canEditEmployment = $reqRole === "admin" || ($reqRole === "manager" && $reqId !== $id);
   $stmt = $pdo->prepare("SELECT * FROM employees WHERE id=? LIMIT 1");
   $stmt->execute([$id]);
   $cur = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -167,12 +179,13 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   // Manager (MOI phong) chi sua duoc nhan vien phong minh; sua ho so phong khac
   // la viec cua admin (siet chat 09/11/2026).
   if ($me["role"] === "manager" && $reqId !== $id
-      && (int)$cur["department_id"] !== (int)$me["department_id"]) {
+      && ($me["department_id"] === null || $cur["department_id"] === null
+          || (int)$cur["department_id"] !== (int)$me["department_id"])) {
     err("Chi sua duoc ho so nhan vien phong ban minh", 403);
   }
   // Manager khong duoc chuyen nhan vien sang phong khac (chi admin moi chuyen phong).
-  if ($me["role"] === "manager" && array_key_exists('department_id', $b) && $b['department_id'] !== null
-      && (int)$b['department_id'] !== (int)$me["department_id"]) {
+  if ($me["role"] === "manager" && array_key_exists('department_id', $b)
+      && $b['department_id'] !== null && (int)$b['department_id'] !== (int)$me["department_id"]) {
     err("Chi duoc giu nhan vien trong phong ban minh", 403);
   }
   // Manager chi sua ho so nhan vien THUONG cung phong (khong sua manager/admin khac).
@@ -183,13 +196,15 @@ if ($a === "update" && ($m === "PUT" || $m === "POST")) {
   }
   try {
     $name = employee_name($b["full_name"] ?? $cur["full_name"]);
-    if ($isManager) {
+    if ($canEditEmployment) {
       // Null fields omitted by Gson leave existing data untouched.
       $email = array_key_exists('email', $b) && $b['email'] !== null
         ? employee_email($b['email']) : $cur['email'];
       $phone = array_key_exists('phone', $b) && $b['phone'] !== null
         ? employee_phone($b['phone']) : $cur['phone'];
-      $dept = array_key_exists('department_id', $b) ? employee_optional_fk($pdo, $b['department_id'], 'departments') : $cur['department_id'];
+      // Manager khong duoc doi phong ban, ke ca gui department_id=null qua API.
+      $dept = $me["role"] === "manager" ? $cur['department_id']
+        : (array_key_exists('department_id', $b) ? employee_optional_fk($pdo, $b['department_id'], 'departments') : $cur['department_id']);
       $pos = array_key_exists('position_id', $b) ? employee_optional_fk($pdo, $b['position_id'], 'positions') : $cur['position_id'];
       // Client gui 0 (placeholder "khong chi dinh") thi giu nguyen gia tri cu, khong xoa phong/chuc vu.
       if (array_key_exists('department_id', $b) && (int)($b['department_id'] ?? 0) === 0) $dept = $cur['department_id'];
@@ -225,17 +240,18 @@ if ($a === "upload-avatar" && $m === "POST") {
   $me = require_login($pdo);
   $reqId = (int)$me["id"]; // Danh tinh lay tu token
   if (!$empId) err("Thieu employee_id");
-  $stmt = $pdo->prepare("SELECT r.name FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
-  $stmt->execute([$reqId]);
-  $reqRole = strtolower(($stmt->fetch(PDO::FETCH_ASSOC) ?: [])["name"] ?? "");
-  $isAdmin = in_array($reqRole, ["admin", "manager"]);
-  if ($reqId !== $empId && !$isAdmin) err("Khong co quyen", 403);
-  // Manager up avatar ho thi cung chi trong phong minh.
-  if ($reqRole === "manager" && $reqId !== $empId) {
-    $dq = $pdo->prepare("SELECT department_id FROM employees WHERE id IN (?,?)");
-    $dq->execute([$reqId, $empId]);
-    $rows = $dq->fetchAll(PDO::FETCH_COLUMN);
-    if (count($rows) === 2 && (int)$rows[0] !== (int)$rows[1]) err("Chi up duoc avatar cho nhan vien phong minh", 403);
+  if ($reqId !== $empId && !in_array($me["role"], ["admin", "manager"], true)) err("Khong co quyen", 403);
+  $target = $pdo->prepare("SELECT e.department_id, LOWER(r.name) AS role FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=? LIMIT 1");
+  $target->execute([$empId]);
+  $targetInfo = $target->fetch(PDO::FETCH_ASSOC);
+  if (!$targetInfo) err("Khong tim thay nhan vien", 404);
+  // Manager chi duoc cap nhat anh cho staff cung phong; khong duoc sua manager/admin khac.
+  if ($me["role"] === "manager" && $reqId !== $empId) {
+    if ($me["department_id"] === null || $targetInfo["department_id"] === null
+        || (int)$targetInfo["department_id"] !== (int)$me["department_id"]
+        || $targetInfo["role"] !== "staff") {
+      err("Chi sua duoc nhan vien thuong trong phong minh", 403);
+    }
   }
   if (!isset($_FILES["avatar"]) || $_FILES["avatar"]["error"] !== UPLOAD_ERR_OK) err("Chua chon anh");
   $f = $_FILES["avatar"];
@@ -278,7 +294,8 @@ if ($a === "set-status" && ($m === "PUT" || $m === "POST")) {
   if (!$target) err("Khong tim thay nhan vien", 404);
   if ($req["role"] === "manager") {
     // Manager (MOI phong) chi khoa/mo nhan vien THUONG cung phong minh.
-    if ((int)$target["department_id"] !== (int)$req["department_id"]) err("Chi duoc khoa mo nhan vien phong ban minh", 403);
+    if ($req["department_id"] === null || $target["department_id"] === null
+        || (int)$target["department_id"] !== (int)$req["department_id"]) err("Chi duoc khoa mo nhan vien phong ban minh", 403);
     if ($target["role"] !== "staff") err("Chi duoc khoa mo nhan vien thuong", 403);
   }
   $pdo->prepare("UPDATE employees SET status=? WHERE id=?")->execute([$status ? 1 : 0, $id]);

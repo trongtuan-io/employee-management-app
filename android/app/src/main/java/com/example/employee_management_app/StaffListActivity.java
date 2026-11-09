@@ -358,6 +358,24 @@ public class StaffListActivity extends AppCompatActivity {
                         return;
                     }
                 }
+                // Manager chi co the loc nhan vien phong minh; khong hien cac phong khac.
+                if ("manager".equalsIgnoreCase(TokenManager.getInstance(StaffListActivity.this).getRole())) {
+                    String ownDept = TokenManager.getInstance(StaffListActivity.this).getDepartmentName();
+                    DepartmentListResponse.Item mine = null;
+                    for (DepartmentListResponse.Item item : departments) {
+                        if (item.getName().equalsIgnoreCase(ownDept)) { mine = item; break; }
+                    }
+                    if (mine == null) { showDepartmentError(); return; }
+                    departmentAdapter.clear();
+                    departmentAdapter.add(mine);
+                    departmentName = mine.getName();
+                    departmentSpinner.setSelection(0);
+                    departmentSpinner.setEnabled(false);
+                    departmentMessage.setText("Chỉ hiển thị nhân viên phòng của bạn");
+                    departmentMessage.setVisibility(View.VISIBLE);
+                    changeQuery(query.withDepartment(mine.getId()), false);
+                    return;
+                }
                 departmentAdapter.clear();
                 departmentAdapter.add(new DepartmentListResponse.Item(0, getString(R.string.staff_all_departments)));
                 departmentAdapter.addAll(departments);
@@ -386,7 +404,8 @@ public class StaffListActivity extends AppCompatActivity {
 
     private void showDepartmentError() {
         // Giu lua chon da co; van co the chon lai "Tat ca" neu API phong ban loi.
-        departmentSpinner.setEnabled(true);
+        departmentSpinner.setEnabled(!"manager".equalsIgnoreCase(
+                TokenManager.getInstance(this).getRole()));
         departmentMessage.setText(R.string.staff_departments_error);
         departmentMessage.setVisibility(View.VISIBLE);
         retryDepartments.setVisibility(View.VISIBLE);

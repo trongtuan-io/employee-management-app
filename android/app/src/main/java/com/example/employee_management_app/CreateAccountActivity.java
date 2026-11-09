@@ -45,7 +45,7 @@ public class CreateAccountActivity extends AppCompatActivity {
 
         String role = TokenManager.getInstance(this).getRole();
         if (!role.equalsIgnoreCase("admin") && !role.equalsIgnoreCase("manager")) {
-            Toast.makeText(this, "Chỉ admin mới được tạo tài khoản", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Chỉ quản trị viên hoặc trưởng phòng được tạo tài khoản", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -83,8 +83,11 @@ public class CreateAccountActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
+        if (isManagerRole) {
+            spDept.setEnabled(false);
+            btnCreate.setEnabled(false);
+        }
         loadDepartments();
-        if (isManagerRole) lockDepartmentToMine();
         btnCreate.setOnClickListener(v -> doCreate());
     }
 
@@ -106,6 +109,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                             }
                         }
                         spDept.setEnabled(false);
+                        btnCreate.setEnabled(true);
                     }
                 }
             }
@@ -129,6 +133,7 @@ public class CreateAccountActivity extends AppCompatActivity {
                             android.R.layout.simple_spinner_dropdown_item, deptChoices);
                     spDept.setAdapter(a);
                     loadPositions(0);
+                    if (isManagerRole) lockDepartmentToMine();
                 } else {
                     Toast.makeText(CreateAccountActivity.this,
                             "Không tải được danh sách phòng ban", Toast.LENGTH_LONG).show();

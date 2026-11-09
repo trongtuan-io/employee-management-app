@@ -38,8 +38,10 @@ if ($a === "register" && $m === "POST") {
   // Manager (MOI phong) chi tao nhan vien thuong cho PHONG MINH; tao tai khoan
   // cho phong khac la viec cua admin (siet chat 09/11/2026).
   if ($me["role"] === "manager") {
+    if ($me["department_id"] === null) err("Tai khoan quan ly chua duoc gan phong ban", 403);
     $b["role_id"] = 3;
     $b["department_id"] = (int)$me["department_id"];
+    if (!is_hr_manager($me)) $b["base_salary"] = 0;
   }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
   if (!is_string($b["password"]) || strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");

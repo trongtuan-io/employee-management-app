@@ -29,6 +29,12 @@ public class AdminActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        String role = TokenManager.getInstance(this).getRole();
+        if (!"admin".equalsIgnoreCase(role) && !"manager".equalsIgnoreCase(role)) {
+            startActivity(new Intent(this, HomeActivity.class));
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_admin);
         BottomNavHelper.setup(this, R.id.nav_overview);
 
