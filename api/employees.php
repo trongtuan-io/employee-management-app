@@ -13,7 +13,7 @@ if ($a === "directory" && $m === "GET") {
   // chi admin, phong Ke toan (ca truong lan nhan vien) va Truong phong HR duoc dung.
   $me = require_login($pdo);
   if (!can_view_others_salary($me)) err("Khong co quyen xem danh ba luong", 403);
-  $rows = $pdo->query("SELECT e.id,e.username,e.full_name,e.department_id,d.name AS dept_name FROM employees e LEFT JOIN departments d ON d.id=e.department_id WHERE e.status=1 ORDER BY e.full_name,e.id")->fetchAll(PDO::FETCH_ASSOC);
+  $rows = $pdo->query("SELECT e.id,e.username,e.full_name,e.status,e.department_id,d.name AS dept_name FROM employees e LEFT JOIN departments d ON d.id=e.department_id WHERE e.status=1 ORDER BY e.full_name,e.id")->fetchAll(PDO::FETCH_ASSOC);
   out($rows);
 }
 if ($a === "list" && $m === "GET") {
