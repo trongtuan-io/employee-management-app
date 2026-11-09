@@ -5,13 +5,15 @@ require_once __DIR__ . "/salary_calc.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 // ===== GPS cham cong (2026-11-09) =====
-// Toa do van phong dung de doi chieu: DOI 2 hang so nay theo dia diem that
-// cua cong ty. Cham cong xa hon OFFICE_RADIUS_M chi bi GAN CO "ngoai van
-// phong" de quan ly doi chieu, KHONG chan cham cong (tranh dung viec khi GPS
-// lech hoac nhan vien lam viec ngoai hien truong).
-define("OFFICE_LAT", 21.0285000);
-define("OFFICE_LNG", 105.8542000);
-define("OFFICE_RADIUS_M", 300);
+// Toa do van phong dung de doi chieu: Truong DH Su pham Ha Noi, 136 Xuan
+// Thuy, Cau Giay (toa do cong chinh tren ban do; ban kinh 500m bao phu
+// khuon vien truong + sai so GPS trong nha). Cham cong xa hon
+// OFFICE_RADIUS_M chi bi GAN CO "ngoai van phong" de quan ly doi chieu,
+// KHONG chan cham cong (tranh dung viec khi GPS lech hoac nhan vien lam
+// viec ngoai hien truong).
+define("OFFICE_LAT", 21.0378000);
+define("OFFICE_LNG", 105.7830000);
+define("OFFICE_RADIUS_M", 500);
 
 function att_ensure_columns(PDO $pdo) {
   static $done = false;
