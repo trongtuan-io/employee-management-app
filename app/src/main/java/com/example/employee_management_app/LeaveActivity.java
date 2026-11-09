@@ -32,7 +32,9 @@ import retrofit2.Response;
 
 // Man Xin nghi phep theo mau "Xin nghi 1 buoi": the thong ke trang thai,
 // loc theo trang thai + khoang ngay, badge trang thai, nut Tao yeu cau.
-// Quan ly/HR them tab "Cho duyet" de duyet don trong phong (server van quyet pham vi).
+// Quan ly/HR them tab "Cho duyet": don cho duyet xep tren cung; don DA xu ly
+// van o lai trong tab nay kem nguoi duyet + thoi diem xu ly de truy vet
+// (bam vao chi xem chi tiet, khong duyet lai duoc).
 public class LeaveActivity extends AppCompatActivity {
     private static final int MODE_MINE = 0;
     private static final int MODE_QUEUE = 1;
@@ -89,7 +91,9 @@ public class LeaveActivity extends AppCompatActivity {
         lv.setAdapter(adapter);
         lv.setOnItemClickListener((parent, view, position, id) -> {
             LeaveListResponse.Item item = shownItems.get(position);
-            if (mode == MODE_QUEUE) showApproveDialog(item);
+            // O tab duyet: chi don dang CHO duyet moi mo hop thoai Duyet/Tu choi;
+            // don da xu ly (va don o tab cua toi) chi xem chi tiet de truy vet.
+            if (mode == MODE_QUEUE && "pending".equals(item.getStatus())) showApproveDialog(item);
             else showDetailDialog(item);
         });
 
@@ -285,6 +289,8 @@ public class LeaveActivity extends AppCompatActivity {
         }
         sb.append("\nNgày tạo: ").append(formatDateTime(item.getCreatedAt()));
         sb.append("\nTrạng thái: ").append(statusLabel(item.getStatus()));
+        String processed = processedText(item);
+        if (!processed.isEmpty()) sb.append("\n").append(processed);
         if (item.getReason() != null && !item.getReason().isEmpty()) {
             sb.append("\nLý do: ").append(item.getReason());
         }
@@ -342,6 +348,23 @@ public class LeaveActivity extends AppCompatActivity {
         return formatDate(dt.substring(0, 10));
     }
 
+    // "Da duyet boi <ten> · dd/MM/yyyy HH:mm" cho don da xu ly; rong neu don
+    // con cho duyet hoac thieu du lieu (don xu ly tu truoc khi co cot thoi diem).
+    static String processedText(LeaveListResponse.Item item) {
+        String verb;
+        if ("approved".equals(item.getStatus())) verb = "Đã duyệt bởi ";
+        else if ("rejected".equals(item.getStatus())) verb = "Đã từ chối bởi ";
+        else return "";
+        String who = item.getApproverName() != null && !item.getApproverName().isEmpty()
+                ? item.getApproverName() : "quản lý";
+        String when = "";
+        String at = item.getProcessedAt();
+        if (at != null && at.length() >= 16) {
+            when = " · " + formatDate(at.substring(0, 10)) + " " + at.substring(11, 16);
+        }
+        return verb + who + when;
+    }
+
     static String statusLabel(String status) {
         if ("approved".equals(status)) return "Đã duyệt";
         if ("rejected".equals(status)) return "Bị từ chối";
@@ -388,6 +411,10 @@ public class LeaveActivity extends AppCompatActivity {
             }
             if (mode == MODE_QUEUE && item.getReason() != null && !item.getReason().isEmpty()) {
                 meta.append("\nLý do: ").append(item.getReason());
+            }
+            String processed = processedText(item);
+            if (mode == MODE_QUEUE && !processed.isEmpty()) {
+                meta.append("\n").append(processed);
             }
             tvMeta.setText(meta.toString());
 

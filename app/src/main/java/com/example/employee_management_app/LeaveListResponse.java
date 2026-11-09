@@ -20,6 +20,8 @@ public class LeaveListResponse {
         private String reason;
         private String status;
         private String created_at;
+        private String approver_name; // ten nguoi duyet (chi co o khu vuc duyet phep)
+        private String processed_at; // thoi diem duyet/tu choi (don cu co the null)
 
         public int getId() { return id; }
         public int getEmployeeId() { return employee_id; }
@@ -30,6 +32,8 @@ public class LeaveListResponse {
         public String getReason() { return reason; }
         public String getStatus() { return status; }
         public String getCreatedAt() { return created_at; }
+        public String getApproverName() { return approver_name; }
+        public String getProcessedAt() { return processed_at; }
 
         @Override
         public String toString() {

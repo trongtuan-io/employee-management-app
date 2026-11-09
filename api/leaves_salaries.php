@@ -4,6 +4,21 @@ require_once __DIR__ . "/auth_guard.php";
 require_once __DIR__ . "/salary_calc.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
+// Cot processed_at: thoi diem don duoc duyet/tu choi — phuc vu truy vet o tab
+// Cho duyet (don xu ly xong van con luu lai lam chung cu, khong bien mat).
+// Tu bo sung cot neu DB chua co (nhu cach salary_ensure_columns lam).
+function leave_ensure_columns(PDO $pdo) {
+  static $done = false;
+  if ($done) return;
+  $done = true;
+  $stmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'leave_requests'");
+  $stmt->execute();
+  $have = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), "COLUMN_NAME");
+  if (!in_array("processed_at", $have, true)) {
+    $pdo->exec("ALTER TABLE leave_requests ADD COLUMN processed_at DATETIME NULL");
+  }
+}
+
 if ($a === "leave-create" && $m === "POST") {
   $me = require_login($pdo);
   $b = body();
@@ -55,13 +70,20 @@ if ($a === "leave-list" && $m === "GET") {
     $stmt = $pdo->prepare("SELECT * FROM leave_requests WHERE employee_id=? ORDER BY id DESC"); $stmt->execute([$emp]);
   }
   else {
-    // Hang cho duyet: admin thay tat ca, phong HR thay tat ca (chi de theo doi -
-    // duyet thi van chi don phong HR), sep phong nghiep vu chi thay phong minh.
+    // Khu vuc duyet phep: admin thay tat ca, phong HR thay tat ca (chi de theo
+    // doi - duyet thi van chi don phong HR), sep phong nghiep vu chi thay phong
+    // minh. Tra CA don da xu ly (approved/rejected) kem nguoi duyet + thoi diem
+    // xu ly de truy vet: don duyet xong KHONG bien mat khoi danh sach nua.
+    // Don dang cho duyet xep len dau.
+    leave_ensure_columns($pdo);
+    $cols = "l.*, e.full_name, d.name AS dept_name, a.full_name AS approver_name";
+    $joins = "FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN employees a ON a.id=l.approved_by";
+    $order = "ORDER BY (l.status='pending') DESC, l.id DESC";
     if ($me["role"] === "manager" && !is_hr($me)) {
-      $stmt = $pdo->prepare("SELECT l.*, e.full_name, d.name AS dept_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id WHERE l.status='pending' AND e.department_id=? ORDER BY l.id DESC");
+      $stmt = $pdo->prepare("SELECT $cols $joins WHERE e.department_id=? $order");
       $stmt->execute([(int)$me["department_id"]]);
     } else {
-      $stmt = $pdo->query("SELECT l.*, e.full_name, d.name AS dept_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id WHERE l.status='pending' ORDER BY l.id DESC");
+      $stmt = $pdo->query("SELECT $cols $joins $order");
     }
   }
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -81,7 +103,9 @@ if ($a === "leave-approve" && $m === "POST") {
     err("Chi duyet duoc don nghi cua nhan vien phong ban minh", 403);
   }
   // Cap nhat kem dieu kien status='pending' de 2 nguoi duyet cung luc khong ghi de nhau.
-  $upd = $pdo->prepare("UPDATE leave_requests SET status=?, approved_by=? WHERE id=? AND status='pending'");
+  // Ghi luon thoi diem xu ly (processed_at) lam chung cu truy vet.
+  leave_ensure_columns($pdo);
+  $upd = $pdo->prepare("UPDATE leave_requests SET status=?, approved_by=?, processed_at=NOW() WHERE id=? AND status='pending'");
   $upd->execute([$b["status"], $me["id"], (int)$b["id"]]);
   if ($upd->rowCount() === 0) err("Don nay da duoc xu ly roi", 409);
   out(["id" => (int)$b["id"], "status" => $b["status"]]);

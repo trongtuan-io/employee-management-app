@@ -24,7 +24,7 @@ App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới d�
 
 Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi trưởng phòng chỉ thấy nhân viên phòng mình; nhân viên (staff) không truy cập được trang này. Màn Bảng lương: danh sách các tháng trong năm, chạm vào một tháng để xem chi tiết (lương cơ bản gốc, ngày công, các khoản cộng/trừ, thực lĩnh). Nhân viên các phòng khác **chỉ xem được bảng lương của chính mình**; phòng Kế toán có khu quản lý (chọn nhân viên qua danh bạ riêng `employees.php?action=directory`, tính lương, sửa các khoản) và Kế toán trưởng/Admin mới có nút chốt.
 
-Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
+Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Đơn đã duyệt/từ chối **không biến mất**: vẫn nằm lại trong tab Chờ duyệt kèm tên người duyệt và thời điểm xử lý (cột `processed_at`, API tự bổ sung) để truy vết. Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
 
 ## Cấu trúc repo
 

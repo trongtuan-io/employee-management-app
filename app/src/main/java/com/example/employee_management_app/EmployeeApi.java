@@ -85,6 +85,7 @@ public interface EmployeeApi {
     @GET("leaves_salaries.php?action=leave-list")
     Call<LeaveListResponse> getMyLeaves(@Query("employee_id") int employeeId);
 
+    // Khu vuc duyet phep: don cho duyet (xep dau) + don da xu ly kem nguoi duyet.
     @GET("leaves_salaries.php?action=leave-list")
     Call<LeaveListResponse> getPendingLeaves();
 
