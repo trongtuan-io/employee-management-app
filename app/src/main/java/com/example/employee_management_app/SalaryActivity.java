@@ -23,9 +23,10 @@ import retrofit2.Response;
 
 // Bang luong: danh sach cac thang trong nam (moi dong la mot thang), cham vao
 // de xem CHI TIET thang do (SalaryDetailActivity).
-// Phan quyen (Tuan chot 2026-11-09): NHAN VIEN moi phong chi xem duoc bang
-// luong CUA CHINH MINH (API chi tra thang da chot); chi Admin + KE TOAN TRUONG
-// moi co khu quan ly: xem luong nhan vien khac, tinh luong tu dong, sua, chot.
+// Phan quyen (Tuan chot 2026-11-09): nhan vien cac phong khac chi xem duoc
+// bang luong CUA CHINH MINH (API chi tra thang da chot). Phong KE TOAN (ca NV
+// lan truong phong) co khu quan ly de SOAN NHAP: xem luong nhan vien khac,
+// tinh luong tu dong, sua cac khoan; rieng CHOT chi Ke toan truong + Admin.
 public class SalaryActivity extends AppCompatActivity {
     private final List<SalaryListResponse.Item> items = new ArrayList<>();
     private final List<EmployeeListResponse.Item> employees = new ArrayList<>();
@@ -34,6 +35,7 @@ public class SalaryActivity extends AppCompatActivity {
     private int myId;
     private boolean isAdmin;
     private boolean canManage;
+    private boolean canFinalize;
     private int selectedEmpId;
     private int selectedYear;
     private TextView tvSalaryYear, tvSalaryOwner, tvSalaryEmpty;
@@ -52,7 +54,8 @@ public class SalaryActivity extends AppCompatActivity {
         String dept = TokenManager.getInstance(this).getDepartmentName();
         isAdmin = "admin".equalsIgnoreCase(role);
         boolean isAccounting = "ACC".equalsIgnoreCase(dept);
-        canManage = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
+        canManage = isAdmin || isAccounting;
+        canFinalize = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
         selectedEmpId = myId;
         selectedYear = Calendar.getInstance().get(Calendar.YEAR);
 
@@ -192,6 +195,7 @@ public class SalaryActivity extends AppCompatActivity {
         i.putExtra(p + "standard_days", item.getStandardDays());
         i.putExtra(p + "finalized", item.isFinalized());
         i.putExtra(p + "can_manage", canManage);
+        i.putExtra(p + "can_finalize", canFinalize);
         i.putExtra(p + "is_admin", isAdmin);
         startActivity(i);
     }

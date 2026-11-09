@@ -18,9 +18,9 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 // Chi tiet bang luong MOT thang: luong co ban goc, ngay cong, luong theo ngay cong,
-// phu cap/tang ca/thuong/khau tru va THUC LINH. Nhan vien chi mo duoc chi tiet
-// cua chinh minh (danh sach da loc san); Admin/Ke toan truong co them nut
-// Sua cac khoan + Chot (ban nhap) va Mo lai (da chot, chi Admin).
+// phu cap/tang ca/thuong/khau tru va THUC LINH. Nhan vien phong khac chi mo duoc
+// chi tiet cua chinh minh (danh sach da loc san); phong Ke toan co nut Sua cac
+// khoan (ban nhap), CHOT chi Ke toan truong/Admin, Mo lai chi Admin.
 public class SalaryDetailActivity extends AppCompatActivity {
     public static final String EXTRA_PREFIX = "salary_";
 
@@ -29,6 +29,7 @@ public class SalaryDetailActivity extends AppCompatActivity {
     private int employeeId;
     private int year;
     private boolean canManage;
+    private boolean canFinalize;
     private boolean isAdmin;
     private Intent currentExtras;
 
@@ -43,6 +44,7 @@ public class SalaryDetailActivity extends AppCompatActivity {
         employeeId = i.getIntExtra(EXTRA_PREFIX + "employee_id", 0);
         year = i.getIntExtra(EXTRA_PREFIX + "year", 0);
         canManage = i.getBooleanExtra(EXTRA_PREFIX + "can_manage", false);
+        canFinalize = i.getBooleanExtra(EXTRA_PREFIX + "can_finalize", false);
         isAdmin = i.getBooleanExtra(EXTRA_PREFIX + "is_admin", false);
 
         // Hien thi truc tiep tu extras; cac thao tac Sua/Chot xong se tai lai tu API.
@@ -108,7 +110,8 @@ public class SalaryDetailActivity extends AppCompatActivity {
         }
         actions.setVisibility(View.VISIBLE);
         findViewById(R.id.btnAdjustSalary).setVisibility(finalized ? View.GONE : View.VISIBLE);
-        findViewById(R.id.btnFinalizeSalary).setVisibility(finalized ? View.GONE : View.VISIBLE);
+        // Nut Chot chi hien voi Ke toan truong/Admin (NV Ke toan chi soan nhap).
+        findViewById(R.id.btnFinalizeSalary).setVisibility(!finalized && canFinalize ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnUnfinalizeSalary).setVisibility(finalized && isAdmin ? View.VISIBLE : View.GONE);
     }
 

@@ -90,12 +90,12 @@ if ($a === "salary-list" && $m === "GET") {
   $me = require_login($pdo);
   // Khong truyen employee_id thi mac dinh xem cua chinh minh.
   $empId = (int)($_GET["employee_id"] ?? $me["id"]);
-  // Xem luong NGUOI KHAC: chi Admin + Ke toan truong. Moi nhan vien/truong phong
-  // con lai chi xem duoc bang luong CUA CHINH MINH (du lieu ca nhan).
+  // Xem luong NGUOI KHAC: chi Admin + phong Ke toan (de soan nhap). Moi nhan
+  // vien/truong phong con lai chi xem duoc bang luong CUA CHINH MINH.
   if ($empId !== (int)$me["id"] && !can_view_others_salary($me)) err("Khong co quyen xem luong nguoi khac", 403);
   salary_ensure_columns($pdo);
-  // Xem luong CUA MINH: nguoi khong phai quan ly bang luong chi thay thang DA CHOT.
-  // Ban nhap (finalized=0) chi Admin/Ke toan truong thay.
+  // Xem luong CUA MINH: nguoi khong thuoc nhom nghiep vu luong chi thay thang
+  // DA CHOT. Ban nhap (finalized=0) chi Admin/phong Ke toan thay.
   $onlyFinalized = ($empId === (int)$me["id"] && !can_view_others_salary($me));
   // full_base_salary = luong co ban GOC trong ho so (cot base_salary cua bang
   // salaries la luong DA NHAN theo ngay cong) — man chi tiet can ca hai so.
@@ -106,8 +106,8 @@ if ($a === "salary-list" && $m === "GET") {
   $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
-// Tinh luong TU DONG theo ngay cong cho ca thang: CHI Admin + Ke toan truong,
-// pham vi TOAN CONG TY (ke toan truong tinh luong cho moi phong ban).
+// Tinh luong TU DONG theo ngay cong cho ca thang: Admin + phong Ke toan
+// (soan nhap), pham vi TOAN CONG TY.
 // Sinh bang luong NHAP: dong da CHOT (finalized=1) khong bi ghi de; phu cap/tang ca/
 // thuong/khau tru cua dong cu duoc GIU NGUYEN, chi tinh lai phan luong theo cong va thuc linh.
 if ($a === "salary-generate" && $m === "POST") {

@@ -94,25 +94,34 @@ function is_hr_manager($u) {
   return $u["role"] === "admin" || (is_hr($u) && $u["role"] === "manager");
 }
 
-// Nguoi QUAN LY bang luong: admin hoac KE TOAN TRUONG (manager phong ACC).
-// Nguyen tac Tuan chot 2026-11-09: nhan vien (staff) MOI phong chi xem duoc
-// bang luong CUA CHINH MINH; ke ca nhan vien Ke toan va Truong phong HR cung
-// khong xem/tinh luong nguoi khac — viec tinh/chot luong toan cong ty chi
-// nam o Admin va Ke toan truong.
+// Phan cong nghiep vu LUONG trong phong Ke toan (Tuan chot 2026-11-09):
+// - SOAN NHAP + SUA KHOAN + XEM luong toan cong ty de soan: Admin + phong Ke
+//   toan (ca Ke toan truong lan NV Ke toan).
+// - CHOT bang luong: chi Admin + KE TOAN TRUONG (manager phong ACC).
+// Nhan vien cac phong khac (ke ca Truong phong HR) chi xem bang luong CUA
+// CHINH MINH sau khi da chot.
 function is_payroll_manager($u) {
   return $u["role"] === "admin" || (is_accounting($u) && $u["role"] === "manager");
 }
 
-// Quyen thao tac LUONG (tinh tu dong, sua khoan, chot): chi nguoi quan ly bang luong.
+// Quyen thao tac LUONG: generate/adjust cho ca phong Ke toan; finalize chi
+// Admin + Ke toan truong.
 function require_payroll(PDO $pdo, $finalize = false) {
   $u = require_login($pdo);
-  if (is_payroll_manager($u)) return $u;
-  err("Chi Admin va Ke toan truong moi duoc thao tac bang luong", 403);
+  if ($u["role"] === "admin") return $u;
+  if (is_accounting($u)) {
+    if ($finalize && $u["role"] !== "manager") {
+      err("Chi Ke toan truong moi duoc chot bang luong", 403);
+    }
+    return $u;
+  }
+  err("Chi phong Ke toan moi duoc thao tac bang luong", 403);
 }
 
-// Nguoi goi co duoc XEM bang luong cua nguoi khac khong (chi Admin + Ke toan truong).
+// Nguoi goi co duoc XEM bang luong cua nguoi khac khong (Admin + phong Ke toan,
+// de phuc vu soan nhap; Truong phong HR thi KHONG).
 function can_view_others_salary($u) {
-  return is_payroll_manager($u);
+  return $u["role"] === "admin" || is_accounting($u);
 }
 
 function auth_revoke_token(PDO $pdo) {

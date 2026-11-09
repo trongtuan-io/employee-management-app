@@ -95,7 +95,7 @@
 
             <TextView
                 style="@style/AppLabel"
-                android:text="Quản lý bảng lương (Admin / Kế toán trưởng)" />
+                android:text="Quản lý bảng lương (Phòng Kế toán — Kế toán trưởng chốt)" />
 
             <TextView
                 style="@style/AppLabel"
