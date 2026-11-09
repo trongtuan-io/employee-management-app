@@ -6,6 +6,7 @@ import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -199,6 +200,24 @@ public class SalaryDetailActivity extends AppCompatActivity {
         return et;
     }
 
+    // Nhan CO DINH phia tren o nhap: chi dung hint thi khi o co san gia tri "0"
+    // nhan se bien mat, nguoi dung khong biet o nao la khoan nao.
+    private View labeledInput(String label, EditText et) {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = 24;
+        wrap.setLayoutParams(lp);
+        TextView tv = new TextView(this);
+        tv.setText(label);
+        tv.setTextSize(13);
+        tv.setTypeface(null, android.graphics.Typeface.BOLD);
+        wrap.addView(tv);
+        wrap.addView(et);
+        return wrap;
+    }
+
     private void showAdjustDialog() {
         if (currentExtras == null) return;
         LinearLayout box = new LinearLayout(this);
@@ -218,16 +237,18 @@ public class SalaryDetailActivity extends AppCompatActivity {
         etDependents.setHint("Số người phụ thuộc (giảm trừ thuế)");
         etDependents.setInputType(InputType.TYPE_CLASS_NUMBER);
         etDependents.setText(String.valueOf(currentExtras.getIntExtra(EXTRA_PREFIX + "dependents", 0)));
-        box.addView(etAllowance);
-        box.addView(etOvertime);
-        box.addView(etBonus);
-        box.addView(etDeduction);
-        box.addView(etInsSalary);
-        box.addView(etDependents);
+        box.addView(labeledInput("Phụ cấp (đồng)", etAllowance));
+        box.addView(labeledInput("Tiền tăng ca (đồng)", etOvertime));
+        box.addView(labeledInput("Thưởng (đồng)", etBonus));
+        box.addView(labeledInput("Khấu trừ khác (đồng)", etDeduction));
+        box.addView(labeledInput("Lương đóng bảo hiểm (đồng) — để trống = theo lương cơ bản", etInsSalary));
+        box.addView(labeledInput("Số người phụ thuộc — mỗi người giảm trừ thuế 4,4 triệu/tháng", etDependents));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(box);
 
         new AlertDialog.Builder(this)
                 .setTitle("Sửa các khoản cộng/trừ")
-                .setView(box)
+                .setView(scroll)
                 .setPositiveButton("Lưu", (dialog, which) -> {
                     double allowance = parseMoney(etAllowance);
                     double overtime = parseMoney(etOvertime);
