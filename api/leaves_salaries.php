@@ -179,7 +179,7 @@ if ($a === "salary-generate" && $m === "POST") {
     $old = $findStmt->fetch(PDO::FETCH_ASSOC);
     if ($old && (int)$old["finalized"] === 1) { $skipped++; continue; }
     if ($old) {
-      [$ins, $tax, $net] = salary_full_calc($earned, $old["allowance"], $old["overtime_pay"], $old["bonus"], $old["deduction"], $insBase, $paidDays, $e["dependents"]);
+      [$ins, $tax, $net] = salary_full_calc($earned, $old["allowance"], $old["overtime_pay"], $old["bonus"], $old["deduction"], $insBase, $paidDays, $e["dependents"], $std);
       $pdo->prepare("UPDATE salaries SET base_salary=?, work_days=?, standard_days=?, insurance_base=?, insurance_amount=?, tax_amount=?, net_salary=? WHERE id=?")
         ->execute([$earned, $paidDays, $std, $insBase, $ins, $tax, $net, (int)$old["id"]]);
       if (abs((float)$old["base_salary"] - $earned) >= 1) {
@@ -188,7 +188,7 @@ if ($a === "salary-generate" && $m === "POST") {
     } else {
       // Dong moi: phu cap khoi tao = tong phu cap CHINH SACH dang ap dung.
       $allowance = salary_policy_allowance($pdo, $e["department_id"]);
-      [$ins, $tax, $net] = salary_full_calc($earned, $allowance, 0, 0, 0, $insBase, $paidDays, $e["dependents"]);
+      [$ins, $tax, $net] = salary_full_calc($earned, $allowance, 0, 0, 0, $insBase, $paidDays, $e["dependents"], $std);
       $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,insurance_base,insurance_amount,tax_amount,net_salary,work_days,standard_days,finalized) VALUES(?,?,?, ?,?,0,0,0, ?,?,?, ?,?,?,0)")
         ->execute([$empId, $month, $year, $earned, $allowance, $insBase, $ins, $tax, $net, $paidDays, $std]);
       salary_audit($pdo, (int)$pdo->lastInsertId(), $empId, (int)$me["id"], "created", null, $net);
@@ -242,7 +242,7 @@ if ($a === "salary-adjust" && $m === "POST") {
       ->execute([$insSalary, $dependents, (int)$row["employee_id"]]);
   }
   $insBase = salary_insurance_base($row["full_base_salary"], $insSalary);
-  [$ins, $tax, $net] = salary_full_calc($row["base_salary"], $row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"], $insBase, $row["work_days"], $dependents);
+  [$ins, $tax, $net] = salary_full_calc($row["base_salary"], $row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"], $insBase, $row["work_days"], $dependents, (int)$row["standard_days"]);
   if (abs((float)$row["insurance_amount"] - $ins) >= 1) $changes[] = ["insurance_amount", (float)$row["insurance_amount"], $ins];
   if (abs((float)$row["tax_amount"] - $tax) >= 1) $changes[] = ["tax_amount", (float)$row["tax_amount"], $tax];
   $pdo->prepare("UPDATE salaries SET allowance=?, overtime_pay=?, bonus=?, deduction=?, insurance_base=?, insurance_amount=?, tax_amount=?, net_salary=? WHERE id=?")

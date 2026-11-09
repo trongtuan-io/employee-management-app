@@ -93,9 +93,14 @@ function salary_insurance_base($fullBase, $insuranceSalary) {
   return min($base, SALARY_INSURANCE_CAP);
 }
 
-// Thang khong co ngay cong nao (nghi khong luong ca thang) thi khong khau tru BH.
-function salary_insurance_amount($insuranceBase, $workDays) {
+// Mien dong BH ca thang khi NLD nghi viec KHONG huong luong tu 14 ngay lam
+// viec tro len trong thang (Luat BHXH) - tinh bang chuan tru cong duoc tra
+// luong (cong cham + phep da duyet). Thang 0 cong cung thuoc dien nay.
+// standardDays<=0 (khong biet chuan) thi chi mien khi 0 cong nhu truoc.
+define("SALARY_INSURANCE_UNPAID_OFF_MIN", 14);
+function salary_insurance_amount($insuranceBase, $workDays, $standardDays = 0) {
   if ((float)$workDays <= 0) return 0.0;
+  if ((int)$standardDays > 0 && ((int)$standardDays - (float)$workDays) >= SALARY_INSURANCE_UNPAID_OFF_MIN) return 0.0;
   return round((float)$insuranceBase * SALARY_INSURANCE_RATE);
 }
 
@@ -115,9 +120,9 @@ function salary_pit($taxable) {
 // Tinh tron goi 1 dong luong: tra ve [insurance_amount, tax_amount, net_salary].
 // gross = luong theo cong + phu cap + tang ca + thuong.
 // thue tinh tren gross - BH - giam tru (ban than + nguoi phu thuoc).
-function salary_full_calc($earned, $allowance, $overtime, $bonus, $deduction, $insuranceBase, $workDays, $dependents) {
+function salary_full_calc($earned, $allowance, $overtime, $bonus, $deduction, $insuranceBase, $workDays, $dependents, $standardDays = 0) {
   $gross = (float)$earned + (float)$allowance + (float)$overtime + (float)$bonus;
-  $ins = salary_insurance_amount($insuranceBase, $workDays);
+  $ins = salary_insurance_amount($insuranceBase, $workDays, $standardDays);
   $taxable = max(0.0, $gross - $ins - SALARY_PIT_PERSONAL - SALARY_PIT_DEPENDENT * max(0, (int)$dependents));
   $tax = salary_pit($taxable);
   $net = round($gross - (float)$deduction - $ins - $tax);
