@@ -134,6 +134,14 @@
                     android:layout_marginStart="6dp"
                     android:text="Chấm công ra" />
             </LinearLayout>
+
+            <Button
+                android:id="@+id/btnExplain"
+                style="@style/AppButtonSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Giải trình quên chấm công" />
         </LinearLayout>
 
         <!-- Khoi nghiep vu theo phong ban (chi hien voi quan ly / phong chuyen mon) -->

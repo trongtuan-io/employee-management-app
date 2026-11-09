@@ -17,38 +17,52 @@ function leave_ensure_columns(PDO $pdo) {
   if (!in_array("processed_at", $have, true)) {
     $pdo->exec("ALTER TABLE leave_requests ADD COLUMN processed_at DATETIME NULL");
   }
+  if (!in_array("leave_type", $have, true)) {
+    // Don cu mac dinh la phep nam (dung hanh vi truoc day: moi don duyet deu
+    // tinh cong huong luong va nay tru quy phep).
+    $pdo->exec("ALTER TABLE leave_requests ADD COLUMN leave_type VARCHAR(20) NOT NULL DEFAULT 'annual'");
+  }
 }
 
-// ===== Trung tam thong bao trong app (2026-11-09) =====
-// Moi nguoi chi nhan thong bao cua chinh minh. Su kien tao thong bao:
-// don nghi moi (cho nguoi co quyen duyet), don duoc duyet/tu choi (cho nguoi
-// nop), chot/mo lai bang luong va da tra luong (cho nhan vien).
-function notify_ensure_table(PDO $pdo) {
-  static $done = false;
-  if ($done) return;
-  $done = true;
-  $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    type VARCHAR(30) NOT NULL,
-    title VARCHAR(160) NOT NULL,
-    body VARCHAR(400) NULL,
-    ref_id INT NULL,
-    is_read TINYINT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_read (user_id, is_read)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// Thong bao: notify_ensure_table/notify_push/notify_vnd/notify_approvers nam
+// o auth_guard.php (dung chung voi attendances.php cho don giai trinh).
+
+// ===== Quy phep nam (2026-11-09) =====
+// Moi nhan vien co LEAVE_ANNUAL_QUOTA ngay phep nam / nam. Chi don loai
+// 'annual' moi tru quy. Ngay nghi dem theo ngay lam viec (tru Chu nhat) nhu
+// chuan ngay cong tinh luong. So da dung tinh DONG tu don approved (+ pending
+// de chan nop don vuot quy khi con don dang cho duyet).
+define("LEAVE_ANNUAL_QUOTA", 12);
+define("LEAVE_TYPES", ["annual", "sick", "personal", "unpaid"]);
+
+function leave_type_label($t) {
+  switch ($t) {
+    case "sick": return "Nghỉ ốm";
+    case "personal": return "Việc riêng";
+    case "unpaid": return "Nghỉ không lương";
+    default: return "Phép năm";
+  }
 }
 
-function notify_push(PDO $pdo, $userId, $type, $title, $body, $refId = null) {
-  if ((int)$userId <= 0) return;
-  notify_ensure_table($pdo);
-  $pdo->prepare("INSERT INTO notifications(user_id, type, title, body, ref_id) VALUES(?,?,?,?,?)")
-    ->execute([(int)$userId, $type, $title, $body, $refId === null ? null : (int)$refId]);
+// So ngay nghi (tru Chu nhat) cua 1 khoang [s,e] nam trong nam $year.
+function leave_days_in_year($s, $e, $year) {
+  $ys = sprintf("%04d-01-01", (int)$year);
+  $ye = sprintf("%04d-12-31", (int)$year);
+  return salary_leave_workdays($s, $e, $ys, $ye);
 }
 
-function notify_vnd($v) {
-  return number_format((float)$v, 0, ",", ".") . " ₫";
+// Tra ve [used, pending] so ngay phep nam da dung/dang cho cua 1 nhan vien trong nam.
+function leave_annual_usage(PDO $pdo, $employeeId, $year) {
+  $ys = sprintf("%04d-01-01", (int)$year);
+  $ye = sprintf("%04d-12-31", (int)$year);
+  $stmt = $pdo->prepare("SELECT start_date, end_date, status FROM leave_requests WHERE employee_id=? AND leave_type='annual' AND status IN ('approved','pending') AND start_date<=? AND end_date>=?");
+  $stmt->execute([(int)$employeeId, $ye, $ys]);
+  $used = 0; $pending = 0;
+  foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $d = leave_days_in_year($r["start_date"], $r["end_date"], $year);
+    if ($r["status"] === "approved") $used += $d; else $pending += $d;
+  }
+  return [$used, $pending];
 }
 
 if ($a === "leave-create" && $m === "POST") {
@@ -75,27 +89,84 @@ if ($a === "leave-create" && $m === "POST") {
   $st = $pdo->prepare("SELECT COUNT(*) FROM leave_requests WHERE employee_id=? AND start_date=? AND end_date=? AND status='pending'");
   $st->execute([(int)$b["employee_id"], $b["start_date"], $b["end_date"]]);
   if ((int)$st->fetchColumn() > 0) err("Da co don nghi trung khoang ngay nay dang cho duyet", 409);
-  $pdo->prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,reason,status) VALUES(?,?,?,?,'pending')")
-    ->execute([$b["employee_id"], $b["start_date"], $b["end_date"], is_string($b["reason"] ?? null) ? $b["reason"] : ""]);
-  $newLeaveId = (int)$pdo->lastInsertId();
-  // Thong bao cho nguoi co quyen duyet: admin + manager cung phong voi nguoi
-  // nop + toan phong HR (theo doi). Khong gui cho chinh nguoi nop don.
-  $empId = (int)$b["employee_id"];
-  $st = $pdo->prepare("SELECT full_name, department_id FROM employees WHERE id=?");
-  $st->execute([$empId]);
-  $empRow = $st->fetch(PDO::FETCH_ASSOC);
-  if ($empRow) {
-    $reason = is_string($b["reason"] ?? null) ? trim($b["reason"]) : "";
-    $nBody = $empRow["full_name"] . " xin nghỉ từ " . $b["start_date"] . " đến " . $b["end_date"]
-      . ($reason !== "" ? ". Lý do: " . mb_substr($reason, 0, 120) : "");
-    $recips = $pdo->prepare("SELECT DISTINCT e.id FROM employees e LEFT JOIN departments d ON d.id=e.department_id
-      WHERE e.status=1 AND e.id<>? AND (e.role_id=1 OR (e.role_id=2 AND e.department_id=?) OR d.name='HR')");
-    $recips->execute([$empId, (int)$empRow["department_id"]]);
-    foreach ($recips->fetchAll(PDO::FETCH_COLUMN) as $rid) {
-      notify_push($pdo, (int)$rid, "leave_new", "Đơn nghỉ mới chờ duyệt", $nBody, $newLeaveId);
+  // Loai nghi: mac dinh phep nam (don cu/app cu khong gui loai).
+  leave_ensure_columns($pdo);
+  $leaveType = is_string($b["leave_type"] ?? null) && in_array($b["leave_type"], LEAVE_TYPES, true) ? $b["leave_type"] : "annual";
+  // Quy phep: chi loai 'annual' bi chan khi vuot so du (da dung + dang cho + don moi).
+  // Don keo dai qua 2 nam thi kiem tra tung nam.
+  if ($leaveType === "annual") {
+    $empIdChk = (int)$b["employee_id"];
+    for ($y = (int)$sd->format("Y"); $y <= (int)$ed->format("Y"); $y++) {
+      $newDays = leave_days_in_year($b["start_date"], $b["end_date"], $y);
+      if ($newDays <= 0) continue;
+      [$usedY, $pendingY] = leave_annual_usage($pdo, $empIdChk, $y);
+      $remain = LEAVE_ANNUAL_QUOTA - $usedY - $pendingY;
+      if ($newDays > $remain) {
+        err("Không đủ phép năm " . $y . ": còn " . max(0, $remain) . " ngày (đã dùng " . $usedY
+          . ($pendingY > 0 ? ", đang chờ duyệt " . $pendingY : "") . "), đơn xin " . $newDays . " ngày làm việc", 422);
+      }
     }
   }
-  out(["id" => $newLeaveId, "status" => "pending"]);
+  $pdo->prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,reason,status,leave_type) VALUES(?,?,?,?,'pending',?)")
+    ->execute([$b["employee_id"], $b["start_date"], $b["end_date"], is_string($b["reason"] ?? null) ? $b["reason"] : "", $leaveType]);
+  $newLeaveId = (int)$pdo->lastInsertId();
+  // Thong bao cho nguoi co quyen duyet (Admin + manager cung phong + phong HR).
+  $empId = (int)$b["employee_id"];
+  $st = $pdo->prepare("SELECT full_name FROM employees WHERE id=?");
+  $st->execute([$empId]);
+  $empName = $st->fetchColumn();
+  if ($empName !== false) {
+    $reason = is_string($b["reason"] ?? null) ? trim($b["reason"]) : "";
+    $nBody = $empName . " xin nghỉ (" . leave_type_label($leaveType) . ") từ " . $b["start_date"] . " đến " . $b["end_date"]
+      . ($reason !== "" ? ". Lý do: " . mb_substr($reason, 0, 120) : "");
+    notify_approvers($pdo, $empId, "leave_new", "Đơn nghỉ mới chờ duyệt", $nBody, $newLeaveId);
+  }
+  out(["id" => $newLeaveId, "status" => "pending", "leave_type" => $leaveType]);
+}
+// So du phep nam cua 1 nhan vien trong 1 nam (mac dinh: chinh minh, nam nay).
+if ($a === "leave-balance" && $m === "GET") {
+  $me = require_login($pdo);
+  leave_ensure_columns($pdo);
+  $empId = isset($_GET["employee_id"]) && $_GET["employee_id"] !== "" ? (int)$_GET["employee_id"] : (int)$me["id"];
+  if ($empId !== (int)$me["id"]) {
+    if (!in_array($me["role"], ["admin", "manager"], true) && !is_hr($me) && !can_view_others_salary($me)) {
+      err("Khong co quyen xem quy phep cua nguoi khac", 403);
+    }
+    if ($me["role"] === "manager" && !is_hr($me) && !can_view_others_salary($me)) {
+      $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+      $st->execute([$empId]);
+      $tgt = $st->fetch(PDO::FETCH_ASSOC);
+      if (!$tgt || (int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi xem duoc nhan vien phong minh", 403);
+    }
+  }
+  $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : (int)date("Y");
+  if ($year < 2000 || $year > 2100) err("Nam khong hop le", 422);
+  [$used, $pending] = leave_annual_usage($pdo, $empId, $year);
+  out(["employee_id" => $empId, "year" => $year, "quota" => LEAVE_ANNUAL_QUOTA,
+    "used" => $used, "pending" => $pending, "remaining" => LEAVE_ANNUAL_QUOTA - $used - $pending]);
+}
+// Lich vang theo thang: don da duyet + dang cho duyet giao thang, pham vi theo
+// phong (admin/HR/Ke toan: toan cong ty; manager/staff: phong minh).
+if ($a === "leave-calendar" && $m === "GET") {
+  $me = require_login($pdo);
+  leave_ensure_columns($pdo);
+  $month = isset($_GET["month"]) && is_numeric($_GET["month"]) ? (int)$_GET["month"] : (int)date("n");
+  $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : (int)date("Y");
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $ms = sprintf("%04d-%02d-01", $year, $month);
+  $me2 = date("Y-m-t", strtotime($ms));
+  $global = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  $cols = "l.id, l.employee_id, e.full_name, d.name AS dept_name, l.start_date, l.end_date, l.leave_type, l.status, l.reason";
+  $joins = "FROM leave_requests l JOIN employees e ON e.id=l.employee_id LEFT JOIN departments d ON d.id=e.department_id";
+  $cond = "l.status IN ('approved','pending') AND l.start_date<=? AND l.end_date>=?";
+  if ($global) {
+    $stmt = $pdo->prepare("SELECT $cols $joins WHERE $cond ORDER BY l.start_date, e.full_name");
+    $stmt->execute([$me2, $ms]);
+  } else {
+    $stmt = $pdo->prepare("SELECT $cols $joins WHERE $cond AND e.department_id=? ORDER BY l.start_date, e.full_name");
+    $stmt->execute([$me2, $ms, (int)$me["department_id"]]);
+  }
+  out(["month" => $month, "year" => $year, "scope" => $global ? "company" : "department", "items" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 if ($a === "leave-list" && $m === "GET") {
   $me = require_login($pdo);
@@ -143,7 +214,8 @@ if ($a === "leave-approve" && $m === "POST") {
   $b = body();
   if (empty($b["id"]) || empty($b["status"])) err("Thieu id/status");
   if (!in_array($b["status"], ["approved", "rejected"], true)) err("status chi duoc la approved/rejected");
-  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
+  leave_ensure_columns($pdo);
+  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, l.leave_type, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
   $stmt->execute([(int)$b["id"]]);
   $leave = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$leave) err("Khong tim thay don nghi", 404);
@@ -162,7 +234,7 @@ if ($a === "leave-approve" && $m === "POST") {
   $approved = $b["status"] === "approved";
   notify_push($pdo, (int)$leave["employee_id"], $approved ? "leave_approved" : "leave_rejected",
     $approved ? "Đơn nghỉ đã được duyệt" : "Đơn nghỉ bị từ chối",
-    "Đơn nghỉ từ " . $leave["start_date"] . " đến " . $leave["end_date"] . " đã được " . $me["full_name"]
+    "Đơn nghỉ (" . leave_type_label($leave["leave_type"] ?? "annual") . ") từ " . $leave["start_date"] . " đến " . $leave["end_date"] . " đã được " . $me["full_name"]
       . ($approved ? " duyệt." : " từ chối."),
     (int)$b["id"]);
   out(["id" => (int)$b["id"], "status" => $b["status"]]);
@@ -217,7 +289,10 @@ if ($a === "salary-generate" && $m === "POST") {
   $monthEnd = date("Y-m-t", strtotime($monthStart));
   $emps = $pdo->query("SELECT id, full_name, base_salary, department_id, insurance_salary, dependents FROM employees WHERE status=1 ORDER BY id");
   $attStmt = $pdo->prepare("SELECT COUNT(*) FROM attendances WHERE employee_id=? AND work_date BETWEEN ? AND ? AND check_in_time IS NOT NULL");
-  $leaveStmt = $pdo->prepare("SELECT start_date, end_date FROM leave_requests WHERE employee_id=? AND status='approved' AND start_date<=? AND end_date>=?");
+  // Ngay phep tinh cong: moi don approved TRU loai 'unpaid' (nghi khong luong
+  // thi khong duoc tra luong nhung van anh huong quy tac mien BH qua work_days).
+  leave_ensure_columns($pdo);
+  $leaveStmt = $pdo->prepare("SELECT start_date, end_date FROM leave_requests WHERE employee_id=? AND status='approved' AND leave_type<>'unpaid' AND start_date<=? AND end_date>=?");
   $findStmt = $pdo->prepare("SELECT * FROM salaries WHERE employee_id=? AND month=? AND year=?");
   $items = []; $generated = 0; $skipped = 0;
   foreach ($emps->fetchAll(PDO::FETCH_ASSOC) as $e) {

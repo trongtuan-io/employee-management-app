@@ -1,6 +1,10 @@
 package com.example.employee_management_app;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,6 +16,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +51,15 @@ public class HomeActivity extends AppCompatActivity {
         tvNotifyBadge = findViewById(R.id.tvNotifyBadge);
         findViewById(R.id.btnNotifyBell).setOnClickListener(v ->
                 startActivity(new Intent(this, NotificationsActivity.class)));
+        findViewById(R.id.btnExplain).setOnClickListener(v ->
+                startActivity(new Intent(this, ExplanationActivity.class)));
+        // Xin quyen vi tri de cham cong kem GPS (bi tu choi van cham cong duoc,
+        // chi la khong co toa do de doi chieu).
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 41);
+        }
         btnHomeCheckIn = findViewById(R.id.btnHomeCheckIn);
         btnHomeCheckOut = findViewById(R.id.btnHomeCheckOut);
         ListView lvNews = findViewById(R.id.lvNews);
@@ -186,13 +201,17 @@ public class HomeActivity extends AppCompatActivity {
             btnHomeCheckOut.setEnabled(false);
         } else if (!d.isCheckedOut()) {
             String late = "late".equals(d.getStatus()) ? " (đi muộn)" : "";
-            tvAttStatus.setText("Đã vào lúc " + timeOnly(d.getCheckIn()) + late);
+            String remote = d.getCheckInRemote() != null && d.getCheckInRemote() == 1 ? " · Ngoài văn phòng" : "";
+            tvAttStatus.setText("Đã vào lúc " + timeOnly(d.getCheckIn()) + late + remote);
             tvAttDetail.setText("Đang trong ca làm việc. Nhớ chấm công ra khi kết thúc.");
             btnHomeCheckIn.setEnabled(false);
             btnHomeCheckOut.setEnabled(true);
         } else {
             tvAttStatus.setText("Đã hoàn thành hôm nay");
-            tvAttDetail.setText("Vào " + timeOnly(d.getCheckIn()) + " · Ra " + timeOnly(d.getCheckOut()));
+            String detail = "Vào " + timeOnly(d.getCheckIn()) + " · Ra " + timeOnly(d.getCheckOut());
+            if (d.getCheckInRemote() != null && d.getCheckInRemote() == 1) detail += " · Vào ngoài văn phòng";
+            if (d.getCheckOutRemote() != null && d.getCheckOutRemote() == 1) detail += " · Ra ngoài văn phòng";
+            tvAttDetail.setText(detail);
             btnHomeCheckIn.setEnabled(false);
             btnHomeCheckOut.setEnabled(false);
         }
@@ -206,9 +225,11 @@ public class HomeActivity extends AppCompatActivity {
         // Khoa ca 2 nut trong luc cho server, tranh bam 2 lan gui trung request.
         btnHomeCheckIn.setEnabled(false);
         btnHomeCheckOut.setEnabled(false);
+        double[] gps = lastKnownLatLng();
+        CheckinRequest req = gps != null ? new CheckinRequest(myId, gps[0], gps[1]) : new CheckinRequest(myId);
         Call<AttendanceResponse> call = isIn
-                ? api.checkIn(new CheckinRequest(myId))
-                : api.checkOut(new CheckinRequest(myId));
+                ? api.checkIn(req)
+                : api.checkOut(req);
         call.enqueue(new Callback<AttendanceResponse>() {
             @Override
             public void onResponse(Call<AttendanceResponse> c, Response<AttendanceResponse> r) {
@@ -231,6 +252,34 @@ public class HomeActivity extends AppCompatActivity {
                 loadToday();
             }
         });
+    }
+
+    // Vi tri gan nhat da biet de gui kem cham cong (server doi chieu voi toa do
+    // van phong va gan co "ngoai van phong" neu xa). Khong co quyen/khong co
+    // vi tri thi tra null — cham cong van dien ra binh thuong, chi thieu GPS.
+    private double[] lastKnownLatLng() {
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return null;
+            }
+            LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+            if (lm == null) return null;
+            Location best = null;
+            String[] providers = {LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER};
+            for (String p : providers) {
+                try {
+                    Location l = lm.getLastKnownLocation(p);
+                    if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+                } catch (Exception ignored) { }
+            }
+            if (best == null) return null;
+            return new double[]{best.getLatitude(), best.getLongitude()};
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void loadNews() {

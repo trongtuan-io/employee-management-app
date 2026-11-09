@@ -41,6 +41,16 @@
     <TextView
         style="@style/AppLabel"
         android:layout_marginTop="14dp"
+        android:text="Loại nghỉ" />
+
+    <Spinner
+        android:id="@+id/spLeaveType"
+        style="@style/AppSpinner"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        style="@style/AppLabel"
+        android:layout_marginTop="14dp"
         android:text="Lý do" />
 
     <EditText

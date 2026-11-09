@@ -85,6 +85,8 @@ public class NotificationsActivity extends AppCompatActivity {
             startActivity(new Intent(this, LeaveActivity.class));
         } else if (type.startsWith("salary")) {
             startActivity(new Intent(this, SalaryActivity.class));
+        } else if (type.startsWith("expl")) {
+            startActivity(new Intent(this, ExplanationActivity.class));
         }
     }
 

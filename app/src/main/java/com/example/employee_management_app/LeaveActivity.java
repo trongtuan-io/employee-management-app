@@ -7,10 +7,12 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -51,7 +53,7 @@ public class LeaveActivity extends AppCompatActivity {
     private String dateFrom = "";
     private String dateTo = "";
 
-    private TextView tvTabMine, tvTabQueue, tvSummary, tvEmpty;
+    private TextView tvTabMine, tvTabQueue, tvSummary, tvEmpty, tvBalance;
     private TextView tvCountAll, tvCountPending, tvCountApproved, tvCountRejected;
     private View cardAll, cardPending, cardApproved, cardRejected;
     private EditText edtFilterFrom, edtFilterTo;
@@ -73,6 +75,9 @@ public class LeaveActivity extends AppCompatActivity {
 
         tvTabMine = findViewById(R.id.tvTabMine);
         tvTabQueue = findViewById(R.id.tvTabQueue);
+        tvBalance = findViewById(R.id.tvLeaveBalance);
+        findViewById(R.id.btnOpenAbsence).setOnClickListener(v ->
+                startActivity(new android.content.Intent(this, AbsenceCalendarActivity.class)));
         tvSummary = findViewById(R.id.tvLeaveSummary);
         tvEmpty = findViewById(R.id.tvLeaveEmpty);
         tvCountAll = findViewById(R.id.tvCountAll);
@@ -120,6 +125,38 @@ public class LeaveActivity extends AppCompatActivity {
         findViewById(R.id.btnCreateLeave).setOnClickListener(v -> showCreateDialog());
 
         loadLeaves();
+        loadBalance();
+    }
+
+    // So du quy phep nam cua chinh minh (nam cua ngay hom nay).
+    private void loadBalance() {
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        api.getLeaveBalance(myId, year).enqueue(new Callback<LeaveBalanceResponse>() {
+            @Override
+            public void onResponse(Call<LeaveBalanceResponse> c, Response<LeaveBalanceResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    LeaveBalanceResponse.Data d = r.body().getData();
+                    String s = "Phép năm " + d.getYear() + ": còn " + d.getRemaining() + "/" + d.getQuota()
+                            + " ngày · đã dùng " + d.getUsed();
+                    if (d.getPending() > 0) s += " · đang chờ duyệt " + d.getPending();
+                    tvBalance.setText(s);
+                } else {
+                    tvBalance.setText("Phép năm: không tải được số dư");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LeaveBalanceResponse> c, Throwable t) {
+                tvBalance.setText("Phép năm: không tải được số dư");
+            }
+        });
+    }
+
+    static String leaveTypeLabel(String type) {
+        if ("sick".equals(type)) return "Nghỉ ốm";
+        if ("personal".equals(type)) return "Việc riêng";
+        if ("unpaid".equals(type)) return "Nghỉ không lương";
+        return "Phép năm";
     }
 
     private void switchMode(int newMode) {
@@ -213,6 +250,10 @@ public class LeaveActivity extends AppCompatActivity {
         EditText edtStart = dialog.findViewById(R.id.edtLeaveStart);
         EditText edtEnd = dialog.findViewById(R.id.edtLeaveEnd);
         EditText edtReason = dialog.findViewById(R.id.edtLeaveReason);
+        Spinner spType = dialog.findViewById(R.id.spLeaveType);
+        String[] typeLabels = {"Phép năm (trừ quỹ phép)", "Nghỉ ốm", "Việc riêng", "Nghỉ không lương"};
+        String[] typeValues = {"annual", "sick", "personal", "unpaid"};
+        spType.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, typeLabels));
         Button btnSubmit = dialog.findViewById(R.id.btnDialogSubmitLeave);
         dialog.findViewById(R.id.btnDialogCancelLeave).setOnClickListener(v -> dialog.dismiss());
         edtStart.setOnClickListener(v -> pickDate(edtStart, true));
@@ -229,8 +270,9 @@ public class LeaveActivity extends AppCompatActivity {
                 Toast.makeText(this, "Ngày kết thúc không được trước ngày bắt đầu", Toast.LENGTH_SHORT).show();
                 return;
             }
+            String leaveType = typeValues[Math.max(0, spType.getSelectedItemPosition())];
             btnSubmit.setEnabled(false); // tranh bam 2 lan gui trung don
-            api.createLeave(new LeaveCreateRequest(myId, start, end, reason))
+            api.createLeave(new LeaveCreateRequest(myId, start, end, reason, leaveType))
                     .enqueue(new Callback<ApiResponse>() {
                         @Override
                         public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
@@ -238,6 +280,7 @@ public class LeaveActivity extends AppCompatActivity {
                             if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
                                 Toast.makeText(LeaveActivity.this, "Đã gửi yêu cầu xin nghỉ", Toast.LENGTH_SHORT).show();
                                 dialog.dismiss();
+                                loadBalance();
                                 if (mode != MODE_MINE) switchMode(MODE_MINE);
                                 else loadLeaves();
                             } else {
@@ -283,6 +326,7 @@ public class LeaveActivity extends AppCompatActivity {
             }
             sb.append("\n");
         }
+        sb.append("Loại nghỉ: ").append(leaveTypeLabel(item.getLeaveType())).append("\n");
         sb.append("Ngày nghỉ: ").append(formatDate(item.getStartDate()));
         if (item.getEndDate() != null && !item.getEndDate().equals(item.getStartDate())) {
             sb.append(" → ").append(formatDate(item.getEndDate()));
@@ -399,7 +443,7 @@ public class LeaveActivity extends AppCompatActivity {
                 tvTitle.setText("Xin nghỉ phép");
             }
 
-            String dates = "Ngày nghỉ: " + formatDate(item.getStartDate());
+            String dates = leaveTypeLabel(item.getLeaveType()) + " · Ngày nghỉ: " + formatDate(item.getStartDate());
             if (item.getEndDate() != null && !item.getEndDate().equals(item.getStartDate())) {
                 dates += " → " + formatDate(item.getEndDate());
             }

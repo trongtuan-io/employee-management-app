@@ -88,6 +88,16 @@ Khi Wi-Fi đổi mạng hoặc cấp lại IP sẽ lỗi **"failed to connect" /
 
 **B3 - Run lại** app trong Android Studio.
 
+## Quỹ phép + GPS chấm công + giải trình + lịch vắng/xuất bảng công (2026-11-09)
+
+**Quỹ phép năm:** mỗi nhân viên có **12 ngày phép năm/năm** (hằng `LEAVE_ANNUAL_QUOTA`). Đơn nghỉ có cột `leave_type` (API tự thêm — migration đối chiếu `010_leave_gps_expl.sql`): `annual` phép năm, `sick` nghỉ ốm, `personal` việc riêng, `unpaid` nghỉ không lương. Số ngày đếm theo ngày làm việc (trừ Chủ nhật) như chuẩn tính lương. Endpoint `leave-balance` trả `{quota, used (đã duyệt), pending (đang chờ), remaining}` — đơn `annual` mới bị chặn 422 nếu vượt số dư; đơn `unpaid` khi tính lương **không** được tính ngày công. App: màn Xin nghỉ hiện dòng số dư phép của mình, dialog tạo đơn có chọn loại nghỉ, danh sách/chi tiết hiện nhãn loại.
+
+**GPS chấm công:** app xin quyền vị trí và gửi kèm `lat/lng` khi chấm công (không có vị trí vẫn chấm được). API lưu `check_in/out_lat/lng` và cờ `check_in/out_remote` đối chiếu toạ độ văn phòng (hằng `OFFICE_LAT/LNG`, bán kính `OFFICE_RADIUS_M` trong `attendances.php` — đổi theo địa điểm công ty thật); xa hơn bán kính chỉ **gắn cờ "Ngoài văn phòng"**, không chặn chấm công. Thẻ chấm công ở Trang chủ hiện cờ này.
+
+**Giải trình quên chấm công:** bảng `attendance_explanations` (API tự tạo). Nhân viên tạo đơn (ngày, loại vào/ra/cả hai, giờ đề xuất, lý do) qua nút ở Trang chủ — màn `ExplanationActivity` có tab Của tôi / Chờ duyệt giống Xin nghỉ. Người duyệt = Admin + manager cùng phòng (+ HR xem theo dõi). Duyệt xong hệ thống **bổ sung giờ đề xuất vào bảng `attendances`** (chỉ điền phần đang thiếu, không ghi đè dữ liệu chấm thật), kèm thông báo `expl_new` / `expl_approved` / `expl_rejected`.
+
+**Lịch vắng + xuất bảng công:** endpoint `leave-calendar` (tháng/năm) trả đơn đã duyệt + đang chờ trong phạm vi (Admin/HR/Kế toán: toàn công ty; còn lại: phòng mình) — màn `AbsenceCalendarActivity` vẽ lưới tháng tô màu ngày có người vắng + danh sách chi tiết, mở từ nút "Lịch vắng" ở màn Xin nghỉ. Endpoint `attendance-export` xuất CSV bảng công 1 tháng (ngày có mặt, đi muộn, nghỉ phép có lương, nghỉ không lương, tổng ngày công) theo cùng phạm vi — nút "Xuất Excel bảng công tháng này" ở màn Tổng quan.
+
 ## Ghi chú: đã gỡ Firebase
 
 Quên mật khẩu chỉ dùng Email (server gửi mã 6 số). Kênh SMS Firebase đã gỡ nên clone về build chạy ngay, không cần `google-services.json`.

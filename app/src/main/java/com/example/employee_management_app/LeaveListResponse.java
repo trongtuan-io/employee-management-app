@@ -18,6 +18,7 @@ public class LeaveListResponse {
         private String start_date;
         private String end_date;
         private String reason;
+        private String leave_type; // annual | sick | personal | unpaid (don cu co the null)
         private String status;
         private String created_at;
         private String approver_name; // ten nguoi duyet (chi co o khu vuc duyet phep)
@@ -30,6 +31,7 @@ public class LeaveListResponse {
         public String getStartDate() { return start_date; }
         public String getEndDate() { return end_date; }
         public String getReason() { return reason; }
+        public String getLeaveType() { return leave_type; }
         public String getStatus() { return status; }
         public String getCreatedAt() { return created_at; }
         public String getApproverName() { return approver_name; }

@@ -1,13 +1,23 @@
 package com.example.employee_management_app;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.OutputStream;
+import java.util.Calendar;
+
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -41,6 +51,8 @@ public class AdminActivity extends AppCompatActivity {
         }
         Button btnPass = findViewById(R.id.btnAdminChangePass);
         Button btnLogout = findViewById(R.id.btnAdminLogout);
+        Button btnExportAtt = findViewById(R.id.btnAdminExportAtt);
+        btnExportAtt.setOnClickListener(v -> exportAttendanceCsv());
 
         loadDashboard(btnApprove);
 
@@ -65,6 +77,57 @@ public class AdminActivity extends AppCompatActivity {
             startActivity(i);
             finish();
         });
+    }
+
+    // Tai CSV bang cong thang hien tai ve thu muc Tai xuong (pham vi theo
+    // phong/cong ty do server quyet dinh theo token).
+    private void exportAttendanceCsv() {
+        Calendar now = Calendar.getInstance();
+        int month = now.get(Calendar.MONTH) + 1;
+        int year = now.get(Calendar.YEAR);
+        Toast.makeText(this, "Đang tạo file bảng công...", Toast.LENGTH_SHORT).show();
+        ApiClient.getClient(this).create(EmployeeApi.class).exportAttendance(month, year)
+                .enqueue(new Callback<ResponseBody>() {
+                    @Override
+                    public void onResponse(Call<ResponseBody> c, Response<ResponseBody> r) {
+                        if (!r.isSuccessful() || r.body() == null) {
+                            if (r.code() != 401) Toast.makeText(AdminActivity.this, "Không xuất được file", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        try {
+                            byte[] bytes = r.body().bytes();
+                            String name = String.format("bang_cong_%02d_%d.csv", month, year);
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                ContentValues values = new ContentValues();
+                                values.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                                values.put(MediaStore.Downloads.MIME_TYPE, "text/csv");
+                                values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                                ContentResolver resolver = getContentResolver();
+                                Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                                if (uri == null) throw new IllegalStateException("insert failed");
+                                try (OutputStream os = resolver.openOutputStream(uri)) {
+                                    if (os == null) throw new IllegalStateException("open failed");
+                                    os.write(bytes);
+                                }
+                            } else {
+                                java.io.File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                                if (dir == null) throw new IllegalStateException("no dir");
+                                try (OutputStream os = new java.io.FileOutputStream(new java.io.File(dir, name))) {
+                                    os.write(bytes);
+                                }
+                            }
+                            Toast.makeText(AdminActivity.this,
+                                    "Đã lưu " + name + " vào thư mục Tải xuống — mở bằng Excel được", Toast.LENGTH_LONG).show();
+                        } catch (Exception e) {
+                            Toast.makeText(AdminActivity.this, "Không lưu được file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ResponseBody> c, Throwable t) {
+                        Toast.makeText(AdminActivity.this, "Không xuất được file", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     // So lieu that tu API dashboard

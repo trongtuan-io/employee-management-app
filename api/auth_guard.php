@@ -124,6 +124,51 @@ function can_view_others_salary($u) {
   return $u["role"] === "admin" || is_accounting($u);
 }
 
+// ===== Thong bao trong app (dung chung cho leaves_salaries.php va attendances.php) =====
+function notify_ensure_table(PDO $pdo) {
+  static $done = false;
+  if ($done) return;
+  $done = true;
+  $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(30) NOT NULL,
+    title VARCHAR(160) NOT NULL,
+    body VARCHAR(400) NULL,
+    ref_id INT NULL,
+    is_read TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_read (user_id, is_read)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function notify_push(PDO $pdo, $userId, $type, $title, $body, $refId = null) {
+  if ((int)$userId <= 0) return;
+  notify_ensure_table($pdo);
+  $pdo->prepare("INSERT INTO notifications(user_id, type, title, body, ref_id) VALUES(?,?,?,?,?)")
+    ->execute([(int)$userId, $type, $title, $body, $refId === null ? null : (int)$refId]);
+}
+
+function notify_vnd($v) {
+  return number_format((float)$v, 0, ",", ".") . " ₫";
+}
+
+// Gui thong bao cho TAP NGUOI DUYET cua 1 nhan vien: Admin + manager cung
+// phong voi nhan vien do + toan phong HR. Khong gui cho chinh nhan vien do.
+// Dung cho don nghi moi va don giai trinh cham cong moi.
+function notify_approvers(PDO $pdo, $employeeId, $type, $title, $body, $refId = null) {
+  $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+  $st->execute([(int)$employeeId]);
+  $deptId = $st->fetchColumn();
+  if ($deptId === false) return;
+  $recips = $pdo->prepare("SELECT DISTINCT e.id FROM employees e LEFT JOIN departments d ON d.id=e.department_id
+    WHERE e.status=1 AND e.id<>? AND (e.role_id=1 OR (e.role_id=2 AND e.department_id=?) OR d.name='HR')");
+  $recips->execute([(int)$employeeId, (int)$deptId]);
+  foreach ($recips->fetchAll(PDO::FETCH_COLUMN) as $rid) {
+    notify_push($pdo, (int)$rid, $type, $title, $body, $refId);
+  }
+}
+
 function auth_revoke_token(PDO $pdo) {
   $t = auth_bearer_token();
   if ($t === "") return;

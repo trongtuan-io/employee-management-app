@@ -190,6 +190,12 @@
                 android:text="Tạo tài khoản nhân viên" />
 
             <Button
+                android:id="@+id/btnAdminExportAtt"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Xuất Excel bảng công tháng này" />
+
+            <Button
                 android:id="@+id/btnAdminChangePass"
                 style="@style/AppButtonSecondary"
                 android:layout_marginTop="10dp"

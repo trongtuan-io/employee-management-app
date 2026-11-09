@@ -92,6 +92,31 @@ public interface EmployeeApi {
     @POST("leaves_salaries.php?action=leave-approve")
     Call<ApiResponse> approveLeave(@Body LeaveApproveRequest request);
 
+    // So du quy phep nam
+    @GET("leaves_salaries.php?action=leave-balance")
+    Call<LeaveBalanceResponse> getLeaveBalance(@Query("employee_id") int employeeId, @Query("year") int year);
+
+    // Lich vang theo thang (pham vi phong/cong ty do server quyet)
+    @GET("leaves_salaries.php?action=leave-calendar")
+    Call<LeaveCalendarResponse> getLeaveCalendar(@Query("month") int month, @Query("year") int year);
+
+    // Giai trinh quen cham cong (attendances.php)
+    @POST("attendances.php?action=explanation-create")
+    Call<ApiResponse> createExplanation(@Body ExplanationCreateRequest request);
+
+    @GET("attendances.php?action=explanation-list")
+    Call<ExplanationListResponse> getMyExplanations(@Query("employee_id") int employeeId);
+
+    @GET("attendances.php?action=explanation-list")
+    Call<ExplanationListResponse> getExplanationQueue();
+
+    @POST("attendances.php?action=explanation-approve")
+    Call<ApiResponse> approveExplanation(@Body LeaveApproveRequest request);
+
+    // Xuat bang cong 1 thang ra CSV
+    @GET("attendances.php?action=attendance-export")
+    Call<okhttp3.ResponseBody> exportAttendance(@Query("month") int month, @Query("year") int year);
+
     // Luong (leaves_salaries.php)
     @GET("leaves_salaries.php?action=salary-list")
     Call<SalaryListResponse> getSalaries(@Query("employee_id") int employeeId, @Query("year") int year);
