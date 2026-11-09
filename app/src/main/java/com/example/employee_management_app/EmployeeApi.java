@@ -116,6 +116,28 @@ public interface EmployeeApi {
     @POST("leaves_salaries.php?action=salary-unfinalize")
     Call<ApiResponse> unfinalizeSalary(@Body SalaryFinalizeRequest request);
 
+    // Danh dau da tra luong cho dong da chot (Admin + Ke toan truong)
+    @POST("leaves_salaries.php?action=salary-paid")
+    Call<ApiResponse> paidSalary(@Body SalaryPaidRequest request);
+
+    // Lich su thay doi cua 1 dong bang luong
+    @GET("leaves_salaries.php?action=salary-history")
+    Call<SalaryHistoryResponse> getSalaryHistory(@Query("salary_id") int salaryId);
+
+    // Xuat bang luong 1 thang ra CSV (Admin + phong Ke toan)
+    @GET("leaves_salaries.php?action=salary-export")
+    Call<okhttp3.ResponseBody> exportSalary(@Query("month") int month, @Query("year") int year);
+
+    // Phu cap co dinh theo chinh sach
+    @GET("leaves_salaries.php?action=salary-policies")
+    Call<SalaryPoliciesResponse> getSalaryPolicies();
+
+    @POST("leaves_salaries.php?action=salary-policy-save")
+    Call<ApiResponse> saveSalaryPolicy(@Body SalaryPolicySaveRequest request);
+
+    @POST("leaves_salaries.php?action=salary-policy-delete")
+    Call<ApiResponse> deleteSalaryPolicy(@Body SalaryFinalizeRequest request);
+
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")
     Call<AttendanceTodayResponse> getAttendanceToday();

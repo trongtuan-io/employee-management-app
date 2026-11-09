@@ -76,6 +76,29 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:text="Lương đóng bảo hiểm"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDtlInsuranceBase"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="Ngày công"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
@@ -204,6 +227,52 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Bảo hiểm xã hội (10,5%)"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDtlInsurance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/danger"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Thuế thu nhập cá nhân"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDtlTax"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/danger"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -234,12 +303,20 @@
                     android:textSize="20sp"
                     android:textStyle="bold" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvDtlPaidStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <TextView
             style="@style/AppSubtitle"
             android:layout_marginTop="12dp"
-            android:text="Lương theo ngày công = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Thực lĩnh = lương theo ngày công + phụ cấp + tăng ca + thưởng − khấu trừ." />
+            android:text="Lương theo ngày công = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Thực lĩnh = lương theo ngày công + phụ cấp + tăng ca + thưởng − khấu trừ − bảo hiểm − thuế TNCN. Bảo hiểm = 10,5% lương đóng bảo hiểm; thuế tính lũy tiến sau giảm trừ 11 triệu + 4,4 triệu/người phụ thuộc." />
 
         <LinearLayout
             android:id="@+id/layoutDetailActions"
@@ -272,7 +349,24 @@
                 android:layout_marginTop="10dp"
                 android:visibility="gone"
                 android:text="Mở lại bảng lương (huỷ chốt)" />
+
+            <Button
+                android:id="@+id/btnPaidSalary"
+                style="@style/AppButtonPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:visibility="gone"
+                android:text="Đánh dấu đã trả lương" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/btnSalaryHistory"
+            style="@style/AppButtonSecondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Lịch sử thay đổi" />
 
         <Button
             android:id="@+id/btnBackDetail"

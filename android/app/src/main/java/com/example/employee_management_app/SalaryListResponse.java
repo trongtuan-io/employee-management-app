@@ -28,6 +28,13 @@ public class SalaryListResponse {
         private String work_days;
         private String standard_days;
         private int finalized;
+        private String insurance_base;
+        private String insurance_amount;
+        private String tax_amount;
+        private int paid;
+        private String paid_at;
+        private String insurance_salary;
+        private int dependents;
 
         public int getId() { return id; }
         public int getEmployeeId() { return employee_id; }
@@ -44,6 +51,13 @@ public class SalaryListResponse {
         public String getWorkDays() { return work_days; }
         public String getStandardDays() { return standard_days; }
         public boolean isFinalized() { return finalized == 1; }
+        public String getInsuranceBase() { return insurance_base; }
+        public String getInsuranceAmount() { return insurance_amount; }
+        public String getTaxAmount() { return tax_amount; }
+        public boolean isPaid() { return paid == 1; }
+        public String getPaidAt() { return paid_at; }
+        public String getInsuranceSalary() { return insurance_salary; }
+        public int getDependents() { return dependents; }
 
         public static double num(String raw) {
             if (raw == null) return 0;

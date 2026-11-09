@@ -198,6 +198,13 @@ public class SalaryActivity extends AppCompatActivity {
         i.putExtra(p + "overtime_pay", item.getOvertimePay());
         i.putExtra(p + "bonus", item.getBonus());
         i.putExtra(p + "deduction", item.getDeduction());
+        i.putExtra(p + "insurance_base", item.getInsuranceBase());
+        i.putExtra(p + "insurance_amount", item.getInsuranceAmount());
+        i.putExtra(p + "tax_amount", item.getTaxAmount());
+        i.putExtra(p + "paid", item.isPaid());
+        i.putExtra(p + "paid_at", item.getPaidAt());
+        i.putExtra(p + "insurance_salary", item.getInsuranceSalary());
+        i.putExtra(p + "dependents", item.getDependents());
         i.putExtra(p + "net_salary", item.getNetSalary());
         i.putExtra(p + "work_days", item.getWorkDays());
         i.putExtra(p + "standard_days", item.getStandardDays());

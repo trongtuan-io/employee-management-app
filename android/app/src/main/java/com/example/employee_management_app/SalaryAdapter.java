@@ -31,7 +31,11 @@ public class SalaryAdapter extends ArrayAdapter<SalaryListResponse.Item> {
         if (item == null) return convertView;
 
         tvMonth.setText("Tháng " + item.getMonth() + "/" + item.getYear());
-        if (item.isFinalized()) {
+        if (item.isPaid()) {
+            tvBadge.setText("Đã trả lương");
+            tvBadge.setBackgroundResource(R.drawable.bg_badge_approved);
+            tvBadge.setTextColor(ContextCompat.getColor(getContext(), R.color.success));
+        } else if (item.isFinalized()) {
             tvBadge.setText("Đã chốt");
             tvBadge.setBackgroundResource(R.drawable.bg_badge_approved);
             tvBadge.setTextColor(ContextCompat.getColor(getContext(), R.color.success));

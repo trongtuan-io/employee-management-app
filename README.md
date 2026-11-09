@@ -26,6 +26,15 @@ Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi
 
 Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Đơn đã duyệt/từ chối **không biến mất**: vẫn nằm lại trong tab Chờ duyệt kèm tên người duyệt và thời điểm xử lý (cột `processed_at`, API tự bổ sung) để truy vết. Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
 
+**Hoàn thiện kế toán lương (2026-11-09, 6 mục):**
+
+1. **BHXH + thuế TNCN tự động**: mỗi lần tính/sửa lương, server tự tính bảo hiểm = 10,5% lương đóng bảo hiểm (mức riêng trong hồ sơ `employees.insurance_salary`, để trống = lương cơ bản, trần 20 × lương cơ sở 2.340.000; tháng 0 ngày công thì không khấu trừ) và thuế TNCN lũy tiến 7 bậc sau giảm trừ 11 triệu + 4,4 triệu/người phụ thuộc (`employees.dependents`). Thực lĩnh = tổng thu nhập − khấu trừ khác − bảo hiểm − thuế. Dòng đã chốt giữ nguyên số cũ, không bị tính lại. Lương đóng BH và số người phụ thuộc sửa ngay trong dialog "Sửa các khoản" của màn chi tiết.
+2. **Xuất bảng lương ra Excel**: nút "Xuất Excel (CSV)" ở màn tổng hợp tải file CSV (UTF-8, mở bằng Excel) của tháng đang xem về thư mục Tải xuống (`salary-export`), đủ cột BH/thuế/trạng thái kèm dòng tổng.
+3. **Lịch sử thay đổi bảng lương**: mọi thao tác tính lại/sửa khoản/chốt/mở lại/trả lương đều ghi vào `salary_audit_logs`; màn chi tiết có nút "Lịch sử thay đổi" (nhân viên xem được lịch sử lương của chính mình).
+4. **Trạng thái đã trả lương**: sau khi chốt, Kế toán trưởng/Admin đánh dấu `salary-paid` kèm `paid_at`; badge ưu tiên "Đã trả lương" ở cả 3 màn lương.
+5. **Báo cáo quỹ lương**: màn tổng hợp nhóm dòng theo phòng ban kèm tổng từng phòng, chân trang có tổng toàn công ty + chênh lệch so với tháng trước.
+6. **Phụ cấp cố định theo chính sách**: bảng `salary_policies` (toàn công ty hoặc theo phòng, bật/tắt) do Admin + Kế toán trưởng quản lý ở màn "Phụ cấp cố định"; khi tính lương **tạo dòng mới**, phụ cấp khởi tạo = tổng các khoản chính sách đang áp dụng (dòng đã có giữ nguyên). Cột/bảng mới đều do API tự bổ sung — file `database/migrations/008_salary_payroll_complete.sql` chỉ để đối chiếu/cài mới.
+
 ## Cấu trúc repo
 
 ```
