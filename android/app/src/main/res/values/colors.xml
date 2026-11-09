@@ -18,4 +18,7 @@
     <color name="danger_bg">#FEF2F2</color>
     <color name="success">#059669</color>
     <color name="warning">#D97706</color>
+    <color name="warning_bg">#FFFBEB</color>
+    <color name="success_bg">#ECFDF5</color>
+    <color name="neutral_bg">#F3F4F6</color>
 </resources>

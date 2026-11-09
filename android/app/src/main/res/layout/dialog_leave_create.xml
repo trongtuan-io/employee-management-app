@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        style="@style/AppTitle"
+        android:text="Tạo yêu cầu xin nghỉ"
+        android:textSize="18sp" />
+
+    <TextView
+        style="@style/AppLabel"
+        android:layout_marginTop="16dp"
+        android:text="Ngày bắt đầu" />
+
+    <EditText
+        android:id="@+id/edtLeaveStart"
+        style="@style/AppInput"
+        android:layout_marginTop="8dp"
+        android:clickable="true"
+        android:focusable="false"
+        android:hint="Chọn ngày (YYYY-MM-DD)"
+        android:inputType="none" />
+
+    <TextView
+        style="@style/AppLabel"
+        android:layout_marginTop="14dp"
+        android:text="Ngày kết thúc" />
+
+    <EditText
+        android:id="@+id/edtLeaveEnd"
+        style="@style/AppInput"
+        android:layout_marginTop="8dp"
+        android:clickable="true"
+        android:focusable="false"
+        android:hint="Chọn ngày (YYYY-MM-DD)"
+        android:inputType="none" />
+
+    <TextView
+        style="@style/AppLabel"
+        android:layout_marginTop="14dp"
+        android:text="Lý do" />
+
+    <EditText
+        android:id="@+id/edtLeaveReason"
+        style="@style/AppInput"
+        android:layout_marginTop="8dp"
+        android:hint="Lý do nghỉ"
+        android:inputType="text" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnDialogCancelLeave"
+            style="@style/AppButtonSecondary"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Huỷ" />
+
+        <Button
+            android:id="@+id/btnDialogSubmitLeave"
+            style="@style/AppButtonPrimary"
+            android:layout_width="0dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Gửi yêu cầu" />
+    </LinearLayout>
+</LinearLayout>

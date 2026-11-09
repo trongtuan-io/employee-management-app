@@ -58,10 +58,10 @@ if ($a === "leave-list" && $m === "GET") {
     // Hang cho duyet: admin thay tat ca, phong HR thay tat ca (chi de theo doi -
     // duyet thi van chi don phong HR), sep phong nghiep vu chi thay phong minh.
     if ($me["role"] === "manager" && !is_hr($me)) {
-      $stmt = $pdo->prepare("SELECT l.*, e.full_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id WHERE l.status='pending' AND e.department_id=? ORDER BY l.id DESC");
+      $stmt = $pdo->prepare("SELECT l.*, e.full_name, d.name AS dept_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id WHERE l.status='pending' AND e.department_id=? ORDER BY l.id DESC");
       $stmt->execute([(int)$me["department_id"]]);
     } else {
-      $stmt = $pdo->query("SELECT l.*, e.full_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id WHERE l.status='pending' ORDER BY l.id DESC");
+      $stmt = $pdo->query("SELECT l.*, e.full_name, d.name AS dept_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id WHERE l.status='pending' ORDER BY l.id DESC");
     }
   }
   out($stmt->fetchAll(PDO::FETCH_ASSOC));

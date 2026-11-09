@@ -10,54 +10,249 @@
     android:paddingBottom="20dp"
     android:fitsSystemWindows="true">
 
-    <TextView
-        android:id="@+id/tvLeaveTitle"
-        style="@style/AppTitle"
-        android:textSize="20sp"
-        android:text="Đơn nghỉ phép" />
-
+    <!-- Tieu de + nut lam moi / tao yeu cau (theo mau "Xin nghi 1 buoi") -->
     <LinearLayout
-        android:id="@+id/layoutLeaveForm"
-        style="@style/AppCard"
-        android:layout_marginTop="16dp">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <TextView style="@style/AppLabel" android:text="Ngày bắt đầu" />
-        <EditText
-            android:id="@+id/edtLeaveStart"
-            style="@style/AppInput"
-            android:layout_marginTop="8dp"
-            android:hint="YYYY-MM-DD"
-            android:inputType="date" />
-
-        <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Ngày kết thúc" />
-        <EditText
-            android:id="@+id/edtLeaveEnd"
-            style="@style/AppInput"
-            android:layout_marginTop="8dp"
-            android:hint="YYYY-MM-DD"
-            android:inputType="date" />
-
-        <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Lý do" />
-        <EditText
-            android:id="@+id/edtLeaveReason"
-            style="@style/AppInput"
-            android:layout_marginTop="8dp"
-            android:hint="Lý do nghỉ"
-            android:inputType="text" />
+        <TextView
+            android:id="@+id/tvLeaveTitle"
+            style="@style/AppTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="Xin nghỉ phép"
+            android:textSize="20sp" />
 
         <Button
-            android:id="@+id/btnSubmitLeave"
+            android:id="@+id/btnRefreshLeave"
+            style="@style/AppButtonSecondary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Làm mới" />
+
+        <Button
+            android:id="@+id/btnCreateLeave"
             style="@style/AppButtonPrimary"
-            android:layout_marginTop="18dp"
-            android:text="Gửi đơn nghỉ phép" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="+ Tạo yêu cầu" />
     </LinearLayout>
+
+    <!-- Tab: Don cua toi | Cho duyet (chi quan ly / phong HR thay tab duyet) -->
+    <LinearLayout
+        android:id="@+id/layoutLeaveTabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tvTabMine"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_tab_active"
+            android:gravity="center"
+            android:padding="10dp"
+            android:text="Đơn của tôi"
+            android:textColor="@color/white"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvTabQueue"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_tab_inactive"
+            android:gravity="center"
+            android:padding="10dp"
+            android:text="Chờ duyệt"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- 4 the thong ke: bam vao the de loc danh sach -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/cardStatAll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stat_all_selected"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tất cả"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvCountAll"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cardStatPending"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stat_pending"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chờ duyệt"
+                android:textColor="@color/warning"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvCountPending"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cardStatApproved"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stat_approved"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Đã duyệt"
+                android:textColor="@color/success"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvCountApproved"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/cardStatRejected"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stat_rejected"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Từ chối"
+                android:textColor="@color/danger"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvCountRejected"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Loc theo khoang ngay nghi -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/edtFilterFrom"
+            style="@style/AppInput"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="false"
+            android:hint="Từ ngày"
+            android:inputType="none" />
+
+        <EditText
+            android:id="@+id/edtFilterTo"
+            style="@style/AppInput"
+            android:layout_width="0dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="false"
+            android:hint="Đến ngày"
+            android:inputType="none" />
+
+        <TextView
+            android:id="@+id/btnClearFilter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:padding="8dp"
+            android:text="Xoá lọc"
+            android:textColor="@color/primary"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvLeaveSummary"
+        style="@style/AppSubtitle"
+        android:layout_marginTop="14dp"
+        android:text="Danh sách yêu cầu xin nghỉ · Tổng: 0 yêu cầu" />
+
+    <TextView
+        android:id="@+id/tvLeaveEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="Chưa có yêu cầu nào"
+        android:textColor="@color/text_secondary"
+        android:visibility="gone" />
 
     <ListView
         android:id="@+id/lvLeaves"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="8dp"
         android:layout_weight="1"
-        android:layout_marginTop="14dp"
         android:background="@drawable/bg_card"
         android:divider="@color/stroke"
         android:dividerHeight="1dp"
