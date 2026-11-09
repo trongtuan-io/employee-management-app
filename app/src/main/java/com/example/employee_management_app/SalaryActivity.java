@@ -90,7 +90,7 @@ public class SalaryActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) { }
         });
-        api.getEmployees("").enqueue(new Callback<EmployeeListResponse>() {
+        api.getDirectory().enqueue(new Callback<EmployeeListResponse>() {
             @Override
             public void onResponse(Call<EmployeeListResponse> c, Response<EmployeeListResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess() && r.body().getData() != null) {

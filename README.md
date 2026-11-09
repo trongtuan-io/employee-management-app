@@ -18,9 +18,11 @@ App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới d�
 
 | Phòng | Chức năng riêng |
 |---|---|
-| Nhân sự (HR) | Trưởng phòng HR: tạo/import NV cho mọi phòng, đặt/đổi lương cơ bản, xem lương toàn công ty (chỉ xem). NV HR: xem danh sách rút gọn + tổng hợp chấm công |
+| Nhân sự (HR) | Trưởng phòng HR: quản lý hồ sơ nhân viên **phòng mình**, đặt/đổi lương cơ bản cho nhân viên phòng mình, xem lương toàn công ty (chỉ xem). Tạo NV cho phòng khác và import hàng loạt do Admin phụ trách |
 | Kế toán (ACC) | Tính lương tự động + điều chỉnh cho **toàn công ty** (NV Kế toán soạn nháp, **Kế toán trưởng** mới được chốt), xem báo cáo chấm công để đối chiếu |
 | IT / Kinh doanh (SALES) / Marketing (MKT) / Hành chính (OPS) / CSKH (CS) | Trưởng phòng chỉ quản lý đội của phòng mình; không xem/tính lương của người khác |
+
+Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi trưởng phòng chỉ thấy nhân viên phòng mình; nhân viên (staff) không truy cập được trang này. Màn Bảng lương của Kế toán chọn nhân viên qua danh bạ riêng (`employees.php?action=directory`, chỉ Admin/Kế toán/Trưởng phòng HR gọi được) nên việc tính lương toàn công ty không bị ảnh hưởng.
 
 Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
 

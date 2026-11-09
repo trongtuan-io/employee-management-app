@@ -15,12 +15,10 @@ public class BottomNavHelper {
         if (nav == null) return;
 
         String role = TokenManager.getInstance(activity).getRole();
-        String dept = TokenManager.getInstance(activity).getDepartmentName();
         boolean isManager = "admin".equalsIgnoreCase(role) || "manager".equalsIgnoreCase(role);
-        // Nhan vien phong HR (xem danh sach/tong hop) va phong Ke toan (bang luong)
-        // cung can tab Nhan vien/Bang luong day du nhu quan ly; quyen that o API.
-        boolean isSpecialDept = "HR".equalsIgnoreCase(dept) || "ACC".equalsIgnoreCase(dept);
-        nav.inflateMenu((isManager || isSpecialDept) ? R.menu.bottom_nav_admin : R.menu.bottom_nav_staff);
+        // Trang Quan ly nhan vien chi cho admin/manager; nhan vien (ke ca phong
+        // HR/Ke toan) dung menu rut gon, khong co tab Nhan vien/Tong quan.
+        nav.inflateMenu(isManager ? R.menu.bottom_nav_admin : R.menu.bottom_nav_staff);
         nav.setBackgroundColor(android.graphics.Color.WHITE);
         nav.setItemIconTintList(activity.getColorStateList(R.color.bottom_nav_colors));
         nav.setItemTextColor(activity.getColorStateList(R.color.bottom_nav_colors));

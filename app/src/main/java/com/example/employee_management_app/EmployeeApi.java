@@ -24,6 +24,11 @@ public interface EmployeeApi {
     @POST("attendances.php?action=checkout")
     Call<AttendanceResponse> checkOut(@Body CheckinRequest request);
 
+    // Danh ba toi thieu cho man Bang luong (admin/Ke toan/Truong phong HR):
+    // trang Quan ly nhan vien da siet theo phong nen spinner luong dung duong rieng.
+    @GET("employees.php?action=directory")
+    Call<EmployeeListResponse> getDirectory();
+
     // Danh sach nhan vien (Admin)
     @GET("employees.php?action=list")
     Call<EmployeeListResponse> getEmployees(@Query("search") String search);

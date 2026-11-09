@@ -35,13 +35,11 @@ if ($a === "register" && $m === "POST") {
   $me = require_role($pdo, ["admin", "manager"]);
   $b = body();
   if ((int)($b["role_id"] ?? 3) !== 3 && $me["role"] !== "admin") err("Chi admin moi tao duoc tai khoan admin/manager", 403);
-  // Phong Ke toan khong tao tai khoan (tach nhiem vu voi quy trinh luong).
-  if ($me["role"] === "manager" && is_accounting($me)) err("Phong Ke toan khong duoc tao tai khoan nhan vien", 403);
-  // Manager chi tao nhan vien thuong. Truong phong HR tao duoc cho MOI phong;
-  // truong phong nghiep vu chi tao cho phong minh.
+  // Manager (MOI phong) chi tao nhan vien thuong cho PHONG MINH; tao tai khoan
+  // cho phong khac la viec cua admin (siet chat 09/11/2026).
   if ($me["role"] === "manager") {
     $b["role_id"] = 3;
-    if (!is_hr($me)) $b["department_id"] = (int)$me["department_id"];
+    $b["department_id"] = (int)$me["department_id"];
   }
   if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
   if (!is_string($b["password"]) || strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");

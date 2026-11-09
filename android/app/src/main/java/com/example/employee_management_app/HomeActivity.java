@@ -92,8 +92,8 @@ public class HomeActivity extends AppCompatActivity {
         } else if ("HR".equalsIgnoreCase(dept)) {
             title = "Phòng Nhân sự";
             desc = isManager
-                    ? "Quản lý hồ sơ nhân viên toàn công ty, tạo/import nhân viên và đặt lương cơ bản."
-                    : "Xem danh sách nhân viên toàn công ty và tổng hợp chấm công tại tab Nhân viên.";
+                    ? "Quản lý hồ sơ nhân viên trong phòng Nhân sự và đặt lương cơ bản; tạo nhân viên cho phòng khác do Admin phụ trách."
+                    : "Xem và tổng hợp chấm công của phòng mình; danh sách nhân viên do Trưởng phòng quản lý.";
         } else if (isManager) {
             title = "Quản lý phòng ban";
             desc = "Quản lý nhân viên, duyệt nghỉ và báo cáo chấm công của phòng mình tại các tab Tổng quan, Nhân viên, Duyệt phép.";
