@@ -1,5 +1,6 @@
 package com.example.employee_management_app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,7 +24,7 @@ import retrofit2.Response;
 public class HomeActivity extends AppCompatActivity {
     private EmployeeApi api;
     private int myId;
-    private TextView tvHomeName, tvHomeRole, tvAttStatus, tvAttDetail, tvFeedStatus;
+    private TextView tvHomeName, tvHomeRole, tvAttStatus, tvAttDetail, tvFeedStatus, tvNotifyBadge;
     private Button btnHomeCheckIn, btnHomeCheckOut;
     private final List<AnnouncementResponse.Item> news = new ArrayList<>();
     private NewsAdapter newsAdapter;
@@ -41,6 +42,9 @@ public class HomeActivity extends AppCompatActivity {
         tvAttStatus = findViewById(R.id.tvAttStatus);
         tvAttDetail = findViewById(R.id.tvAttDetail);
         tvFeedStatus = findViewById(R.id.tvFeedStatus);
+        tvNotifyBadge = findViewById(R.id.tvNotifyBadge);
+        findViewById(R.id.btnNotifyBell).setOnClickListener(v ->
+                startActivity(new Intent(this, NotificationsActivity.class)));
         btnHomeCheckIn = findViewById(R.id.btnHomeCheckIn);
         btnHomeCheckOut = findViewById(R.id.btnHomeCheckOut);
         ListView lvNews = findViewById(R.id.lvNews);
@@ -69,6 +73,24 @@ public class HomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadToday();
+        loadNotifyBadge();
+    }
+
+    // Badge so thong bao chua doc tren chuong o Trang chu (an khi = 0).
+    private void loadNotifyBadge() {
+        api.getNotifications().enqueue(new Callback<NotificationListResponse>() {
+            @Override
+            public void onResponse(Call<NotificationListResponse> c, Response<NotificationListResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    int unread = r.body().getData().getUnread();
+                    tvNotifyBadge.setVisibility(unread > 0 ? View.VISIBLE : View.GONE);
+                    tvNotifyBadge.setText(unread > 99 ? "99+" : String.valueOf(unread));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<NotificationListResponse> c, Throwable t) { }
+        });
     }
 
     // Khoi nghiep vu theo phong: Trang chu chi hien khoi dung phong/vai tro cua

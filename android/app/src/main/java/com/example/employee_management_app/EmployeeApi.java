@@ -158,4 +158,11 @@ public interface EmployeeApi {
 
     @GET("announcements.php?action=list")
     Call<AnnouncementResponse> getAnnouncements();
+
+    // Trung tam thong bao (chi cua chinh minh)
+    @GET("leaves_salaries.php?action=notify-list")
+    Call<NotificationListResponse> getNotifications();
+
+    @POST("leaves_salaries.php?action=notify-read")
+    Call<ApiResponse> markNotificationRead(@Body NotificationReadRequest request);
 }

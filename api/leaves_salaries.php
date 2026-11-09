@@ -19,6 +19,38 @@ function leave_ensure_columns(PDO $pdo) {
   }
 }
 
+// ===== Trung tam thong bao trong app (2026-11-09) =====
+// Moi nguoi chi nhan thong bao cua chinh minh. Su kien tao thong bao:
+// don nghi moi (cho nguoi co quyen duyet), don duoc duyet/tu choi (cho nguoi
+// nop), chot/mo lai bang luong va da tra luong (cho nhan vien).
+function notify_ensure_table(PDO $pdo) {
+  static $done = false;
+  if ($done) return;
+  $done = true;
+  $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(30) NOT NULL,
+    title VARCHAR(160) NOT NULL,
+    body VARCHAR(400) NULL,
+    ref_id INT NULL,
+    is_read TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_read (user_id, is_read)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+function notify_push(PDO $pdo, $userId, $type, $title, $body, $refId = null) {
+  if ((int)$userId <= 0) return;
+  notify_ensure_table($pdo);
+  $pdo->prepare("INSERT INTO notifications(user_id, type, title, body, ref_id) VALUES(?,?,?,?,?)")
+    ->execute([(int)$userId, $type, $title, $body, $refId === null ? null : (int)$refId]);
+}
+
+function notify_vnd($v) {
+  return number_format((float)$v, 0, ",", ".") . " ₫";
+}
+
 if ($a === "leave-create" && $m === "POST") {
   $me = require_login($pdo);
   $b = body();
@@ -45,7 +77,25 @@ if ($a === "leave-create" && $m === "POST") {
   if ((int)$st->fetchColumn() > 0) err("Da co don nghi trung khoang ngay nay dang cho duyet", 409);
   $pdo->prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,reason,status) VALUES(?,?,?,?,'pending')")
     ->execute([$b["employee_id"], $b["start_date"], $b["end_date"], is_string($b["reason"] ?? null) ? $b["reason"] : ""]);
-  out(["id" => $pdo->lastInsertId(), "status" => "pending"]);
+  $newLeaveId = (int)$pdo->lastInsertId();
+  // Thong bao cho nguoi co quyen duyet: admin + manager cung phong voi nguoi
+  // nop + toan phong HR (theo doi). Khong gui cho chinh nguoi nop don.
+  $empId = (int)$b["employee_id"];
+  $st = $pdo->prepare("SELECT full_name, department_id FROM employees WHERE id=?");
+  $st->execute([$empId]);
+  $empRow = $st->fetch(PDO::FETCH_ASSOC);
+  if ($empRow) {
+    $reason = is_string($b["reason"] ?? null) ? trim($b["reason"]) : "";
+    $nBody = $empRow["full_name"] . " xin nghỉ từ " . $b["start_date"] . " đến " . $b["end_date"]
+      . ($reason !== "" ? ". Lý do: " . mb_substr($reason, 0, 120) : "");
+    $recips = $pdo->prepare("SELECT DISTINCT e.id FROM employees e LEFT JOIN departments d ON d.id=e.department_id
+      WHERE e.status=1 AND e.id<>? AND (e.role_id=1 OR (e.role_id=2 AND e.department_id=?) OR d.name='HR')");
+    $recips->execute([$empId, (int)$empRow["department_id"]]);
+    foreach ($recips->fetchAll(PDO::FETCH_COLUMN) as $rid) {
+      notify_push($pdo, (int)$rid, "leave_new", "Đơn nghỉ mới chờ duyệt", $nBody, $newLeaveId);
+    }
+  }
+  out(["id" => $newLeaveId, "status" => "pending"]);
 }
 if ($a === "leave-list" && $m === "GET") {
   $me = require_login($pdo);
@@ -93,7 +143,7 @@ if ($a === "leave-approve" && $m === "POST") {
   $b = body();
   if (empty($b["id"]) || empty($b["status"])) err("Thieu id/status");
   if (!in_array($b["status"], ["approved", "rejected"], true)) err("status chi duoc la approved/rejected");
-  $stmt = $pdo->prepare("SELECT l.status, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
+  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
   $stmt->execute([(int)$b["id"]]);
   $leave = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$leave) err("Khong tim thay don nghi", 404);
@@ -108,6 +158,13 @@ if ($a === "leave-approve" && $m === "POST") {
   $upd = $pdo->prepare("UPDATE leave_requests SET status=?, approved_by=?, processed_at=NOW() WHERE id=? AND status='pending'");
   $upd->execute([$b["status"], $me["id"], (int)$b["id"]]);
   if ($upd->rowCount() === 0) err("Don nay da duoc xu ly roi", 409);
+  // Thong bao ket qua cho nguoi nop don.
+  $approved = $b["status"] === "approved";
+  notify_push($pdo, (int)$leave["employee_id"], $approved ? "leave_approved" : "leave_rejected",
+    $approved ? "Đơn nghỉ đã được duyệt" : "Đơn nghỉ bị từ chối",
+    "Đơn nghỉ từ " . $leave["start_date"] . " đến " . $leave["end_date"] . " đã được " . $me["full_name"]
+      . ($approved ? " duyệt." : " từ chối."),
+    (int)$b["id"]);
   out(["id" => (int)$b["id"], "status" => $b["status"]]);
 }
 if ($a === "salary-list" && $m === "GET") {
@@ -259,23 +316,35 @@ if ($a === "salary-finalize" && $m === "POST") {
   salary_ensure_columns($pdo);
   $b = body();
   if (!empty($b["id"]) && is_numeric($b["id"])) {
-    $stmt = $pdo->prepare("SELECT s.employee_id, s.finalized FROM salaries s WHERE s.id=?");
+    $stmt = $pdo->prepare("SELECT s.employee_id, s.finalized, s.month, s.year, s.net_salary FROM salaries s WHERE s.id=?");
     $stmt->execute([(int)$b["id"]]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) err("Khong tim thay bang luong", 404);
     $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE id=?");
     $upd->execute([(int)$b["id"]]);
-    if ((int)$row["finalized"] === 0) salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "finalized", 0, 1);
+    if ((int)$row["finalized"] === 0) {
+      salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "finalized", 0, 1);
+      notify_push($pdo, (int)$row["employee_id"], "salary_finalized",
+        "Bảng lương tháng " . (int)$row["month"] . "/" . (int)$row["year"] . " đã chốt",
+        "Thực lĩnh: " . notify_vnd($row["net_salary"]) . ". Mở mục Bảng lương để xem chi tiết các khoản.",
+        (int)$b["id"]);
+    }
     out(["id" => (int)$b["id"], "finalized" => 1]);
   }
   $month = (int)($b["month"] ?? 0); $year = (int)($b["year"] ?? 0);
   if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Can id hoac month/year hop le", 422);
-  $sel = $pdo->prepare("SELECT id, employee_id FROM salaries WHERE month=? AND year=? AND finalized=0");
+  $sel = $pdo->prepare("SELECT id, employee_id, net_salary FROM salaries WHERE month=? AND year=? AND finalized=0");
   $sel->execute([$month, $year]);
   $pendingRows = $sel->fetchAll(PDO::FETCH_ASSOC);
   $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE month=? AND year=?");
   $upd->execute([$month, $year]);
-  foreach ($pendingRows as $pr) salary_audit($pdo, (int)$pr["id"], (int)$pr["employee_id"], (int)$me["id"], "finalized", 0, 1);
+  foreach ($pendingRows as $pr) {
+    salary_audit($pdo, (int)$pr["id"], (int)$pr["employee_id"], (int)$me["id"], "finalized", 0, 1);
+    notify_push($pdo, (int)$pr["employee_id"], "salary_finalized",
+      "Bảng lương tháng " . $month . "/" . $year . " đã chốt",
+      "Thực lĩnh: " . notify_vnd($pr["net_salary"]) . ". Mở mục Bảng lương để xem chi tiết các khoản.",
+      (int)$pr["id"]);
+  }
   out(["month" => $month, "year" => $year, "finalized_count" => $upd->rowCount()]);
 }
 // Mo lai bang luong da chot (sai sot sau khi chot): CHI admin.
@@ -284,13 +353,20 @@ if ($a === "salary-unfinalize" && $m === "POST") {
   salary_ensure_columns($pdo);
   $b = body();
   if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
-  $sel = $pdo->prepare("SELECT employee_id FROM salaries WHERE id=?");
+  $sel = $pdo->prepare("SELECT employee_id, month, year FROM salaries WHERE id=?");
   $sel->execute([(int)$b["id"]]);
-  $empOfSalary = (int)($sel->fetchColumn() ?: 0);
+  $salRow = $sel->fetch(PDO::FETCH_ASSOC);
+  $empOfSalary = $salRow ? (int)$salRow["employee_id"] : 0;
   $upd = $pdo->prepare("UPDATE salaries SET finalized=0 WHERE id=? AND finalized=1");
   $upd->execute([(int)$b["id"]]);
   if ($upd->rowCount() === 0) err("Khong tim thay bang luong da chot nay", 404);
-  if ($empOfSalary > 0) salary_audit($pdo, (int)$b["id"], $empOfSalary, (int)$me["id"], "finalized", 1, 0);
+  if ($empOfSalary > 0) {
+    salary_audit($pdo, (int)$b["id"], $empOfSalary, (int)$me["id"], "finalized", 1, 0);
+    notify_push($pdo, $empOfSalary, "salary_unfinalized",
+      "Bảng lương tháng " . (int)$salRow["month"] . "/" . (int)$salRow["year"] . " được mở lại",
+      "Bảng lương của bạn được mở lại để chỉnh sửa. Số liệu chốt chính thức sẽ được thông báo sau.",
+      (int)$b["id"]);
+  }
   out(["id" => (int)$b["id"], "finalized" => 0]);
 }
 // Danh dau DA TRA LUONG cho 1 dong da chot (buoc cuoi cua quy trinh luong).
@@ -302,14 +378,22 @@ if ($a === "salary-paid" && $m === "POST") {
   if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
   $paid = isset($b["paid"]) ? (int)$b["paid"] : 1;
   if ($paid !== 0 && $paid !== 1) err("paid chi nhan 0 hoac 1", 422);
-  $stmt = $pdo->prepare("SELECT employee_id, finalized, paid FROM salaries WHERE id=?");
+  $stmt = $pdo->prepare("SELECT employee_id, finalized, paid, month, year, net_salary FROM salaries WHERE id=?");
   $stmt->execute([(int)$b["id"]]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$row) err("Khong tim thay bang luong", 404);
   if ($paid === 1 && (int)$row["finalized"] !== 1) err("Bang luong chua chot, chua tra luong duoc", 422);
   $pdo->prepare("UPDATE salaries SET paid=?, paid_at=? WHERE id=?")
     ->execute([$paid, $paid === 1 ? date("Y-m-d H:i:s") : null, (int)$b["id"]]);
-  if ((int)$row["paid"] !== $paid) salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "paid", (int)$row["paid"], $paid);
+  if ((int)$row["paid"] !== $paid) {
+    salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "paid", (int)$row["paid"], $paid);
+    if ($paid === 1) {
+      notify_push($pdo, (int)$row["employee_id"], "salary_paid",
+        "Đã trả lương tháng " . (int)$row["month"] . "/" . (int)$row["year"],
+        "Số tiền " . notify_vnd($row["net_salary"]) . " đã được đánh dấu đã trả. Cảm ơn bạn!",
+        (int)$b["id"]);
+    }
+  }
   out(["id" => (int)$b["id"], "paid" => $paid]);
 }
 // Lich su thay doi cua 1 dong bang luong (ai sua khoan nao, tu bao nhieu -> bao nhieu).
@@ -419,6 +503,33 @@ if ($a === "dashboard" && $m === "GET") {
     $todayLate = $s->fetch()["c"];
   }
   out(["total_active" => (int)$total, "pending_leaves" => (int)$pending, "late_today" => (int)$todayLate]);
+}
+// Danh sach thong bao CUA CHINH MINH (moi nhat truoc) + so chua doc cho badge.
+if ($a === "notify-list" && $m === "GET") {
+  $me = require_login($pdo);
+  notify_ensure_table($pdo);
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+  $stmt->execute([(int)$me["id"]]);
+  $unread = (int)$stmt->fetchColumn();
+  $stmt = $pdo->prepare("SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100");
+  $stmt->execute([(int)$me["id"]]);
+  out(["unread" => $unread, "items" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+}
+// Danh dau da doc: 1 thong bao (id) hoac tat ca (all=true). Chi cua chinh minh.
+if ($a === "notify-read" && $m === "POST") {
+  $me = require_login($pdo);
+  notify_ensure_table($pdo);
+  $b = body();
+  if (!empty($b["all"])) {
+    $pdo->prepare("UPDATE notifications SET is_read=1 WHERE user_id=? AND is_read=0")->execute([(int)$me["id"]]);
+  } elseif (!empty($b["id"]) && is_numeric($b["id"])) {
+    $pdo->prepare("UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?")->execute([(int)$b["id"], (int)$me["id"]]);
+  } else {
+    err("Can id hoac all=true", 422);
+  }
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+  $stmt->execute([(int)$me["id"]]);
+  out(["unread" => (int)$stmt->fetchColumn()]);
 }
 err("Unknown action");
 ?>

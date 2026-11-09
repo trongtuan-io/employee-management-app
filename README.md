@@ -35,6 +35,12 @@ Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng
 5. **Báo cáo quỹ lương**: màn tổng hợp nhóm dòng theo phòng ban kèm tổng từng phòng, chân trang có tổng toàn công ty + chênh lệch so với tháng trước.
 6. **Phụ cấp cố định theo chính sách**: bảng `salary_policies` (toàn công ty hoặc theo phòng, bật/tắt) do Admin + Kế toán trưởng quản lý ở màn "Phụ cấp cố định"; khi tính lương **tạo dòng mới**, phụ cấp khởi tạo = tổng các khoản chính sách đang áp dụng (dòng đã có giữ nguyên). Cột/bảng mới đều do API tự bổ sung — file `database/migrations/008_salary_payroll_complete.sql` chỉ để đối chiếu/cài mới.
 
+**Trung tâm thông báo trong app (2026-11-09):**
+
+- Bảng `notifications` do API tự tạo (`database/migrations/009_notifications.sql` để đối chiếu). Mỗi thông báo thuộc về đúng 1 người nhận; `notify-list` chỉ trả thông báo của chính người đăng nhập kèm số chưa đọc, `notify-read` đánh dấu đã đọc theo từng cái hoặc tất cả.
+- Sự kiện tự sinh thông báo: (1) có **đơn nghỉ mới** → gửi Admin + trưởng phòng của người nộp + cả phòng Nhân sự; (2) đơn **được duyệt / bị từ chối** → gửi người nộp kèm tên người xử lý; (3) bảng lương **được chốt** (theo dòng hoặc cả tháng) → gửi nhân viên kèm số thực lĩnh; (4) lương **đã trả** → gửi nhân viên; (5) bảng lương **mở lại** sau khi chốt → gửi nhân viên.
+- Android: chuông 🔔 ở Trang chủ kèm badge đỏ số chưa đọc (tải lại mỗi lần quay về Trang chủ); màn **Thông báo** liệt kê mới nhất trước, chấm đỏ = chưa đọc, chạm vào 1 thông báo sẽ đánh dấu đã đọc và mở màn liên quan (Xin nghỉ / Bảng lương), có nút "Đánh dấu tất cả đã đọc".
+
 ## Cấu trúc repo
 
 ```
