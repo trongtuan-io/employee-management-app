@@ -57,6 +57,11 @@
         </activity>
 
         <activity
+            android:name=".SalaryDetailActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
             android:name=".ProfileActivity"
             android:exported="false">
         </activity>

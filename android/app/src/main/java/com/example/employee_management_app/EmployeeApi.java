@@ -121,6 +121,10 @@ public interface EmployeeApi {
     @POST("leaves_salaries.php?action=salary-finalize")
     Call<ApiResponse> finalizeSalary(@Body SalaryFinalizeRequest request);
 
+    // Mo lai bang luong da chot (chi admin)
+    @POST("leaves_salaries.php?action=salary-unfinalize")
+    Call<ApiResponse> unfinalizeSalary(@Body SalaryFinalizeRequest request);
+
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")
     Call<AttendanceTodayResponse> getAttendanceToday();

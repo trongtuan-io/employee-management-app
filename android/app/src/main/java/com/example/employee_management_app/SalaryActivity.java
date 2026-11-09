@@ -1,17 +1,16 @@
 package com.example.employee_management_app;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
@@ -22,19 +21,23 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-// Bang luong theo Role x Phong: nhan vien chi xem luong CUA MINH da chot;
-// chi admin + phong KE TOAN moi co panel tinh luong TU DONG theo ngay cong
-// (salary-generate), dieu chinh ban nhap (salary-adjust); rieng CHOT bang luong
-// (salary-finalize) chi admin + KE TOAN TRUONG (manager phong ACC).
+// Bang luong: danh sach cac thang trong nam (moi dong la mot thang), cham vao
+// de xem CHI TIET thang do (SalaryDetailActivity).
+// Phan quyen (Tuan chot 2026-11-09): NHAN VIEN moi phong chi xem duoc bang
+// luong CUA CHINH MINH (API chi tra thang da chot); chi Admin + KE TOAN TRUONG
+// moi co khu quan ly: xem luong nhan vien khac, tinh luong tu dong, sua, chot.
 public class SalaryActivity extends AppCompatActivity {
     private final List<SalaryListResponse.Item> items = new ArrayList<>();
     private final List<EmployeeListResponse.Item> employees = new ArrayList<>();
-    private ArrayAdapter<SalaryListResponse.Item> adapter;
+    private SalaryAdapter adapter;
     private EmployeeApi api;
     private int myId;
-    private boolean canPayroll;
-    private boolean canFinalize;
+    private boolean isAdmin;
+    private boolean canManage;
     private int selectedEmpId;
+    private int selectedYear;
+    private TextView tvSalaryYear, tvSalaryOwner, tvSalaryEmpty;
+    private ListView lvSalaries;
     private EditText etMonth, etYear;
 
     @Override
@@ -47,29 +50,52 @@ public class SalaryActivity extends AppCompatActivity {
         myId = TokenManager.getInstance(this).getUserId();
         String role = TokenManager.getInstance(this).getRole();
         String dept = TokenManager.getInstance(this).getDepartmentName();
-        boolean isAdmin = "admin".equalsIgnoreCase(role);
+        isAdmin = "admin".equalsIgnoreCase(role);
         boolean isAccounting = "ACC".equalsIgnoreCase(dept);
-        canPayroll = isAdmin || isAccounting;
-        canFinalize = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
+        canManage = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
         selectedEmpId = myId;
+        selectedYear = Calendar.getInstance().get(Calendar.YEAR);
 
-        ListView lv = findViewById(R.id.lvSalaries);
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);
-        lv.setAdapter(adapter);
-        lv.setOnItemClickListener((parent, view, position, id) -> onSalaryClicked(items.get(position)));
+        lvSalaries = findViewById(R.id.lvSalaries);
+        adapter = new SalaryAdapter(this, items);
+        lvSalaries.setAdapter(adapter);
+        lvSalaries.setOnItemClickListener((parent, view, position, id) -> openDetail(items.get(position)));
+
+        tvSalaryYear = findViewById(R.id.tvSalaryYear);
+        tvSalaryOwner = findViewById(R.id.tvSalaryOwner);
+        tvSalaryEmpty = findViewById(R.id.tvSalaryEmpty);
+        tvSalaryYear.setText("Năm " + selectedYear);
+        findViewById(R.id.btnPrevYear).setOnClickListener(v -> changeYear(-1));
+        findViewById(R.id.btnNextYear).setOnClickListener(v -> changeYear(1));
 
         etMonth = findViewById(R.id.etSalaryMonth);
         etYear = findViewById(R.id.etSalaryYear);
         Calendar now = Calendar.getInstance();
         etMonth.setText(String.valueOf(now.get(Calendar.MONTH) + 1));
-        etYear.setText(String.valueOf(now.get(Calendar.YEAR)));
+        etYear.setText(String.valueOf(selectedYear));
 
-        if (canPayroll) {
+        if (canManage) {
             findViewById(R.id.layoutSalaryAdmin).setVisibility(View.VISIBLE);
             findViewById(R.id.btnGenerateSalary).setOnClickListener(v -> generateSalaries());
             setupEmployeeSpinner();
         }
 
+        loadSalaries();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Quay lai tu man chi tiet (sau khi sua/chot) thi nap lai danh sach.
+        if (adapter != null) loadSalaries();
+    }
+
+    private void changeYear(int delta) {
+        int y = selectedYear + delta;
+        if (y < 2000 || y > 2100) return;
+        selectedYear = y;
+        tvSalaryYear.setText("Năm " + selectedYear);
+        if (etYear != null) etYear.setText(String.valueOf(selectedYear));
         loadSalaries();
     }
 
@@ -83,6 +109,7 @@ public class SalaryActivity extends AppCompatActivity {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position >= 0 && position < employees.size()) {
                     selectedEmpId = employees.get(position).getId();
+                    updateOwnerLabel();
                     loadSalaries();
                 }
             }
@@ -109,18 +136,22 @@ public class SalaryActivity extends AppCompatActivity {
         });
     }
 
-    private int viewYear() {
-        if (canPayroll && etYear != null) {
-            try {
-                int y = Integer.parseInt(etYear.getText().toString().trim());
-                if (y >= 2000 && y <= 2100) return y;
-            } catch (NumberFormatException ignored) { }
+    private void updateOwnerLabel() {
+        if (selectedEmpId == myId) {
+            tvSalaryOwner.setText("Bảng lương của tôi");
+            return;
         }
-        return Calendar.getInstance().get(Calendar.YEAR);
+        for (EmployeeListResponse.Item e : employees) {
+            if (e.getId() == selectedEmpId) {
+                tvSalaryOwner.setText("Bảng lương của: " + e.getFullName());
+                return;
+            }
+        }
+        tvSalaryOwner.setText("Bảng lương của nhân viên");
     }
 
     private void loadSalaries() {
-        api.getSalaries(selectedEmpId, viewYear()).enqueue(new Callback<SalaryListResponse>() {
+        api.getSalaries(selectedEmpId, selectedYear).enqueue(new Callback<SalaryListResponse>() {
             @Override
             public void onResponse(Call<SalaryListResponse> c, Response<SalaryListResponse> r) {
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()
@@ -128,9 +159,7 @@ public class SalaryActivity extends AppCompatActivity {
                     items.clear();
                     items.addAll(r.body().getData());
                     adapter.notifyDataSetChanged();
-                    if (items.isEmpty()) {
-                        Toast.makeText(SalaryActivity.this, "Chưa có bảng lương nào trong năm nay", Toast.LENGTH_SHORT).show();
-                    }
+                    tvSalaryEmpty.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
                 } else if (r.code() != 401) {
                     Toast.makeText(SalaryActivity.this,
                             ApiError.message(r, "Không tải được bảng lương"), Toast.LENGTH_SHORT).show();
@@ -142,6 +171,29 @@ public class SalaryActivity extends AppCompatActivity {
                 Toast.makeText(SalaryActivity.this, "Không tải được bảng lương", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void openDetail(SalaryListResponse.Item item) {
+        Intent i = new Intent(this, SalaryDetailActivity.class);
+        String p = SalaryDetailActivity.EXTRA_PREFIX;
+        i.putExtra(p + "id", item.getId());
+        i.putExtra(p + "employee_id", item.getEmployeeId());
+        i.putExtra(p + "full_name", item.getFullName());
+        i.putExtra(p + "month", item.getMonth());
+        i.putExtra(p + "year", item.getYear());
+        i.putExtra(p + "base_salary", item.getBaseSalary());
+        i.putExtra(p + "full_base_salary", item.getFullBaseSalary());
+        i.putExtra(p + "allowance", item.getAllowance());
+        i.putExtra(p + "overtime_pay", item.getOvertimePay());
+        i.putExtra(p + "bonus", item.getBonus());
+        i.putExtra(p + "deduction", item.getDeduction());
+        i.putExtra(p + "net_salary", item.getNetSalary());
+        i.putExtra(p + "work_days", item.getWorkDays());
+        i.putExtra(p + "standard_days", item.getStandardDays());
+        i.putExtra(p + "finalized", item.isFinalized());
+        i.putExtra(p + "can_manage", canManage);
+        i.putExtra(p + "is_admin", isAdmin);
+        startActivity(i);
     }
 
     private void generateSalaries() {
@@ -169,6 +221,10 @@ public class SalaryActivity extends AppCompatActivity {
                         msg += ". Bỏ qua " + d.getSkippedFinalized() + " bảng lương đã chốt";
                     }
                     Toast.makeText(SalaryActivity.this, msg, Toast.LENGTH_LONG).show();
+                    if (year != selectedYear) {
+                        selectedYear = year;
+                        tvSalaryYear.setText("Năm " + selectedYear);
+                    }
                     loadSalaries();
                 } else if (r.code() != 401) {
                     Toast.makeText(SalaryActivity.this,
@@ -181,109 +237,5 @@ public class SalaryActivity extends AppCompatActivity {
                 Toast.makeText(SalaryActivity.this, "Không tính được lương", Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private static double moneyOf(String raw) {
-        if (raw == null) return 0;
-        try { return Double.parseDouble(raw); } catch (NumberFormatException e) { return 0; }
-    }
-
-    // Chap nhan ca dang "500000" lan dang VN "500.000"
-    private static double parseMoney(EditText et) {
-        String s = et.getText().toString().trim().replace(".", "").replace(",", "").replace(" ", "");
-        if (s.isEmpty()) return 0;
-        try { return Double.parseDouble(s); } catch (NumberFormatException e) { return -1; }
-    }
-
-    private EditText moneyInput(String label, double value) {
-        EditText et = new EditText(this);
-        et.setHint(label);
-        et.setInputType(InputType.TYPE_CLASS_NUMBER);
-        et.setText(String.valueOf(Math.round(value)));
-        return et;
-    }
-
-    private void onSalaryClicked(SalaryListResponse.Item item) {
-        if (!canPayroll) return; // Chi Ke toan/Admin moi sua bang luong
-        if (item.isFinalized()) {
-            Toast.makeText(this, "Bảng lương này đã chốt, không sửa được", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(48, 24, 48, 8);
-        EditText etAllowance = moneyInput("Phụ cấp", moneyOf(item.getAllowance()));
-        EditText etOvertime = moneyInput("Tiền tăng ca", moneyOf(item.getOvertimePay()));
-        EditText etBonus = moneyInput("Thưởng", moneyOf(item.getBonus()));
-        EditText etDeduction = moneyInput("Khấu trừ", moneyOf(item.getDeduction()));
-        box.addView(etAllowance);
-        box.addView(etOvertime);
-        box.addView(etBonus);
-        box.addView(etDeduction);
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                .setTitle("Bảng lương tháng " + item.getMonth() + "/" + item.getYear())
-                .setView(box)
-                .setPositiveButton("Lưu", (dialog, which) -> {
-                    double allowance = parseMoney(etAllowance);
-                    double overtime = parseMoney(etOvertime);
-                    double bonus = parseMoney(etBonus);
-                    double deduction = parseMoney(etDeduction);
-                    if (allowance < 0 || overtime < 0 || bonus < 0 || deduction < 0) {
-                        Toast.makeText(this, "Số tiền không hợp lệ", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    api.adjustSalary(new SalaryAdjustRequest(item.getId(), allowance, overtime, bonus, deduction))
-                            .enqueue(new Callback<ApiResponse>() {
-                                @Override
-                                public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
-                                    if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
-                                        Toast.makeText(SalaryActivity.this, "Đã lưu, thực lĩnh đã tính lại", Toast.LENGTH_SHORT).show();
-                                        loadSalaries();
-                                    } else if (r.code() != 401) {
-                                        Toast.makeText(SalaryActivity.this,
-                                                ApiError.message(r, "Không lưu được"), Toast.LENGTH_SHORT).show();
-                                    }
-                                }
-
-                                @Override
-                                public void onFailure(Call<ApiResponse> c, Throwable t) {
-                                    Toast.makeText(SalaryActivity.this, "Không lưu được", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                })
-                .setNegativeButton("Đóng", null);
-        // Chi Ke toan truong/Admin moi thay nut Chot (NV Ke toan chi soan nhap).
-        if (canFinalize) {
-            builder.setNeutralButton("Chốt bảng lương", (dialog, which) -> confirmFinalize(item));
-        }
-        builder.show();
-    }
-
-    private void confirmFinalize(SalaryListResponse.Item item) {
-        new AlertDialog.Builder(this)
-                .setTitle("Chốt bảng lương?")
-                .setMessage("Sau khi chốt, bảng lương tháng " + item.getMonth() + "/" + item.getYear()
-                        + " sẽ bị khoá: không sửa thưởng/phụ cấp và không bị tính lại khi chạy tính lương tự động.")
-                .setPositiveButton("Chốt", (dialog, which) -> api.finalizeSalary(new SalaryFinalizeRequest(item.getId()))
-                        .enqueue(new Callback<ApiResponse>() {
-                            @Override
-                            public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
-                                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
-                                    Toast.makeText(SalaryActivity.this, "Đã chốt bảng lương", Toast.LENGTH_SHORT).show();
-                                    loadSalaries();
-                                } else if (r.code() != 401) {
-                                    Toast.makeText(SalaryActivity.this,
-                                            ApiError.message(r, "Không chốt được"), Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onFailure(Call<ApiResponse> c, Throwable t) {
-                                Toast.makeText(SalaryActivity.this, "Không chốt được", Toast.LENGTH_SHORT).show();
-                            }
-                        }))
-                .setNegativeButton("Huỷ", null)
-                .show();
     }
 }

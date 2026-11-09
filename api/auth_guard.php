@@ -94,25 +94,25 @@ function is_hr_manager($u) {
   return $u["role"] === "admin" || (is_hr($u) && $u["role"] === "manager");
 }
 
-// Quyen LUONG: admin + phong Ke toan (pham vi TOAN CONG TY - ngoai le duy nhat
-// vuot pham vi phong, vi ke toan tinh luong cho moi phong ban).
-// - generate/adjust: ca NV Ke toan (soan nhap) lan Ke toan truong.
-// - finalize (chot): chi admin hoac Ke toan TRUONG (manager phong ACC).
-function require_payroll(PDO $pdo, $finalize = false) {
-  $u = require_login($pdo);
-  if ($u["role"] === "admin") return $u;
-  if (is_accounting($u)) {
-    if ($finalize && $u["role"] !== "manager") {
-      err("Chi Ke toan truong moi duoc chot bang luong", 403);
-    }
-    return $u;
-  }
-  err("Chi phong Ke toan moi duoc thao tac bang luong", 403);
+// Nguoi QUAN LY bang luong: admin hoac KE TOAN TRUONG (manager phong ACC).
+// Nguyen tac Tuan chot 2026-11-09: nhan vien (staff) MOI phong chi xem duoc
+// bang luong CUA CHINH MINH; ke ca nhan vien Ke toan va Truong phong HR cung
+// khong xem/tinh luong nguoi khac — viec tinh/chot luong toan cong ty chi
+// nam o Admin va Ke toan truong.
+function is_payroll_manager($u) {
+  return $u["role"] === "admin" || (is_accounting($u) && $u["role"] === "manager");
 }
 
-// Nguoi goi co duoc XEM bang luong cua nguoi khac khong (admin, Ke toan, Truong phong HR).
+// Quyen thao tac LUONG (tinh tu dong, sua khoan, chot): chi nguoi quan ly bang luong.
+function require_payroll(PDO $pdo, $finalize = false) {
+  $u = require_login($pdo);
+  if (is_payroll_manager($u)) return $u;
+  err("Chi Admin va Ke toan truong moi duoc thao tac bang luong", 403);
+}
+
+// Nguoi goi co duoc XEM bang luong cua nguoi khac khong (chi Admin + Ke toan truong).
 function can_view_others_salary($u) {
-  return $u["role"] === "admin" || is_accounting($u) || is_hr_manager($u);
+  return is_payroll_manager($u);
 }
 
 function auth_revoke_token(PDO $pdo) {

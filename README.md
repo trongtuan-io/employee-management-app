@@ -18,11 +18,11 @@ App không nối trực tiếp vào DB. Mọi dữ liệu đi qua API dưới d�
 
 | Phòng | Chức năng riêng |
 |---|---|
-| Nhân sự (HR) | Trưởng phòng HR: quản lý hồ sơ nhân viên **phòng mình**, đặt/đổi lương cơ bản cho nhân viên phòng mình, xem lương toàn công ty (chỉ xem). Tạo NV cho phòng khác và import hàng loạt do Admin phụ trách |
-| Kế toán (ACC) | Tính lương tự động + điều chỉnh cho **toàn công ty** (NV Kế toán soạn nháp, **Kế toán trưởng** mới được chốt), xem báo cáo chấm công để đối chiếu |
+| Nhân sự (HR) | Trưởng phòng HR: quản lý hồ sơ nhân viên **phòng mình**, đặt/đổi lương cơ bản cho nhân viên phòng mình. Tạo NV cho phòng khác và import hàng loạt do Admin phụ trách |
+| Kế toán (ACC) | **Kế toán trưởng**: tính lương tự động + điều chỉnh + chốt cho **toàn công ty**, xem báo cáo chấm công để đối chiếu. NV Kế toán chỉ xem bảng lương của chính mình như mọi nhân viên |
 | IT / Kinh doanh (SALES) / Marketing (MKT) / Hành chính (OPS) / CSKH (CS) | Trưởng phòng chỉ quản lý đội của phòng mình; không xem/tính lương của người khác |
 
-Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi trưởng phòng chỉ thấy nhân viên phòng mình; nhân viên (staff) không truy cập được trang này. Màn Bảng lương của Kế toán chọn nhân viên qua danh bạ riêng (`employees.php?action=directory`, chỉ Admin/Kế toán/Trưởng phòng HR gọi được) nên việc tính lương toàn công ty không bị ảnh hưởng.
+Trang Quản lý nhân viên: **chỉ Admin xem được toàn công ty**; mọi trưởng phòng chỉ thấy nhân viên phòng mình; nhân viên (staff) không truy cập được trang này. Màn Bảng lương: danh sách các tháng trong năm, chạm vào một tháng để xem chi tiết (lương cơ bản gốc, ngày công, các khoản cộng/trừ, thực lĩnh). Nhân viên **chỉ xem được bảng lương của chính mình**; riêng Admin và Kế toán trưởng có khu quản lý (chọn nhân viên qua danh bạ riêng `employees.php?action=directory`, tính lương, sửa, chốt toàn công ty).
 
 Duyệt nghỉ vẫn theo phòng của người xin nghỉ (Kế toán trưởng duyệt đơn của NV Kế toán, không duyệt đơn phòng khác). Nhân viên thường chỉ thấy bảng lương của mình **sau khi đã chốt**. Chi tiết: bản thiết kế phân quyền lưu trong hồ sơ đồ án của nhóm.
 

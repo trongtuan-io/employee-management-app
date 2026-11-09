@@ -23,24 +23,84 @@
         <TextView
             style="@style/AppTitle"
             android:textSize="20sp"
-            android:text="Bảng lương của tôi" />
+            android:text="Bảng lương" />
 
         <TextView
             style="@style/AppSubtitle"
             android:layout_marginTop="4dp"
-            android:text="Các tháng lương trong năm nay" />
+            android:text="Danh sách bảng lương theo từng tháng. Chạm vào một tháng để xem chi tiết các khoản." />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnPrevYear"
+                style="@style/AppButtonSecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀" />
+
+            <TextView
+                android:id="@+id/tvSalaryYear"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnNextYear"
+                style="@style/AppButtonSecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▶" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvSalaryOwner"
+            style="@style/AppLabel"
+            android:layout_marginTop="16dp"
+            android:text="Bảng lương của tôi" />
+
+        <ListView
+            android:id="@+id/lvSalaries"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:divider="@color/stroke"
+            android:dividerHeight="1dp"
+            android:padding="6dp" />
+
+        <TextView
+            android:id="@+id/tvSalaryEmpty"
+            style="@style/AppSubtitle"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            android:text="Chưa có bảng lương nào trong năm này. Bảng lương của nhân viên chỉ hiển thị sau khi Kế toán chốt." />
 
         <LinearLayout
             android:id="@+id/layoutSalaryAdmin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="24dp"
             android:orientation="vertical"
             android:visibility="gone">
 
             <TextView
                 style="@style/AppLabel"
-                android:text="Xem lương của nhân viên (Quản lý)" />
+                android:text="Quản lý bảng lương (Admin / Kế toán trưởng)" />
+
+            <TextView
+                style="@style/AppLabel"
+                android:layout_marginTop="12dp"
+                android:text="Xem lương của nhân viên" />
 
             <Spinner
                 android:id="@+id/spSalaryEmployee"
@@ -87,18 +147,8 @@
             <TextView
                 style="@style/AppSubtitle"
                 android:layout_marginTop="8dp"
-                android:text="Lương = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Chạm vào một dòng lương để sửa thưởng/phụ cấp hoặc chốt." />
+                android:text="Lương theo ngày công = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Chạm vào một dòng lương để xem chi tiết, sửa thưởng/phụ cấp hoặc chốt." />
         </LinearLayout>
-
-        <ListView
-            android:id="@+id/lvSalaries"
-            android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/bg_card"
-            android:divider="@color/stroke"
-            android:dividerHeight="1dp"
-            android:padding="6dp" />
 
     </LinearLayout>
 </ScrollView>

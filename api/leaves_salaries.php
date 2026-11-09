@@ -90,24 +90,24 @@ if ($a === "salary-list" && $m === "GET") {
   $me = require_login($pdo);
   // Khong truyen employee_id thi mac dinh xem cua chinh minh.
   $empId = (int)($_GET["employee_id"] ?? $me["id"]);
-  // Xem luong NGUOI KHAC: chi admin, phong Ke toan va Truong phong HR.
-  // Truong phong nghiep vu KHONG con xem luong doi minh (luong la du lieu ca nhan:
-  // truong phong chi can cong/nghi cua doi, khong can thuc linh).
+  // Xem luong NGUOI KHAC: chi Admin + Ke toan truong. Moi nhan vien/truong phong
+  // con lai chi xem duoc bang luong CUA CHINH MINH (du lieu ca nhan).
   if ($empId !== (int)$me["id"] && !can_view_others_salary($me)) err("Khong co quyen xem luong nguoi khac", 403);
   salary_ensure_columns($pdo);
-  // Xem luong CUA MINH: nguoi khong co quyen nghiep vu luong chi thay thang DA CHOT.
-  // Ban nhap (finalized=0) chi admin/Ke toan/Truong phong HR thay.
+  // Xem luong CUA MINH: nguoi khong phai quan ly bang luong chi thay thang DA CHOT.
+  // Ban nhap (finalized=0) chi Admin/Ke toan truong thay.
   $onlyFinalized = ($empId === (int)$me["id"] && !can_view_others_salary($me));
-  $sql = "SELECT s.*, e.full_name FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=?";
+  // full_base_salary = luong co ban GOC trong ho so (cot base_salary cua bang
+  // salaries la luong DA NHAN theo ngay cong) — man chi tiet can ca hai so.
+  $sql = "SELECT s.*, e.full_name, e.base_salary AS full_base_salary FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=?";
   if ($onlyFinalized) $sql .= " AND s.finalized=1";
   $sql .= " ORDER BY s.month DESC";
   $stmt = $pdo->prepare($sql);
   $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
-// Tinh luong TU DONG theo ngay cong cho ca thang: CHI admin + phong Ke toan,
-// pham vi TOAN CONG TY (ke toan tinh luong cho moi phong ban). Truong phong
-// nghiep vu khong con quyen nay (truoc day manager tinh trong phong minh).
+// Tinh luong TU DONG theo ngay cong cho ca thang: CHI Admin + Ke toan truong,
+// pham vi TOAN CONG TY (ke toan truong tinh luong cho moi phong ban).
 // Sinh bang luong NHAP: dong da CHOT (finalized=1) khong bi ghi de; phu cap/tang ca/
 // thuong/khau tru cua dong cu duoc GIU NGUYEN, chi tinh lai phan luong theo cong va thuc linh.
 if ($a === "salary-generate" && $m === "POST") {
@@ -180,8 +180,7 @@ if ($a === "salary-adjust" && $m === "POST") {
   out(["id" => (int)$row["id"], "net_salary" => $net]);
 }
 // Chot bang luong: theo tung dong (id) hoac ca thang (month+year).
-// CHI admin + Ke toan TRUONG (manager phong ACC), pham vi toan cong ty.
-// NV Ke toan chi soan nhap (generate/adjust), khong duoc chot.
+// CHI Admin + Ke toan TRUONG (manager phong ACC), pham vi toan cong ty.
 if ($a === "salary-finalize" && $m === "POST") {
   $me = require_payroll($pdo, true);
   salary_ensure_columns($pdo);
