@@ -22,6 +22,8 @@ public class AttendanceTodayResponse {
         private String status;
         private Integer check_in_remote;  // 1 = cham vao ngoai van phong, 0 = trong van phong, null = khong co GPS
         private Integer check_out_remote;
+        private String check_in_method;   // gps | face | fingerprint
+        private String check_out_method;
 
         public boolean isCheckedIn() { return checkedIn; }
         public boolean isCheckedOut() { return checkedOut; }
@@ -30,5 +32,7 @@ public class AttendanceTodayResponse {
         public String getStatus() { return status; }
         public Integer getCheckInRemote() { return check_in_remote; }
         public Integer getCheckOutRemote() { return check_out_remote; }
+        public String getCheckInMethod() { return check_in_method; }
+        public String getCheckOutMethod() { return check_out_method; }
     }
 }

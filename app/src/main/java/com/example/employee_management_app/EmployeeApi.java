@@ -7,6 +7,7 @@ import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.Part;
 import retrofit2.http.Query;
+import retrofit2.http.Header;
 
 public interface EmployeeApi {
     // Ho so chi tiet 1 nhan vien
@@ -24,6 +25,16 @@ public interface EmployeeApi {
     @POST("attendances.php?action=checkout")
     Call<AttendanceResponse> checkOut(@Body CheckinRequest request);
 
+    // Sinh trac hoc (biometrics.php): dang ky/trang thai/xoa khuon mat
+    @POST("biometrics.php?action=face-enroll")
+    Call<ApiResponse> faceEnroll(@Body FaceEnrollRequest request);
+
+    @GET("biometrics.php?action=face-status")
+    Call<FaceStatusResponse> faceStatus();
+
+    @POST("biometrics.php?action=face-remove")
+    Call<ApiResponse> faceRemove(@Body FaceRemoveRequest request);
+
     // Danh ba toi thieu cho man Bang luong (admin/Ke toan/Truong phong HR):
     // trang Quan ly nhan vien da siet theo phong nen spinner luong dung duong rieng.
     @GET("employees.php?action=directory")
@@ -32,6 +43,48 @@ public interface EmployeeApi {
     // Danh sach nhan vien (Admin)
     @GET("employees.php?action=list")
     Call<EmployeeListResponse> getEmployees(@Query("search") String search);
+
+    @GET("employees.php?action=list")
+    Call<EmployeeListResponse> getEmployees(@Query("search") String search,
+                                            @Query("dept_id") Integer departmentId,
+                                            @Query("page") int page,
+                                            @Query("limit") int limit,
+                                            @Query("sort") String sort);
+
+    @GET("employees.php?action=list")
+    Call<EmployeeListResponse> getEmployees(@Query("search") String search,
+                                            @Query("dept_id") Integer departmentId,
+                                            @Query("page") int page,
+                                            @Query("limit") int limit,
+                                            @Query("sort") String sort,
+                                            @Query("search_mode") String searchMode);
+
+    @GET("employees.php?action=positions")
+    Call<PositionListResponse> getPositions();
+
+    // Chuc vu theo phong ban (kem chuc vu dung chung)
+    @GET("employees.php?action=positions")
+    Call<PositionListResponse> getPositions(@Query("dept_id") int departmentId);
+
+    @GET("departments.php?action=list")
+    Call<DepartmentListResponse> listDepartments();
+
+    @POST("departments.php?action=create")
+    Call<ApiResponse> createDepartment(@Body DepartmentMutationRequest request);
+
+    @POST("departments.php?action=update")
+    Call<ApiResponse> updateDepartment(@Body DepartmentMutationRequest request);
+
+    @POST("departments.php?action=delete")
+    Call<ApiResponse> deleteDepartment(@Body DepartmentMutationRequest request);
+
+    @Multipart
+    @POST("import_employees.php")
+    Call<EmployeeImportResponse> importEmployees(@Part("requester_id") okhttp3.RequestBody requesterId,
+                                                  @Part okhttp3.MultipartBody.Part file);
+
+    @GET("employees.php?action=departments")
+    Call<DepartmentListResponse> getDepartments();
 
     // Sua ho so: nhan vien chi doi duoc ho ten, admin doi duoc het
     @POST("employees.php?action=update")
@@ -48,35 +101,6 @@ public interface EmployeeApi {
             @Part("employee_id") okhttp3.RequestBody employeeId,
             @Part("requester_id") okhttp3.RequestBody requesterId,
             @Part okhttp3.MultipartBody.Part avatar);
-
-    // Phong ban (port tu ban android/)
-    @GET("departments.php?action=list")
-    Call<DepartmentListResponse> listDepartments();
-
-    @POST("departments.php?action=create")
-    Call<ApiResponse> createDepartment(@Body DepartmentMutationRequest request);
-
-    @POST("departments.php?action=update")
-    Call<ApiResponse> updateDepartment(@Body DepartmentMutationRequest request);
-
-    @POST("departments.php?action=delete")
-    Call<ApiResponse> deleteDepartment(@Body DepartmentMutationRequest request);
-
-    @GET("employees.php?action=departments")
-    Call<DepartmentListResponse> getDepartments();
-
-    @GET("employees.php?action=positions")
-    Call<PositionListResponse> getPositions();
-
-    // Chuc vu theo phong ban (kem chuc vu dung chung)
-    @GET("employees.php?action=positions")
-    Call<PositionListResponse> getPositions(@Query("dept_id") int departmentId);
-
-    // Import nhan vien tu Excel/CSV (server xac thuc admin bang token Bearer)
-    @Multipart
-    @POST("import_employees.php")
-    Call<EmployeeImportResponse> importEmployees(@Part("requester_id") okhttp3.RequestBody requesterId,
-                                                 @Part okhttp3.MultipartBody.Part file);
 
     // Nghi phep (leaves_salaries.php)
     @POST("leaves_salaries.php?action=leave-create")
