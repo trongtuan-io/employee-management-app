@@ -5,7 +5,7 @@
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
-        <mxCell id="title" value="LƯỢC ĐỒ CƠ SỞ DỮ LIỆU — HỆ THỐNG QUẢN LÝ NHÂN VIÊN (13 bảng)" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+        <mxCell id="title" value="LƯỢC ĐỒ CƠ SỞ DỮ LIỆU — HỆ THỐNG QUẢN LÝ NHÂN VIÊN (14 bảng)" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
           <mxGeometry x="425" y="15" width="1100" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_roles" value="roles" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=14;" parent="1" vertex="1">
@@ -357,7 +357,7 @@
           <mxGeometry width="330" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendances" value="attendances" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="60" y="560" width="330" height="318" as="geometry"/>
+          <mxGeometry x="60" y="560" width="330" height="414" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendances_r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
           <mxGeometry y="30" height="24" width="330" as="geometry"/>
@@ -416,23 +416,47 @@
         <mxCell id="tbl_attendances_r9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
           <mxGeometry y="30" height="24" width="330" as="geometry"/>
         </mxCell>
-        <mxCell id="tbl_attendances_r9_c" value="check_out_lat : DECIMAL(10,7)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r9" vertex="1">
+        <mxCell id="tbl_attendances_r9_c" value="check_in_method : VARCHAR(20)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r9" vertex="1">
           <mxGeometry width="330" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendances_r10" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
           <mxGeometry y="30" height="24" width="330" as="geometry"/>
         </mxCell>
-        <mxCell id="tbl_attendances_r10_c" value="check_out_lng : DECIMAL(10,7)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r10" vertex="1">
+        <mxCell id="tbl_attendances_r10_c" value="check_in_face_score : DECIMAL(6,4)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r10" vertex="1">
           <mxGeometry width="330" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendances_r11" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
           <mxGeometry y="30" height="24" width="330" as="geometry"/>
         </mxCell>
-        <mxCell id="tbl_attendances_r11_c" value="check_out_remote : TINYINT" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r11" vertex="1">
+        <mxCell id="tbl_attendances_r11_c" value="check_out_lat : DECIMAL(10,7)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r11" vertex="1">
+          <mxGeometry width="330" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r12" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
+          <mxGeometry y="30" height="24" width="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r12_c" value="check_out_lng : DECIMAL(10,7)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r12" vertex="1">
+          <mxGeometry width="330" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r13" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
+          <mxGeometry y="30" height="24" width="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r13_c" value="check_out_remote : TINYINT" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r13" vertex="1">
+          <mxGeometry width="330" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r14" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
+          <mxGeometry y="30" height="24" width="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r14_c" value="check_out_method : VARCHAR(20)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r14" vertex="1">
+          <mxGeometry width="330" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r15" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendances" vertex="1">
+          <mxGeometry y="30" height="24" width="330" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_attendances_r15_c" value="check_out_face_score : DECIMAL(6,4)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_attendances_r15" vertex="1">
           <mxGeometry width="330" height="24" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendance_explanations" value="attendance_explanations" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=14;" parent="1" vertex="1">
-          <mxGeometry x="60" y="950" width="340" height="294" as="geometry"/>
+          <mxGeometry x="60" y="990" width="340" height="294" as="geometry"/>
         </mxCell>
         <mxCell id="tbl_attendance_explanations_r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_attendance_explanations" vertex="1">
           <mxGeometry y="30" height="24" width="340" as="geometry"/>
@@ -719,6 +743,45 @@
         <mxCell id="tbl_password_resets_r8_c" value="created_at : DATETIME" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_password_resets_r8" vertex="1">
           <mxGeometry width="330" height="24" as="geometry"/>
         </mxCell>
+        <mxCell id="tbl_employee_faces" value="employee_faces" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="890" y="950" width="340" height="174" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r0_c" value="PK id : INT" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;fontStyle=1;" parent="tbl_employee_faces_r0" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r1_c" value="UK FK employee_id : INT, UNIQUE" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;fontStyle=1;" parent="tbl_employee_faces_r1" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r2_c" value="embedding : TEXT" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_employee_faces_r2" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r3_c" value="model : VARCHAR(50)" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_employee_faces_r3" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r4_c" value="created_at : DATETIME" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_employee_faces_r4" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#6c8ebf;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;fontSize=12;" parent="tbl_employee_faces" vertex="1">
+          <mxGeometry y="30" height="24" width="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="tbl_employee_faces_r5_c" value="updated_at : DATETIME" style="connectable=0;strokeColor=#6c8ebf;fillColor=none;align=left;verticalAlign=middle;fontSize=12;spacingLeft=6;" parent="tbl_employee_faces_r5" vertex="1">
+          <mxGeometry width="340" height="24" as="geometry"/>
+        </mxCell>
         <mxCell id="edge0" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=ERone;endArrow=ERmany;strokeColor=#000000;strokeWidth=2;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" parent="1" source="tbl_roles" target="tbl_employees" edge="1">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
@@ -779,7 +842,10 @@
             </Array>
           </mxGeometry>
         </mxCell>
-      </root>
+      <mxCell id="edge15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;startArrow=ERone;endArrow=ERmany;strokeColor=#000000;strokeWidth=2;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.9;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="tbl_employees" target="tbl_employee_faces" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        </root>
     </mxGraphModel>
   </diagram>
 </mxfile>

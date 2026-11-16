@@ -69,7 +69,7 @@ dependencies {
     // - Khuon mat: ML Kit phat hien/cat khuon mat + FaceNet TFLite trich embedding
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("com.google.mlkit:face-detection:16.1.7")
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)

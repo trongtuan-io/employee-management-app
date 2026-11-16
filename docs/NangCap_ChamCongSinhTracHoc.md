@@ -29,7 +29,7 @@ API cũng tự tạo khi thiếu (`bio_ensure_schema()`), nên DB chưa chạy m
 
 - Trang chủ: thêm 2 nút **🙂 Khuôn mặt** / **👆 Vân tay** trong thẻ chấm công (tự hiểu đang đến lượt vào hay ra) + dòng "Đăng ký / cập nhật khuôn mặt ›" mở màn **Sinh trắc học** (`FaceEnrollActivity`): xem trạng thái, đăng ký lại, xoá đăng ký.
 - `FaceCaptureActivity` dùng chung cho đăng ký & chấm công: chụp ảnh full-size → ML Kit cắt mặt → FaceNet trích embedding → trả vector cho màn gọi.
-- Thư viện mới: `androidx.biometric:1.1.0`, `com.google.mlkit:face-detection:16.1.7`, `org.tensorflow:tensorflow-lite:2.14.0`.
+- Thư viện mới: `androidx.biometric:1.1.0`, `com.google.mlkit:face-detection:16.1.7`, `org.tensorflow:tensorflow-lite:2.16.1` (bản 2.14.0 bị AGP 9 chặn vì trùng namespace `org.tensorflow.lite` với tensorflow-lite-api — 2.16.1 đã tách namespace nên build được).
 
 ## Kịch bản demo
 
@@ -52,3 +52,9 @@ Mô hình FaceNet đã chạy thử bằng TFLite: input [1,160,160,3] float32, 
 - Chống giả mạo (anti-spoofing) mới ở mức cơ bản: ML Kit kiểm tra 1 khuôn mặt + góc mặt; chưa có liveness detection chuyên sâu (chớp mắt/mở miệng) — hướng phát triển: bật classification của ML Kit để yêu cầu chớp mắt trước khi chụp.
 - Vân tay theo chuẩn Android là xác thực trên thiết bị (không có máy quét vân tay trung tâm); muốn chấm công tập trung tại 1 máy cố định thì dùng chính điện thoại/máy tính bảng của công ty làm kiosk với cùng cơ chế này.
 - Ngưỡng 0.70 là điểm cân bằng thực nghiệm của FaceNet; môi trường ánh sáng kém có thể cần đăng ký lại ở nơi đủ sáng.
+
+## Build & chạy thử trên máy ảo (16/11/2026, bổ sung)
+
+- Android Studio (project `android/`): Gradle Sync OK → Run: **build thành công, cài và mở app trên Pixel 8 (API 37.1)**; Trang chủ hiện đủ 2 nút Khuôn mặt / Vân tay + dòng đăng ký khuôn mặt, đăng nhập sẵn tài khoản Kế toán trưởng.
+- Android 16 trở đi hiện cảnh báo "16 KB page size" vì `libtensorflowlite_jni.so` và `libface_detector_v2_jni.so` chưa căn chỉnh 16 KB — chỉ là cảnh báo, app chạy ở chế độ tương thích; bấm "Không hiện lại" để tắt. Trên điện thoại thật Android ≤ 15 không có cảnh báo này.
+- Còn lại: thử chụp/đăng ký khuôn mặt trên điện thoại thật (máy ảo dùng webcam mô phỏng nên độ chính xác không đại diện).
