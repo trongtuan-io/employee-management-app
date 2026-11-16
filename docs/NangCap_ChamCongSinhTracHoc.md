@@ -53,6 +53,10 @@ Mô hình FaceNet đã chạy thử bằng TFLite: input [1,160,160,3] float32, 
 - Vân tay theo chuẩn Android là xác thực trên thiết bị (không có máy quét vân tay trung tâm); muốn chấm công tập trung tại 1 máy cố định thì dùng chính điện thoại/máy tính bảng của công ty làm kiosk với cùng cơ chế này.
 - Ngưỡng 0.70 là điểm cân bằng thực nghiệm của FaceNet; môi trường ánh sáng kém có thể cần đăng ký lại ở nơi đủ sáng.
 
+## Lỗi quyền camera + cách sửa (16/11/2026, bổ sung)
+
+Triệu chứng: mở chấm công khuôn mặt báo "Permission Denial: ... with revoked permission android.permission.CAMERA". Nguyên nhân: app có khai CAMERA trong Manifest thì Android bắt phải xin quyền runtime trước khi mở Intent chụp ảnh. Đã sửa trong `FaceCaptureActivity`: kiểm tra quyền → xin quyền (hộp thoại hệ thống) → được cấp mới mở camera; bị từ chối thì hiện hướng dẫn. Đã kiểm chứng trên Pixel 8: hộp thoại quyền hiện, cấp quyền xong camera mở bình thường.
+
 ## Build & chạy thử trên máy ảo (16/11/2026, bổ sung)
 
 - Android Studio (project `android/`): Gradle Sync OK → Run: **build thành công, cài và mở app trên Pixel 8 (API 37.1)**; Trang chủ hiện đủ 2 nút Khuôn mặt / Vân tay + dòng đăng ký khuôn mặt, đăng nhập sẵn tài khoản Kế toán trưởng.

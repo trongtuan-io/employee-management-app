@@ -1,6 +1,8 @@
 package com.example.employee_management_app;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -15,6 +17,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
@@ -35,6 +38,18 @@ public class FaceCaptureActivity extends AppCompatActivity {
     private Button btnCapture;
     private File photoFile;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
+
+    // App da khai quyen CAMERA trong Manifest nen phai xin quyen runtime truoc;
+    // thieu quyen thi Intent chup anh bi Android chan ("revoked permission CAMERA").
+    private final ActivityResultLauncher<String> requestCameraPermission =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) {
+                    openCamera();
+                } else {
+                    tvStatus.setText("App cần quyền Camera để chụp khuôn mặt. Bấm nút bên dưới rồi chọn Cho phép.");
+                    btnCapture.setEnabled(true);
+                }
+            });
 
     private final ActivityResultLauncher<Uri> takePicture =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), ok -> {
@@ -62,6 +77,15 @@ public class FaceCaptureActivity extends AppCompatActivity {
     }
 
     private void launchCamera() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        } else {
+            requestCameraPermission.launch(Manifest.permission.CAMERA);
+        }
+    }
+
+    private void openCamera() {
         try {
             File dir = new File(getCacheDir(), "face_capture");
             if (!dir.exists()) dir.mkdirs();
