@@ -295,6 +295,8 @@ if ($a === "explanation-approve" && $m === "POST") {
   $x = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$x) err("Khong tim thay don giai trinh", 404);
   if ($x["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
+  // Khong ai duoc tu duyet giai trinh cua chinh minh; giai trinh cua quan ly do Admin duyet.
+  if ((int)$x["employee_id"] === (int)$me["id"]) err("Khong the tu duyet giai trinh cua chinh minh", 403);
   if ($me["role"] === "manager" && (int)$x["department_id"] !== (int)$me["department_id"]) {
     err("Chi duyet duoc giai trinh cua nhan vien phong ban minh", 403);
   }

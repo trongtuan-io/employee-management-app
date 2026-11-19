@@ -220,6 +220,8 @@ if ($a === "leave-approve" && $m === "POST") {
   $leave = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$leave) err("Khong tim thay don nghi", 404);
   if ($leave["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
+  // Khong ai duoc tu duyet don cua chinh minh; don cua quan ly do Admin duyet.
+  if ((int)$leave["employee_id"] === (int)$me["id"]) err("Khong the tu duyet don cua chinh minh", 403);
   // Sep phong chi duyet duoc don cua nhan vien phong minh.
   if ($me["role"] === "manager" && (int)$leave["department_id"] !== (int)$me["department_id"]) {
     err("Chi duyet duoc don nghi cua nhan vien phong ban minh", 403);
