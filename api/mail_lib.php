@@ -23,8 +23,15 @@ use PHPMailer\PHPMailer\Exception;
 function mail_smtp_configured() {
   if (!defined("SMTP_USER") || !defined("SMTP_PASS")) return false;
   if (SMTP_USER === "" || SMTP_PASS === "") return false;
-  if (strpos(SMTP_USER, "dien-gmail") !== false) return false;        // con placeholder
-  if (strpos(SMTP_PASS, "DIEN_APP_PASSWORD") !== false) return false; // con placeholder
+  // Cac dang placeholder con sot trong file mau (ca 2 phien ban tung dung):
+  // "dien-gmail-that-cua-ban@gmail.com", "email.cua.ban@gmail.com",
+  // "DIEN_APP_PASSWORD_16_KY_TU", "mat-khau-ung-dung-16-ky-tu".
+  foreach (["dien-gmail", "cua.ban", "dien_thanh", "example"] as $mark) {
+    if (stripos(SMTP_USER, $mark) !== false) return false;
+  }
+  foreach (["DIEN_APP_PASSWORD", "mat-khau-ung-dung", "app_password"] as $mark) {
+    if (stripos(SMTP_PASS, $mark) !== false) return false;
+  }
   return true;
 }
 
