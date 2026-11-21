@@ -1,6 +1,6 @@
 # Employee Management App (Android)
 
-Đây là ứng dụng Android cho hệ thống Quản lý nhân sự, kết nối với Backend PHP qua REST API.
+Ứng dụng Android (Java + Retrofit + Glide) cho hệ thống Quản lý nhân viên, kết nối Backend PHP qua REST API (xem `../api/README.md`). Thư mục `android/` này là project Android Studio **build được và dùng để demo**; repo còn một cây `app/` ở gốc được giữ đồng bộ — khi mở project, mở thư mục `android/`.
 
 ## ⚠️ Lưu ý quan trọng khi chạy trên Máy ảo (Emulator)
 
@@ -37,9 +37,20 @@ Quên mật khẩu chỉ dùng Email (server gửi mã 6 số). Kênh SMS Fireba
 ---
 
 ## Các tính năng hiện tại
-- [x] Giao diện Đăng nhập.
-- [x] Kết nối API `auth.php?action=login`.
-- [x] Chuyển hướng tới Trang Chủ (MainActivity) mang theo phiên đăng nhập.
-- [ ] Danh sách nhân viên (Employee List).
-- [ ] Quản lý chấm công (Check-in).
-- [ ] Quản lý nghỉ phép & lương.
+
+Tất cả đều đã hoàn thành và chạy được:
+
+- [x] Đăng nhập / đăng ký / quên mật khẩu qua email (mã 6 số), phiên đăng nhập bằng token Bearer.
+- [x] Trang chủ theo vai trò: thẻ chấm công, khối nghiệp vụ theo phòng ban, bảng tin công ty, chuông thông báo kèm số chưa đọc.
+- [x] Quản lý nhân viên theo phạm vi phòng (xem/sửa/tạo/khoá tài khoản, avatar, import hàng loạt — chỉ Admin và trưởng phòng, staff không thấy trang này).
+- [x] Phòng ban & thành viên; hồ sơ cá nhân; đổi mật khẩu; tạo tài khoản (Admin).
+- [x] Chấm công vào/ra kèm GPS (gắn cờ ngoài văn phòng), lịch sử và báo cáo chấm công, xuất bảng công CSV.
+- [x] Chấm công sinh trắc học: **khuôn mặt** (ML Kit + FaceNet TFLite, đăng ký khuôn mặt ngay trong app) và **vân tay** (BiometricPrompt).
+- [x] Xin nghỉ với quỹ phép 12 ngày/năm, duyệt/từ chối đơn theo phòng, lịch vắng toàn công ty/phòng.
+- [x] Giải trình quên chấm công và duyệt giải trình.
+- [x] Bảng lương: xem lương cá nhân sau khi chốt, chi tiết từng khoản (BHXH, thuế TNCN), bảng lương tổng hợp toàn công ty, lịch sử thay đổi, quản lý phụ cấp chính sách, xuất Excel (CSV).
+- [x] Thông báo trong app (chạm để đánh dấu đã đọc và mở đúng màn liên quan); các sự kiện quan trọng còn có bản sao qua email ở phía server.
+
+## Các màn hình chính (Activity)
+
+`LoginActivity`, `HomeActivity`, `StaffListActivity`, `DepartmentActivity`, `ProfileActivity`, `AdminActivity`, `CreateAccountActivity`, `ImportEmployeesActivity`, `LeaveActivity`, `AbsenceCalendarActivity`, `ExplanationActivity`, `SalaryActivity`, `SalaryDetailActivity`, `SalaryOverviewActivity`, `SalaryPolicyActivity`, `NotificationsActivity`, `FaceEnrollActivity`, `FaceCaptureActivity`, `ForgotPasswordActivity`, `ChangePasswordActivity`.
