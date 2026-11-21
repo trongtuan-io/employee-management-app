@@ -25,7 +25,6 @@ REST API bằng PHP thuần (không framework), chạy trên XAMPP, kết nối 
 | `departments.php` | `list`, `create`, `update`, `delete`, `members` | Phòng ban và danh sách thành viên theo phạm vi quyền |
 | `attendances.php` | `today`, `checkin`, `checkout`, `history`, `report`, `attendance-export`, `explanation-create`, `explanation-list`, `explanation-approve` | Chấm công vào/ra (kèm GPS, gắn cờ ngoài văn phòng, không chặn), báo cáo và xuất bảng công CSV, đơn giải trình quên chấm công |
 | `leaves_salaries.php` | `dashboard`, `leave-create`, `leave-list`, `leave-approve`, `leave-balance`, `leave-calendar`, `salary-generate`, `salary-list`, `salary-adjust`, `salary-finalize`, `salary-unfinalize`, `salary-paid`, `salary-overview`, `salary-export`, `salary-history`, `salary-policies`, `salary-policy-save`, `salary-policy-delete`, `notify-list`, `notify-read` | Tổng quan, đơn nghỉ & quỹ phép 12 ngày/năm, lịch vắng, bảng lương (tính tự động, BHXH, thuế TNCN, chốt/đã trả, lịch sử, chính sách phụ cấp), thông báo trong app |
-| `biometrics.php` | `face-enroll`, `face-status`, `face-remove` | Đăng ký/trạng thái/xoá khuôn mặt chấm công; việc chấm công bằng khuôn mặt/vân tay đi qua `checkin`/`checkout` của `attendances.php` với tham số `method` |
 | `announcements.php` | `list`, `create` | Bảng tin công ty ở Trang chủ (Admin đăng) |
 | `import_employees.php` | — (POST trực tiếp, chỉ Admin) | Import nhân viên hàng loạt |
 
@@ -36,7 +35,6 @@ REST API bằng PHP thuần (không framework), chạy trên XAMPP, kết nối 
 - `salary_calc.php` — công thức tính lương, BHXH 10,5%, thuế TNCN lũy tiến 7 bậc.
 - `positions_logic.php` — logic chức vụ gắn phòng ban, tự seed phòng/chức vụ khi thiếu.
 - `employee_validation.php` — kiểm tra dữ liệu nhân viên khi tạo/sửa.
-- `biometrics_lib.php` — so khớp vector khuôn mặt bằng cosine, ngưỡng 0.70; server chỉ lưu embedding 128 chiều, không lưu ảnh.
 - `mail_lib.php` + `lib/PHPMailer/` — gửi bản sao thông báo qua email (Gmail SMTP): đơn nghỉ, kết quả duyệt đơn, chốt/trả lương. Lỗi gửi mail không làm hỏng request chính.
 
 ## Quy tắc nghiệp vụ đáng chú ý ở phía server

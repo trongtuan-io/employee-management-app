@@ -15,8 +15,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -33,29 +31,7 @@ public class HomeActivity extends AppCompatActivity {
     private EmployeeApi api;
     private int myId;
     private TextView tvHomeName, tvHomeRole, tvAttStatus, tvAttDetail, tvFeedStatus, tvNotifyBadge;
-    private Button btnHomeCheckIn, btnHomeCheckOut, btnBioFace, btnBioFinger;
-    // Hanh dong sinh trac tiep theo: true = cham vao, false = cham ra
-    // (renderToday cap nhat theo trang thai hom nay).
-    private boolean nextIsIn = true;
-
-    // Nhan embedding khuon mat tu FaceCaptureActivity roi gui cham cong.
-    private final ActivityResultLauncher<Intent> faceCaptureLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    float[] emb = result.getData().getFloatArrayExtra(FaceCaptureActivity.EXTRA_EMBEDDING);
-                    if (emb != null && emb.length > 0) {
-                        List<Double> list = new ArrayList<>(emb.length);
-                        for (float v : emb) list.add((double) v);
-                        double[] gps = lastKnownLatLng();
-                        CheckinRequest req = new CheckinRequest(myId,
-                                gps != null ? gps[0] : null, gps != null ? gps[1] : null,
-                                "face", list, null);
-                        submitAttendance(nextIsIn, req);
-                        return;
-                    }
-                }
-                Toast.makeText(this, "Chưa lấy được khuôn mặt để chấm công", Toast.LENGTH_SHORT).show();
-            });
+    private Button btnHomeCheckIn, btnHomeCheckOut;
     private final List<AnnouncementResponse.Item> news = new ArrayList<>();
     private NewsAdapter newsAdapter;
 
@@ -86,14 +62,6 @@ public class HomeActivity extends AppCompatActivity {
         }
         btnHomeCheckIn = findViewById(R.id.btnHomeCheckIn);
         btnHomeCheckOut = findViewById(R.id.btnHomeCheckOut);
-        btnBioFace = findViewById(R.id.btnBioFace);
-        btnBioFinger = findViewById(R.id.btnBioFinger);
-        btnBioFace.setEnabled(false);
-        btnBioFinger.setEnabled(false);
-        findViewById(R.id.tvFaceEnroll).setOnClickListener(v ->
-                startActivity(new Intent(this, FaceEnrollActivity.class)));
-        btnBioFace.setOnClickListener(v -> startFaceAttendance());
-        btnBioFinger.setOnClickListener(v -> startFingerprintAttendance());
         ListView lvNews = findViewById(R.id.lvNews);
         newsAdapter = new NewsAdapter();
         lvNews.setAdapter(newsAdapter);
@@ -227,51 +195,28 @@ public class HomeActivity extends AppCompatActivity {
 
     private void renderToday(AttendanceTodayResponse.Data d) {
         if (!d.isCheckedIn()) {
-            nextIsIn = true;
             tvAttStatus.setText("Chưa chấm công hôm nay");
             tvAttDetail.setText("Nhấn \"Chấm công vào\" khi bắt đầu ca làm việc.");
             btnHomeCheckIn.setEnabled(true);
             btnHomeCheckOut.setEnabled(false);
-            btnBioFace.setEnabled(true);
-            btnBioFinger.setEnabled(true);
         } else if (!d.isCheckedOut()) {
-            nextIsIn = false;
             String late = "late".equals(d.getStatus()) ? " (đi muộn)" : "";
             String remote = d.getCheckInRemote() != null && d.getCheckInRemote() == 1 ? " · Ngoài văn phòng" : "";
-            String method = methodLabel(d.getCheckInMethod());
-            tvAttStatus.setText("Đã vào lúc " + timeOnly(d.getCheckIn()) + late + remote
-                    + (method.isEmpty() ? "" : " · " + method));
+            tvAttStatus.setText("Đã vào lúc " + timeOnly(d.getCheckIn()) + late + remote);
             tvAttDetail.setText("Đang trong ca làm việc. Nhớ chấm công ra khi kết thúc.");
             btnHomeCheckIn.setEnabled(false);
             btnHomeCheckOut.setEnabled(true);
-            btnBioFace.setEnabled(true);
-            btnBioFinger.setEnabled(true);
         } else {
             tvAttStatus.setText("Đã hoàn thành hôm nay");
             String detail = "Vào " + timeOnly(d.getCheckIn()) + " · Ra " + timeOnly(d.getCheckOut());
             if (d.getCheckInRemote() != null && d.getCheckInRemote() == 1) detail += " · Vào ngoài văn phòng";
             if (d.getCheckOutRemote() != null && d.getCheckOutRemote() == 1) detail += " · Ra ngoài văn phòng";
-            String mIn = methodLabel(d.getCheckInMethod());
-            String mOut = methodLabel(d.getCheckOutMethod());
-            if (!mIn.isEmpty()) detail += " · Vào bằng " + mIn;
-            if (!mOut.isEmpty()) detail += " · Ra bằng " + mOut;
             tvAttDetail.setText(detail);
             btnHomeCheckIn.setEnabled(false);
             btnHomeCheckOut.setEnabled(false);
-            btnBioFace.setEnabled(false);
-            btnBioFinger.setEnabled(false);
         }
     }
 
-    private String methodLabel(String method) {
-        if (method == null) return "";
-        switch (method) {
-            case "face": return "Khuôn mặt";
-            case "fingerprint": return "Vân tay";
-            case "gps": return "GPS";
-            default: return "";
-        }
-    }
 
     private void doAttendance(boolean isIn) {
         double[] gps = lastKnownLatLng();
@@ -279,59 +224,16 @@ public class HomeActivity extends AppCompatActivity {
         submitAttendance(isIn, req);
     }
 
-    // Cham cong bang khuon mat: mo man chup mat, embedding tra ve qua
-    // faceCaptureLauncher se goi submitAttendance voi method="face".
-    private void startFaceAttendance() {
-        if (myId <= 0) {
-            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        Intent it = new Intent(this, FaceCaptureActivity.class);
-        it.putExtra(FaceCaptureActivity.EXTRA_PURPOSE, "verify");
-        faceCaptureLauncher.launch(it);
-    }
 
-    // Cham cong bang van tay: BiometricPrompt xac thuc tren may truoc,
-    // thanh cong moi goi API voi method="fingerprint".
-    private void startFingerprintAttendance() {
-        if (myId <= 0) {
-            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (!BiometricHelper.canUseFingerprint(this)) {
-            Toast.makeText(this, "Thiết bị chưa đăng ký vân tay hoặc không có cảm biến vân tay. "
-                    + "Vào Cài đặt của máy để thêm vân tay trước.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        boolean isIn = nextIsIn;
-        BiometricHelper.authenticate(this, isIn ? "Chấm công vào bằng vân tay" : "Chấm công ra bằng vân tay",
-                new BiometricHelper.Callback() {
-                    @Override
-                    public void onSuccess() {
-                        double[] gps = lastKnownLatLng();
-                        CheckinRequest req = new CheckinRequest(myId,
-                                gps != null ? gps[0] : null, gps != null ? gps[1] : null,
-                                "fingerprint", null, true);
-                        submitAttendance(isIn, req);
-                    }
-
-                    @Override
-                    public void onError(String message) {
-                        Toast.makeText(HomeActivity.this, message, Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
 
     private void submitAttendance(boolean isIn, CheckinRequest req) {
         if (myId <= 0) {
             Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
             return;
         }
-        // Khoa ca 4 nut cham cong trong luc cho server, tranh bam 2 lan gui trung request.
+        // Khoa ca 2 nut cham cong trong luc cho server, tranh bam 2 lan gui trung request.
         btnHomeCheckIn.setEnabled(false);
         btnHomeCheckOut.setEnabled(false);
-        btnBioFace.setEnabled(false);
-        btnBioFinger.setEnabled(false);
         Call<AttendanceResponse> call = isIn
                 ? api.checkIn(req)
                 : api.checkOut(req);

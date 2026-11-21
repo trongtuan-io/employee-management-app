@@ -135,40 +135,6 @@
                     android:text="Chấm công ra" />
             </LinearLayout>
 
-            <!-- Cham cong sinh trac hoc: 2 nut nay lam DUNG hanh dong dang
-                 den luot (vao khi chua vao, ra khi dang trong ca) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnBioFace"
-                    style="@style/AppButtonSecondary"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
-                    android:text="🙂 Khuôn mặt" />
-
-                <Button
-                    android:id="@+id/btnBioFinger"
-                    style="@style/AppButtonSecondary"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:text="👆 Vân tay" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvFaceEnroll"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:padding="4dp"
-                android:text="Đăng ký / cập nhật khuôn mặt ›"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/btnExplain"

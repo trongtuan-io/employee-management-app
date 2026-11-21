@@ -3,7 +3,7 @@
 Cơ sở dữ liệu MySQL/MariaDB cho đồ án **Quản lý nhân viên**: app Android (Java + Retrofit) gọi REST API bằng PHP (thư mục `api/`, chạy trên XAMPP), API kết nối MySQL qua PDO — Android không kết nối trực tiếp tới DB.
 
 - File gốc: `employee_management.sql` (export từ XAMPP/MariaDB 10.4.28 ngày 2026-10-02) — gồm **8 bảng gốc**.
-- Thư mục `migrations/`: các file nâng cấp chạy thêm sau khi import file gốc, bổ sung **6 bảng mới** và nhiều cột mới (phân quyền theo phòng, tính lương, thông báo, GPS, sinh trắc học).
+- Thư mục `migrations/`: các file nâng cấp chạy thêm sau khi import file gốc, bổ sung **6 bảng mới** và nhiều cột mới (phân quyền theo phòng, tính lương, thông báo, GPS).
 - **Tổng cộng: 14 bảng.** Lược đồ CSDL bản vẽ nằm ở thư mục `docs/` ở gốc repo.
 
 ## Danh sách 14 bảng
@@ -14,7 +14,7 @@ Cơ sở dữ liệu MySQL/MariaDB cho đồ án **Quản lý nhân viên**: app
 | 2 | `departments` | Phòng ban (7 phòng: IT, HR, ACC, SALES, MKT, OPS, CS) |
 | 3 | `positions` | Chức vụ, mỗi chức vụ gắn với một phòng ban (`department_id`, migration 003/007) |
 | 4 | `employees` | Nhân viên và tài khoản đăng nhập (thêm cột `hire_date`, chỉ mục fulltext ở migration 001) |
-| 5 | `attendances` | Chấm công: giờ vào/ra, tọa độ GPS và cờ chấm công từ xa (010), phương thức chấm công `gps`/`face`/`fingerprint` và điểm tương đồng khuôn mặt (011) |
+| 5 | `attendances` | Chấm công: giờ vào/ra, tọa độ GPS và cờ chấm công từ xa (010). Các cột `check_in_method` / `check_in_face_score` (011) còn giữ trong DB nhưng không còn dùng từ khi gỡ chấm công sinh trắc học (21/11/2026) |
 | 6 | `leave_requests` | Đơn xin nghỉ (thêm loại nghỉ `leave_type`: phép năm / ốm / việc riêng / không lương, migration 010) |
 | 7 | `salaries` | Bảng lương theo tháng: ngày công, chốt lương (006); BHXH, thuế TNCN, phụ cấp, đã trả lương (008) |
 | 8 | `password_resets` | Mã đặt lại mật khẩu — chỉ lưu mã đã băm (hash) và số lần nhập sai `attempts` (005) |
@@ -23,7 +23,7 @@ Cơ sở dữ liệu MySQL/MariaDB cho đồ án **Quản lý nhân viên**: app
 | 11 | `salary_policies` | Chính sách phụ cấp áp dụng toàn công ty hoặc theo phòng ban (008) |
 | 12 | `notifications` | Thông báo trong app cho từng nhân viên (009); các sự kiện quan trọng còn có bản sao gửi qua email |
 | 13 | `attendance_explanations` | Đơn giải trình quên chấm công / đi muộn, chờ quản lý duyệt (010) |
-| 14 | `employee_faces` | Vector đặc trưng khuôn mặt (embedding 128 chiều, FaceNet) để chấm công sinh trắc học — chỉ lưu vector số, **không lưu ảnh gốc**; so khớp bằng cosine, ngưỡng 0.70 (011) |
+| 14 | `employee_faces` | Vector khuôn mặt của tính năng chấm công sinh trắc học **đã gỡ ngày 21/11/2026** — bảng giữ lại trong DB để tránh mất dữ liệu, code không còn đọc/ghi (011) |
 
 ## Cách import (cài mới từ đầu)
 
