@@ -2,6 +2,7 @@
 require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/auth_guard.php";
 require_once __DIR__ . "/salary_calc.php";
+require_once __DIR__ . "/biometrics_lib.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 // ===== GPS cham cong (2026-11-09) =====
@@ -53,19 +54,46 @@ function att_gps_from_body($b) {
   return [$lat, $lng, $remote];
 }
 
+// ===== Cham cong sinh trac hoc (2026-11-16) =====
+// Body co the gui kem: method = gps (mac dinh) | face | fingerprint.
+// - face: bat buoc co face_embedding (128 so, app trich bang FaceNet tren
+//   dien thoai); server doi khop cosine voi ban dang ky cua CHINH nhan vien,
+//   khong khop thi tu choi cham cong. Diem tuong dong duoc luu de truy vet.
+// - fingerprint: app da xac thuc van tay bang BiometricPrompt tren thiet bi
+//   (Android khong cho doc van tay tho) va bao biometric_verified=true.
+// Tra ve [method, faceScore|null]; loi thi err() ngay tai day.
+function att_biometric_from_body(PDO $pdo, $emp, $b) {
+  $method = is_string($b["method"] ?? null) ? $b["method"] : "gps";
+  if (!in_array($method, ["gps", "face", "fingerprint"], true)) err("method chi duoc la gps/face/fingerprint", 422);
+  if ($method === "face") {
+    $emb = bio_validate_embedding($b["face_embedding"] ?? null);
+    if ($emb === null) err("Thieu du lieu khuon mat de doi khop", 422);
+    [$st, $score] = bio_verify_face($pdo, (int)$emp, $emb);
+    if ($st === "not_enrolled") err("Ban chua dang ky khuon mat — vao muc Sinh trac hoc de dang ky truoc", 422);
+    if ($st !== "ok") err("Khuon mat khong khop voi du lieu da dang ky", 403);
+    return ["face", $score];
+  }
+  if ($method === "fingerprint") {
+    if (($b["biometric_verified"] ?? false) !== true) err("Chua xac thuc van tay tren thiet bi", 422);
+    return ["fingerprint", null];
+  }
+  return ["gps", null];
+}
 
 if ($a === "checkin" && $m === "POST") {
   $me = require_login($pdo);
   $b = body(); $emp = $b["employee_id"] ?? $me["id"]; // mac dinh la chinh nguoi dang nhap
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   att_ensure_columns($pdo);
+  bio_ensure_schema($pdo);
   [$gLat, $gLng, $gRemote] = att_gps_from_body($b);
+  [$method, $faceScore] = att_biometric_from_body($pdo, $emp, $b);
   $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
   $late = (strtotime(date("H:i")) > strtotime("08:15")) ? "late" : "present";
   try {
-    $pdo->prepare("INSERT INTO attendances(employee_id,work_date,check_in_time,status,check_in_lat,check_in_lng,check_in_remote) VALUES(?,?,?,?,?,?,?)")
-      ->execute([$emp, $today, $now, $late, $gLat, $gLng, $gRemote]);
-    out(["check_in" => $now, "status" => $late, "remote" => $gRemote]);
+    $pdo->prepare("INSERT INTO attendances(employee_id,work_date,check_in_time,status,check_in_lat,check_in_lng,check_in_remote,check_in_method,check_in_face_score) VALUES(?,?,?,?,?,?,?,?,?)")
+      ->execute([$emp, $today, $now, $late, $gLat, $gLng, $gRemote, $method, $faceScore]);
+    out(["check_in" => $now, "status" => $late, "remote" => $gRemote, "method" => $method, "face_score" => $faceScore]);
   } catch (PDOException $e) {
     // Chi loi trung khoa (da check-in) moi la 409; loi DB khac phai lo ra dung ban chat.
     if ($e->getCode() === "23000") err("Hom nay da check-in roi", 409);
@@ -78,25 +106,27 @@ if ($a === "checkout" && $m === "POST") {
   $b = body(); $emp = $b["employee_id"] ?? $me["id"]; $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   att_ensure_columns($pdo);
+  bio_ensure_schema($pdo);
   [$gLat, $gLng, $gRemote] = att_gps_from_body($b);
+  [$method, $faceScore] = att_biometric_from_body($pdo, $emp, $b);
   // Chi check-out duoc khi da check-in va chua check-out; kiem tra so dong cap nhat thay vi bao success mu.
   if ($gLat === null) {
-    $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");
-    $stmt->execute([$now, $emp, $today]);
+    $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_method=?, check_out_face_score=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");
+    $stmt->execute([$now, $method, $faceScore, $emp, $today]);
     if ($stmt->rowCount() === 0) {
-      $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=? WHERE employee_id=? AND check_out_time IS NULL AND work_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) ORDER BY work_date DESC, id DESC LIMIT 1");
-      $stmt->execute([$now, $emp]);
+      $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_method=?, check_out_face_score=? WHERE employee_id=? AND check_out_time IS NULL AND work_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) ORDER BY work_date DESC, id DESC LIMIT 1");
+      $stmt->execute([$now, $method, $faceScore, $emp]);
     }
   } else {
-    $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_lat=?, check_out_lng=?, check_out_remote=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");
-    $stmt->execute([$now, $gLat, $gLng, $gRemote, $emp, $today]);
+    $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_lat=?, check_out_lng=?, check_out_remote=?, check_out_method=?, check_out_face_score=? WHERE employee_id=? AND work_date=? AND check_out_time IS NULL");
+    $stmt->execute([$now, $gLat, $gLng, $gRemote, $method, $faceScore, $emp, $today]);
     if ($stmt->rowCount() === 0) {
-      $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_lat=?, check_out_lng=?, check_out_remote=? WHERE employee_id=? AND check_out_time IS NULL AND work_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) ORDER BY work_date DESC, id DESC LIMIT 1");
-      $stmt->execute([$now, $gLat, $gLng, $gRemote, $emp]);
+      $stmt = $pdo->prepare("UPDATE attendances SET check_out_time=?, check_out_lat=?, check_out_lng=?, check_out_remote=?, check_out_method=?, check_out_face_score=? WHERE employee_id=? AND check_out_time IS NULL AND work_date >= DATE_SUB(CURDATE(), INTERVAL 1 DAY) ORDER BY work_date DESC, id DESC LIMIT 1");
+      $stmt->execute([$now, $gLat, $gLng, $gRemote, $method, $faceScore, $emp]);
     }
   }
   if ($stmt->rowCount() === 0) err("Chua check-in hom nay hoac da check-out roi", 409);
-  out(["check_out" => $now, "remote" => $gRemote]);
+  out(["check_out" => $now, "remote" => $gRemote, "method" => $method, "face_score" => $faceScore]);
 }
 if ($a === "history" && $m === "GET") {
   $me = require_login($pdo);
@@ -137,15 +167,18 @@ if ($a === "today" && $m === "GET") {
   // Trang thai cham cong HOM NAY cua chinh nguoi goi (cho the cham cong o Trang chu).
   $me = require_login($pdo);
   att_ensure_columns($pdo);
-  $stmt = $pdo->prepare("SELECT check_in_time, check_out_time, status, check_in_remote, check_out_remote FROM attendances WHERE employee_id=? AND work_date=? LIMIT 1");
+  bio_ensure_schema($pdo);
+  $stmt = $pdo->prepare("SELECT check_in_time, check_out_time, status, check_in_remote, check_out_remote, check_in_method, check_out_method FROM attendances WHERE employee_id=? AND work_date=? LIMIT 1");
   $stmt->execute([(int)$me["id"], date("Y-m-d")]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$row) out(["checked_in" => false, "checked_out" => false, "check_in" => null, "check_out" => null, "status" => null,
-                  "check_in_remote" => null, "check_out_remote" => null]);
+                  "check_in_remote" => null, "check_out_remote" => null,
+                  "check_in_method" => null, "check_out_method" => null]);
   out(["checked_in" => true, "checked_out" => $row["check_out_time"] !== null,
        "check_in" => $row["check_in_time"], "check_out" => $row["check_out_time"], "status" => $row["status"],
        "check_in_remote" => $row["check_in_remote"] === null ? null : (int)$row["check_in_remote"],
-       "check_out_remote" => $row["check_out_remote"] === null ? null : (int)$row["check_out_remote"]]);
+       "check_out_remote" => $row["check_out_remote"] === null ? null : (int)$row["check_out_remote"],
+       "check_in_method" => $row["check_in_method"], "check_out_method" => $row["check_out_method"]]);
 }
 // ===== Giai trinh quen cham cong (2026-11-09) =====
 // Nhan vien tu tao don giai trinh cho ngay quen cham cong; sep phong/HR duyet

@@ -45,6 +45,7 @@ Tất cả đều đã hoàn thành và chạy được:
 - [x] Quản lý nhân viên theo phạm vi phòng (xem/sửa/tạo/khoá tài khoản, avatar, import hàng loạt — chỉ Admin và trưởng phòng, staff không thấy trang này).
 - [x] Phòng ban & thành viên; hồ sơ cá nhân; đổi mật khẩu; tạo tài khoản (Admin).
 - [x] Chấm công vào/ra kèm GPS (gắn cờ ngoài văn phòng), lịch sử và báo cáo chấm công, xuất bảng công CSV.
+- [x] Chấm công sinh trắc học: **khuôn mặt** (ML Kit + FaceNet TFLite, đăng ký khuôn mặt ngay trong app) và **vân tay** (BiometricPrompt).
 - [x] Xin nghỉ với quỹ phép 12 ngày/năm, duyệt/từ chối đơn theo phòng, lịch vắng toàn công ty/phòng.
 - [x] Giải trình quên chấm công và duyệt giải trình.
 - [x] Bảng lương: xem lương cá nhân sau khi chốt, chi tiết từng khoản (BHXH, thuế TNCN), bảng lương tổng hợp toàn công ty, lịch sử thay đổi, quản lý phụ cấp chính sách, xuất Excel (CSV).
@@ -52,4 +53,4 @@ Tất cả đều đã hoàn thành và chạy được:
 
 ## Các màn hình chính (Activity)
 
-`LoginActivity`, `HomeActivity`, `StaffListActivity`, `DepartmentActivity`, `ProfileActivity`, `AdminActivity`, `CreateAccountActivity`, `ImportEmployeesActivity`, `LeaveActivity`, `AbsenceCalendarActivity`, `ExplanationActivity`, `SalaryActivity`, `SalaryDetailActivity`, `SalaryOverviewActivity`, `SalaryPolicyActivity`, `NotificationsActivity`, `ForgotPasswordActivity`, `ChangePasswordActivity`.
+`LoginActivity`, `HomeActivity`, `StaffListActivity`, `DepartmentActivity`, `ProfileActivity`, `AdminActivity`, `CreateAccountActivity`, `ImportEmployeesActivity`, `LeaveActivity`, `AbsenceCalendarActivity`, `ExplanationActivity`, `SalaryActivity`, `SalaryDetailActivity`, `SalaryOverviewActivity`, `SalaryPolicyActivity`, `NotificationsActivity`, `FaceEnrollActivity`, `FaceCaptureActivity`, `ForgotPasswordActivity`, `ChangePasswordActivity`.

@@ -81,6 +81,11 @@ Mỗi thông báo trong app còn có **bản sao gửi qua email** (Gmail SMTP q
 - **Xuất bảng công tháng** (CSV): ngày có mặt, đi muộn, nghỉ phép có lương, nghỉ không lương, tổng ngày công của từng nhân viên.
 - Bảng tin công ty (thông báo nội bộ) ở Trang chủ do Admin đăng (`announcements.php`).
 
+### 8. Chấm công sinh trắc học
+
+- **Khuôn mặt**: app dùng ML Kit phát hiện/cắt khuôn mặt, trích vector đặc trưng (embedding) 128 chiều bằng FaceNet (TFLite) ngay trên điện thoại. Server chỉ lưu vector trong bảng `employee_faces` — **không lưu ảnh gốc** — và so khớp bằng cosine, ngưỡng **0.70** (đúng người đo thực tế đạt 0.9983). Mỗi nhân viên đăng ký khuôn mặt 1 lần ở mục trên Trang chủ; chấm công vào/ra bằng khuôn mặt qua `attendances.php` kèm `method=face` và điểm tương đồng để truy vết.
+- **Vân tay**: dùng `BiometricPrompt` của Android (hệ thống tự xác thực, app không đọc được dữ liệu vân tay thô), chấm công với `method=fingerprint`.
+- API: `biometrics.php` (`face-enroll` / `face-status` / `face-remove`) + `biometrics_lib.php` (hàm cosine, ngưỡng khớp). Kiểm thử API sinh trắc học đạt 13/13 trường hợp.
 
 ## Cấu trúc repo
 
@@ -95,6 +100,8 @@ api/            PHP REST API
   leaves_salaries.php đơn nghỉ + quỹ phép, lịch vắng, bảng lương, dashboard, thông báo
   salary_calc.php     công thức tính lương, BHXH, thuế TNCN
   announcements.php   bảng tin công ty
+  biometrics.php      đăng ký/trạng thái/xoá khuôn mặt chấm công sinh trắc học
+  biometrics_lib.php  so khớp cosine vector khuôn mặt, ngưỡng 0.70
   mail_lib.php        gửi bản sao thông báo qua email (PHPMailer + Gmail SMTP)
   db.php              kết nối PDO MySQL, múi giờ Asia/Ho_Chi_Minh dùng chung
 database/       employee_management.sql (8 bảng gốc) + migrations/ (đủ 14 bảng) — xem database/README.md
@@ -106,7 +113,7 @@ android/        App Android — bản thứ hai; hai cây app/ và android/ đư
 ## Chạy dự án trên máy mới
 
 1. Cài Git, Android Studio, XAMPP. Clone repo.
-2. **Database**: XAMPP Start Apache + MySQL → mở `http://localhost/phpmyadmin` → tạo trước DB `employee_management` rồi nhập file `database/employee_management.sql` (8 bảng gốc), sau đó chạy các file trong `database/migrations/` theo thứ tự số để đủ 14 bảng (001 ngày vào làm/fulltext, 002 token, 003 chức vụ theo phòng, 005 bảo mật reset, 006 tính lương tự động, 007 phân quyền theo phòng, 008 hoàn thiện lương, 009 thông báo, 010 quỹ phép/GPS/giải trình, 011 bảng employee_faces — tính năng chấm công sinh trắc học đã gỡ ngày 21/11/2026, bảng giữ lại trong DB nhưng không còn dùng; dãy số không có 004). Nếu nâng cấp một DB cũ, chỉ chạy những migration **chưa** áp dụng và không import lại file dump. Nhiều cột/bảng mới (thông báo, giải trình, lịch sử lương…) API cũng **tự bổ sung khi chạy lần đầu** nên migration chủ yếu để đối chiếu/cài mới. Chi tiết từng bảng xem `database/README.md`.
+2. **Database**: XAMPP Start Apache + MySQL → mở `http://localhost/phpmyadmin` → tạo trước DB `employee_management` rồi nhập file `database/employee_management.sql` (8 bảng gốc), sau đó chạy các file trong `database/migrations/` theo thứ tự số để đủ 14 bảng (001 ngày vào làm/fulltext, 002 token, 003 chức vụ theo phòng, 005 bảo mật reset, 006 tính lương tự động, 007 phân quyền theo phòng, 008 hoàn thiện lương, 009 thông báo, 010 quỹ phép/GPS/giải trình, 011 chấm công sinh trắc học; dãy số không có 004). Nếu nâng cấp một DB cũ, chỉ chạy những migration **chưa** áp dụng và không import lại file dump. Nhiều cột/bảng mới (thông báo, giải trình, lịch sử lương…) API cũng **tự bổ sung khi chạy lần đầu** nên migration chủ yếu để đối chiếu/cài mới. Chi tiết từng bảng xem `database/README.md`.
 3. **API**: copy thư mục `api/` vào `htdocs/employee-api/`. File cấu hình mail/SMS **không nằm trong repo** — copy `api/mail_config.example.php` → `api/mail_config.php` (và tương tự `sms_config`) rồi điền thông tin thật ngay trên máy chạy server. Test: mở `http://localhost/employee-api/attendances.php?action=today` phải trả JSON.
 4. **App**: mở project bằng Android Studio → thêm IP máy vào `local.properties` (file này đã gitignore, mỗi máy tự giữ):
    ```
@@ -143,6 +150,7 @@ Mọi request (trừ login/register/quên mật khẩu) cần header `Authorizat
 | `auth.php?action=login` / `register` / `change-password` / `forgot-*` | Xác thực tài khoản |
 | `employees.php?action=list/detail/create/update/delete/set-status/directory/upload-avatar` | Quản lý nhân viên |
 | `departments.php?action=list/create/update/delete/members` | Phòng ban & thành viên |
+| `biometrics.php?action=face-enroll/face-status/face-remove` | Chấm công sinh trắc học (khuôn mặt) |
 | `attendances.php?action=today/checkin/checkout/history/report/attendance-export` | Chấm công & báo cáo |
 | `attendances.php?action=explanation-create/list/approve` | Giải trình quên chấm công |
 | `leaves_salaries.php?action=leave-create/list/approve/balance/calendar` | Nghỉ phép & quỹ phép |
