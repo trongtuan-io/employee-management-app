@@ -25,6 +25,16 @@ public interface EmployeeApi {
     @POST("attendances.php?action=checkout")
     Call<AttendanceResponse> checkOut(@Body CheckinRequest request);
 
+    // Sinh trac hoc (biometrics.php): dang ky/trang thai/xoa khuon mat
+    @POST("biometrics.php?action=face-enroll")
+    Call<ApiResponse> faceEnroll(@Body FaceEnrollRequest request);
+
+    @GET("biometrics.php?action=face-status")
+    Call<FaceStatusResponse> faceStatus();
+
+    @POST("biometrics.php?action=face-remove")
+    Call<ApiResponse> faceRemove(@Body FaceRemoveRequest request);
+
     // Danh ba toi thieu cho man Bang luong (admin/Ke toan/Truong phong HR):
     // trang Quan ly nhan vien da siet theo phong nen spinner luong dung duong rieng.
     @GET("employees.php?action=directory")

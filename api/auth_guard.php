@@ -147,6 +147,14 @@ function notify_push(PDO $pdo, $userId, $type, $title, $body, $refId = null) {
   notify_ensure_table($pdo);
   $pdo->prepare("INSERT INTO notifications(user_id, type, title, body, ref_id) VALUES(?,?,?,?,?)")
     ->execute([(int)$userId, $type, $title, $body, $refId === null ? null : (int)$refId]);
+  // Ban sao qua email (Gmail SMTP, xem mail_lib.php): don nghi, luong, giai trinh...
+  // Loi gui mail khong duoc lam hong request chinh nen moi loi deu bi nuot o day.
+  if (file_exists(__DIR__ . "/mail_lib.php") && file_exists(__DIR__ . "/mail_config.php")) {
+    try {
+      require_once __DIR__ . "/mail_lib.php";
+      notify_email($pdo, (int)$userId, $title, $body);
+    } catch (Throwable $e) { /* bo qua loi mail */ }
+  }
 }
 
 function notify_vnd($v) {

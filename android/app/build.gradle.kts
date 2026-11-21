@@ -63,6 +63,13 @@ dependencies {
     // Tai + hien thi anh dai dien
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
+    // Cham cong sinh trac hoc (2026-11-16):
+    // - Van tay: BiometricPrompt cua AndroidX (xac thuc van tay tren may)
+    // - Khuon mat: ML Kit phat hien/cat khuon mat + FaceNet TFLite trich embedding
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Anh chup khuon mat tam thoi (xoa ngay sau khi trich embedding) -->
+    <cache-path name="face_capture" path="face_capture/" />
+</paths>

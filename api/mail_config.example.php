@@ -38,4 +38,10 @@ function send_reset_code($toEmail, $toName, $code) {
     return true;
   } catch (Exception $e) { return false; }
 }
+
+// LUU Y: Cung cau hinh SMTP nay duoc mail_lib.php dung de gui EMAIL THONG BAO
+// (don nghi moi/duoc duyet, chot luong, da tra luong, giai trinh cham cong).
+// Chi can dien dung SMTP_USER + SMTP_PASS o tren la ca reset password lan
+// thong bao deu gui duoc. Tuy chon: const SMTP_AUTH = false; chi dung khi
+// test voi SMTP noi bo khong can dang nhap (mac dinh khong khai bao = true).
 ?>
