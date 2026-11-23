@@ -32,6 +32,7 @@ Cơ sở dữ liệu MySQL/MariaDB cho đồ án **Quản lý nhân viên**: app
    ⚠️ File `employee_management.sql` **không** có lệnh `CREATE DATABASE` — không tạo DB trước sẽ import lỗi.
 3. Chọn DB vừa tạo > tab `Nhập` > chọn `employee_management.sql` > `Go`. Sau bước này DB có 8 bảng gốc.
 4. Chạy lần lượt các file trong `migrations/` theo đúng thứ tự số (001 → 011; dãy số không có 004) — vẫn trong tab `Nhập` của phpMyAdmin, hoặc chạy bằng dòng lệnh MySQL. Xong bước này DB đủ 14 bảng.
+5. Với bản tích hợp HR V5 và BOD, áp dụng tiếp 012 và 013 theo thứ tự trên schema TEST đã cách ly trước khi chạy API tích hợp.
 
 Lưu ý khi nâng cấp DB đang dùng: **không import lại** `employee_management.sql` (file có `DROP TABLE`, sẽ mất dữ liệu hiện tại) — chỉ chạy những migration còn thiếu.
 

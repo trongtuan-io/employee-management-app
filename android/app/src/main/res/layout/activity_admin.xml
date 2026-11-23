@@ -178,6 +178,36 @@
                 android:text="Duyệt nghỉ phép" />
 
             <Button
+                android:id="@+id/btnAdminProposals"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Duyệt đề xuất nhân sự (BOD)" />
+
+            <Button
+                android:id="@+id/btnAdminHrHub"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Nghiệp vụ Nhân sự (HR Hub)" />
+
+            <Button
+                android:id="@+id/btnAdminSalaryOverview"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Bảng lương toàn công ty (Duyệt lương)" />
+
+            <Button
+                android:id="@+id/btnAdminGps"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Cấu hình vị trí &amp; bán kính GPS (BOD)" />
+
+            <Button
+                android:id="@+id/btnAdminLeaveQuota"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Cấu hình hạn mức Phép năm (BOD)" />
+
+            <Button
                 android:id="@+id/btnAdminStaff"
                 style="@style/AppButtonSecondary"
                 android:layout_marginTop="10dp"

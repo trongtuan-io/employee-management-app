@@ -202,6 +202,7 @@ public class SalaryActivity extends AppCompatActivity {
         i.putExtra(p + "insurance_amount", item.getInsuranceAmount());
         i.putExtra(p + "tax_amount", item.getTaxAmount());
         i.putExtra(p + "paid", item.isPaid());
+        i.putExtra(p + "bod_approved", item.isBodApproved());
         i.putExtra(p + "paid_at", item.getPaidAt());
         i.putExtra(p + "insurance_salary", item.getInsuranceSalary());
         i.putExtra(p + "dependents", item.getDependents());

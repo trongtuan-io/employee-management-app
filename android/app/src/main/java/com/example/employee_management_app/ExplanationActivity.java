@@ -70,7 +70,12 @@ public class ExplanationActivity extends AppCompatActivity {
             boolean hrWatcher = "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
             boolean staffHr = hrWatcher && "staff".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
             boolean otherDept = hrWatcher && item.getDeptName()!=null && !"HR".equalsIgnoreCase(item.getDeptName());
-            if (mode == MODE_QUEUE && "pending".equals(item.getStatus()) && !staffHr && !otherDept && item.getTargetRoleId()!=2)
+            TokenManager session = TokenManager.getInstance(this);
+            boolean canApprove = item.getTargetRoleId() == 2 ? session.isExecutive()
+                    : !staffHr && !otherDept && (!session.isExecutive()
+                        || session.getDepartmentName().equals(item.getDeptName()));
+            if (mode == MODE_QUEUE && "pending".equals(item.getStatus()) && item.getEmployeeId() != myId
+                    && canApprove)
                 showApproveDialog(item);
             else showDetailDialog(item);
         });

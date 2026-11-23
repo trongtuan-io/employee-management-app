@@ -180,8 +180,8 @@ try {
             $old=json_decode($existingProposal['proposed_data'],true)?:[];
             if(($old['username']??'')!==$item['username'])throw new InvalidArgumentException('Email dang cho duyet voi ma NV khac');
             $new=hr_import_merge_draft($pdo,$old,$item,(int)($existingProposal['workflow_version']??1));
-            $pdo->prepare('UPDATE hr_proposals SET proposed_data=?,reservation_email=?,version=version+1 WHERE id=?')
-                ->execute([hr_json($new),$new['email'],(int)$existingProposal['id']]);
+            $pdo->prepare('UPDATE hr_proposals SET proposed_data=?,reservation_email=?,import_batch_id=?,version=version+1 WHERE id=?')
+                ->execute([hr_json($new),$new['email'],$batchId,(int)$existingProposal['id']]);
             hr_record_history($pdo,(int)$importer['id'],null,'proposal.import.refreshed',null,['proposal_id'=>(int)$existingProposal['id']],(int)$existingProposal['id']);
             $refreshed++;continue;
         }

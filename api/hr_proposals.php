@@ -103,6 +103,7 @@ if($a==='activate'&&$m==='POST'){
     hr_flow_transaction($pdo,function()use($pdo,$me,$id){
         $p=hr_flow_locked($pdo,$id);
         if(!hr_recruitment_can_activate($p))hr_flow_error('Ho so chua duoc duyet dung cap hoac tai khoan da tao',403);
+        if($p['effective_date']!==null && $p['effective_date']>date('Y-m-d'))hr_flow_error('Ho so chua den ngay hieu luc',409);
         $data=json_decode((string)$p['proposed_data'],true);
         if(!is_array($data))hr_flow_error('Ho so ung vien khong hop le',422);
         $username=employee_username($data['username']??null);

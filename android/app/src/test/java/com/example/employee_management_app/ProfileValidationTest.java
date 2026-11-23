@@ -23,12 +23,11 @@ public class ProfileValidationTest {
         assertNull(ProfileValidation.emailError("o'neil@example.vn"));
     }
 
-    @Test public void optionalPhoneSupportsLocalAndInternationalFormats() {
-        for (String phone : new String[]{null, "", "0901234567", "02412345678", "+84901234567",
-                "1234567", "123456789012345", "+12345678901234"}) {
+    @Test public void optionalPhoneSupportsVietnameseMobileFormats() {
+        for (String phone : new String[]{null, "", "0901234567", "0381234567", "+84901234567"}) {
             assertNull(String.valueOf(phone), ProfileValidation.phoneError(phone));
         }
-        for (String phone : new String[]{"123456", "1234567890123456", "+123456789012345",
+        for (String phone : new String[]{"090123456", "09012345678", "02412345678", "+12345678901234",
                 "090abc4567", "090 123 4567", "++84901234567", "０９０１２３４５６７"}) {
             assertNotNull(phone, ProfileValidation.phoneError(phone));
         }

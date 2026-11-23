@@ -26,6 +26,7 @@ public class SalaryOverviewResponse {
         private String work_days;
         private String standard_days;
         private int finalized;
+        private int bod_approved;
         private String insurance_base;
         private String insurance_amount;
         private String tax_amount;
@@ -47,6 +48,7 @@ public class SalaryOverviewResponse {
         public String getWorkDays() { return work_days; }
         public String getStandardDays() { return standard_days; }
         public boolean isFinalized() { return finalized == 1; }
+        public boolean isBodApproved() { return bod_approved == 1; }
         public boolean hasSalary() { return salary_id > 0; }
         public String getInsuranceBase() { return insurance_base; }
         public String getInsuranceAmount() { return insurance_amount; }

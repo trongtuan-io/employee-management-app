@@ -13,11 +13,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
@@ -44,7 +46,8 @@ public class SalaryOverviewActivity extends AppCompatActivity {
     private EmployeeApi api;
     private EditText etMonth, etYear;
     private TextView tvSummary, tvTotal, tvCompare;
-    private boolean isAdmin;
+    private Button btnAction;
+    private boolean canManage;
     private boolean canFinalize;
     private boolean canEditPolicies;
     private int curMonth, curYear;
@@ -65,8 +68,15 @@ public class SalaryOverviewActivity extends AppCompatActivity {
         TokenManager tm = TokenManager.getInstance(this);
         String role = tm.getRole();
         String dept = tm.getDepartmentName();
-        isAdmin = "admin".equalsIgnoreCase(role);
-        canFinalize = isAdmin || ("ACC".equalsIgnoreCase(dept) && "manager".equalsIgnoreCase(role));
+        boolean isAccounting = "ACC".equalsIgnoreCase(dept);
+        boolean isAdmin = "admin".equalsIgnoreCase(role);
+        canManage = isAdmin || isAccounting;
+        if (!tm.isExecutive() && !canManage) {
+            Toast.makeText(this, "Bạn không có quyền xem bảng lương tổng hợp", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        canFinalize = isAdmin || (isAccounting && "manager".equalsIgnoreCase(role));
         canEditPolicies = canFinalize;
 
         etMonth = findViewById(R.id.etOverviewMonth);
@@ -74,6 +84,7 @@ public class SalaryOverviewActivity extends AppCompatActivity {
         tvSummary = findViewById(R.id.tvOverviewSummary);
         tvTotal = findViewById(R.id.tvOverviewTotal);
         tvCompare = findViewById(R.id.tvOverviewCompare);
+        btnAction = findViewById(R.id.btnOverviewAction);
 
         curMonth = getIntent().getIntExtra("month", 0);
         curYear = getIntent().getIntExtra("year", 0);
@@ -185,21 +196,156 @@ public class SalaryOverviewActivity extends AppCompatActivity {
     }
 
     private void updateTotals() {
-        int calculated = 0, finalized = 0, paidCount = 0;
-        double totalNet = 0;
+        int calculated = 0, finalized = 0, bodApproved = 0, paidCount = 0;
+        double totalNet = 0, awaitingApprovalNet = 0;
         for (SalaryOverviewResponse.Item it : items) {
             if (it.hasSalary()) {
                 calculated++;
                 totalNet += SalaryListResponse.Item.num(it.getNetSalary());
                 if (it.isFinalized()) finalized++;
+                if (it.isBodApproved()) bodApproved++;
+                else if (it.isFinalized()) awaitingApprovalNet += SalaryListResponse.Item.num(it.getNetSalary());
                 if (it.isPaid()) paidCount++;
             }
         }
         currentTotalNet = totalNet;
         tvSummary.setText("Tháng " + curMonth + "/" + curYear + " · Đã tính " + calculated + "/" + items.size()
-                + " nhân viên · Đã chốt " + finalized + " · Đã trả lương " + paidCount
-                + ". Chạm vào dòng đã tính lương để xem chi tiết, sửa các khoản hoặc chốt.");
+                + " · Trình GĐ " + finalized + " · Giám đốc duyệt " + bodApproved + " · Đã giải ngân " + paidCount);
         tvTotal.setText("Tổng thực lĩnh: " + SalaryListResponse.Item.money(String.valueOf(Math.round(totalNet))));
+
+        boolean isExec = TokenManager.getInstance(this).isExecutive();
+        if (btnAction != null) {
+            if (isExec) { // Tài khoản Giám đốc (BOD) / Admin
+                if (finalized > 0 && bodApproved < finalized) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(true);
+                    btnAction.setText("Phê duyệt bảng lương (Giám đốc)");
+                    final double finalNet = awaitingApprovalNet;
+                    btnAction.setOnClickListener(v -> promptBodApproveSalary(finalNet));
+                } else if (bodApproved > 0) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(false);
+                    btnAction.setText("Đã phê duyệt bảng lương (Kế toán đang giải ngân)");
+                } else {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(false);
+                    btnAction.setText("Kế toán chưa trình bảng lương");
+                }
+            } else if (canFinalize) { // Tài khoản Kế toán trưởng / Admin
+                if (calculated > 0 && finalized < calculated) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(true);
+                    btnAction.setText("Chốt & Trình Giám đốc duyệt");
+                    btnAction.setOnClickListener(v -> promptFinalizeSalary());
+                } else if (finalized > 0 && bodApproved < finalized) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(false);
+                    btnAction.setText("Đã trình Giám đốc (Đang chờ duyệt)");
+                } else if (bodApproved > 0 && paidCount < bodApproved) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(true);
+                    btnAction.setText("Giải ngân lương (Giám đốc đã duyệt)");
+                    btnAction.setOnClickListener(v -> promptDisburseSalary());
+                } else if (paidCount > 0 && paidCount == calculated) {
+                    btnAction.setVisibility(View.VISIBLE);
+                    btnAction.setEnabled(false);
+                    btnAction.setText("Đã giải ngân hoàn tất");
+                } else {
+                    btnAction.setVisibility(View.GONE);
+                }
+            } else {
+                btnAction.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void promptBodApproveSalary(double totalNet) {
+        new AlertDialog.Builder(this)
+                .setTitle("Phê duyệt bảng lương tháng " + curMonth + "/" + curYear)
+                .setMessage("Bạn có chắc chắn muốn PHÊ DUYỆT bảng lương tháng " + curMonth + "/" + curYear
+                        + " với tổng quỹ lương thực lĩnh là " + SalaryListResponse.Item.money(String.valueOf(Math.round(totalNet))) + "?\n\nSau khi duyệt, Kế toán trưởng sẽ có thể tiến hành giải ngân.")
+                .setPositiveButton("Phê duyệt", (dialog, which) -> {
+                    api.approveSalaryBod(new SalaryFinalizeRequest(curMonth, curYear)).enqueue(new Callback<ApiResponse>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                            if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
+                                Toast.makeText(SalaryOverviewActivity.this, "Đã phê duyệt bảng lương tháng " + curMonth + "/" + curYear, Toast.LENGTH_SHORT).show();
+                                loadOverview();
+                            } else {
+                                Toast.makeText(SalaryOverviewActivity.this, ApiError.message(r, "Không phê duyệt được"), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        @Override public void onFailure(Call<ApiResponse> c, Throwable t) {
+                            Toast.makeText(SalaryOverviewActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private void promptFinalizeSalary() {
+        new AlertDialog.Builder(this)
+                .setTitle("Chốt & Trình Giám đốc")
+                .setMessage("Bạn có chắc chắn muốn chốt toàn bộ bảng lương tháng " + curMonth + "/" + curYear + " và gửi trình Giám đốc phê duyệt?")
+                .setPositiveButton("Chốt & Trình GĐ", (dialog, which) -> {
+                    api.finalizeSalary(new SalaryFinalizeRequest(curMonth, curYear)).enqueue(new Callback<ApiResponse>() {
+                        @Override
+                        public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                            if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
+                                Toast.makeText(SalaryOverviewActivity.this, "Đã chốt và trình Giám đốc duyệt!", Toast.LENGTH_SHORT).show();
+                                loadOverview();
+                            } else {
+                                Toast.makeText(SalaryOverviewActivity.this, ApiError.message(r, "Không chốt được"), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        @Override public void onFailure(Call<ApiResponse> c, Throwable t) {
+                            Toast.makeText(SalaryOverviewActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private void promptDisburseSalary() {
+        new AlertDialog.Builder(this)
+                .setTitle("Giải ngân lương tháng " + curMonth + "/" + curYear)
+                .setMessage("Xác nhận đánh dấu đã trả cho các dòng lương Ban Giám đốc đã phê duyệt?")
+                .setPositiveButton("Giải ngân", (dialog, which) -> {
+                    List<Integer> salaryIds = new ArrayList<>();
+                    for (SalaryOverviewResponse.Item item : items) {
+                        if (item.isBodApproved() && !item.isPaid()) salaryIds.add(item.getSalaryId());
+                    }
+                    if (salaryIds.isEmpty()) return;
+                    btnAction.setEnabled(false);
+                    Callback<ApiResponse> callback = new Callback<ApiResponse>() {
+                        private int remaining = salaryIds.size();
+                        private int failed;
+
+                        private void completed(boolean success) {
+                            if (!success) failed++;
+                            if (--remaining != 0 || isFinishing() || isDestroyed()) return;
+                            String message = "Đã đánh dấu trả lương " + (salaryIds.size() - failed) + "/" + salaryIds.size() + " dòng";
+                            if (failed > 0) message += ". Còn " + failed + " dòng cần kiểm tra.";
+                            Toast.makeText(SalaryOverviewActivity.this, message, Toast.LENGTH_LONG).show();
+                            loadOverview();
+                        }
+
+                        @Override public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+                            completed(response.isSuccessful() && response.body() != null && response.body().isSuccess());
+                        }
+
+                        @Override public void onFailure(Call<ApiResponse> call, Throwable error) {
+                            completed(false);
+                        }
+                    };
+                    for (int id : salaryIds) {
+                        api.paidSalary(new SalaryPaidRequest(id, 1)).enqueue(callback);
+                    }
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
     }
 
     // So sanh quy luong voi thang lien truoc (bao cao nhanh cho Ke toan truong).
@@ -247,13 +393,14 @@ public class SalaryOverviewActivity extends AppCompatActivity {
                 try {
                     byte[] bytes = r.body().bytes();
                     String name = String.format("bang_luong_%02d_%d.csv", curMonth, curYear);
+                    Uri uri;
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         ContentValues values = new ContentValues();
                         values.put(MediaStore.Downloads.DISPLAY_NAME, name);
                         values.put(MediaStore.Downloads.MIME_TYPE, "text/csv");
                         values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
                         ContentResolver resolver = getContentResolver();
-                        Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                        uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                         if (uri == null) throw new IllegalStateException("insert failed");
                         try (OutputStream os = resolver.openOutputStream(uri)) {
                             if (os == null) throw new IllegalStateException("open failed");
@@ -262,12 +409,14 @@ public class SalaryOverviewActivity extends AppCompatActivity {
                     } else {
                         java.io.File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
                         if (dir == null) throw new IllegalStateException("no dir");
-                        try (OutputStream os = new java.io.FileOutputStream(new java.io.File(dir, name))) {
+                        java.io.File targetFile = new java.io.File(dir, name);
+                        try (OutputStream os = new java.io.FileOutputStream(targetFile)) {
                             os.write(bytes);
                         }
+                        uri = androidx.core.content.FileProvider.getUriForFile(SalaryOverviewActivity.this, getApplicationContext().getPackageName() + ".fileprovider", targetFile);
                     }
-                    Toast.makeText(SalaryOverviewActivity.this,
-                            "Đã lưu " + name + " vào thư mục Tải xuống — mở bằng Excel được", Toast.LENGTH_LONG).show();
+                    final Uri finalUri = uri;
+                    runOnUiThread(() -> promptOpenCsv(finalUri, name, bytes));
                 } catch (Exception e) {
                     Toast.makeText(SalaryOverviewActivity.this, "Không lưu được file: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
@@ -278,6 +427,44 @@ public class SalaryOverviewActivity extends AppCompatActivity {
                 Toast.makeText(SalaryOverviewActivity.this, "Không xuất được file", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void promptOpenCsv(Uri uri, String name, byte[] bytes) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Xuất file thành công")
+                .setMessage("Đã lưu " + name + " vào thư mục Tải xuống.")
+                .setPositiveButton("Mở bằng Excel/Sheets", (dialog, which) -> {
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(uri, "text/csv");
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    try {
+                        startActivity(Intent.createChooser(intent, "Mở file bằng"));
+                    } catch (Exception ex) {
+                        Toast.makeText(this, "Máy ảo chưa cài ứng dụng đọc file (Google Sheets/Excel)", Toast.LENGTH_LONG).show();
+                    }
+                })
+                .setNeutralButton("Xem nhanh", (dialog, which) -> {
+                    showCsvPreviewDialog("Xem trước " + name, bytes);
+                })
+                .setNegativeButton("Đóng", null)
+                .show();
+    }
+
+    private void showCsvPreviewDialog(String title, byte[] bytes) {
+        String csvContent = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(csvContent);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tv.setTextSize(12);
+        tv.setPadding(32, 32, 32, 32);
+        scroll.addView(tv);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(scroll)
+                .setPositiveButton("Đóng", null)
+                .show();
     }
 
     private void openDetail(SalaryOverviewResponse.Item item) {
@@ -304,9 +491,10 @@ public class SalaryOverviewActivity extends AppCompatActivity {
         i.putExtra(p + "work_days", item.getWorkDays());
         i.putExtra(p + "standard_days", item.getStandardDays());
         i.putExtra(p + "finalized", item.isFinalized());
-        i.putExtra(p + "can_manage", true);
+        i.putExtra(p + "bod_approved", item.isBodApproved());
+        i.putExtra(p + "can_manage", canManage);
         i.putExtra(p + "can_finalize", canFinalize);
-        i.putExtra(p + "is_admin", isAdmin);
+        i.putExtra(p + "is_admin", "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole()));
         startActivity(i);
     }
 
@@ -371,17 +559,21 @@ public class SalaryOverviewActivity extends AppCompatActivity {
                 }
                 tvMeta.setText(meta);
                 if (item.isPaid()) {
-                    tvBadge.setText("Đã trả lương");
+                    tvBadge.setText("Đã giải ngân");
                     tvBadge.setBackgroundResource(R.drawable.bg_badge_approved);
                     tvBadge.setTextColor(ContextCompat.getColor(SalaryOverviewActivity.this, R.color.success));
+                } else if (item.isBodApproved()) {
+                    tvBadge.setText("GĐ đã duyệt");
+                    tvBadge.setBackgroundResource(R.drawable.bg_badge_approved);
+                    tvBadge.setTextColor(ContextCompat.getColor(SalaryOverviewActivity.this, R.color.primary));
                 } else if (item.isFinalized()) {
-                    tvBadge.setText("Đã chốt");
-                    tvBadge.setBackgroundResource(R.drawable.bg_badge_approved);
-                    tvBadge.setTextColor(ContextCompat.getColor(SalaryOverviewActivity.this, R.color.success));
-                } else {
-                    tvBadge.setText("Bản nháp");
+                    tvBadge.setText("Trình Giám đốc");
                     tvBadge.setBackgroundResource(R.drawable.bg_badge_pending);
                     tvBadge.setTextColor(ContextCompat.getColor(SalaryOverviewActivity.this, R.color.warning));
+                } else {
+                    tvBadge.setText("Đang lập");
+                    tvBadge.setBackgroundResource(R.drawable.bg_badge_rejected);
+                    tvBadge.setTextColor(ContextCompat.getColor(SalaryOverviewActivity.this, R.color.text_secondary));
                 }
             } else {
                 tvMeta.setText("Chưa tính lương tháng này");

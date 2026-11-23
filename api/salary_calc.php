@@ -23,6 +23,9 @@ function salary_ensure_columns(PDO $pdo) {
     "tax_amount" => "DECIMAL(15,2) NOT NULL DEFAULT 0",
     "paid" => "TINYINT NOT NULL DEFAULT 0",
     "paid_at" => "DATETIME NULL",
+    "bod_approved" => "TINYINT NOT NULL DEFAULT 0",
+    "bod_approved_by" => "INT NULL",
+    "bod_approved_at" => "DATETIME NULL",
   ];
   $stmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'salaries'");
   $stmt->execute();
@@ -59,6 +62,27 @@ function salary_leave_workdays($start, $end, $monthStart, $monthEnd) {
 }
 
 // Luong theo cong, lam tron ve dong (luong VN khong le xu).
+// Monthly payroll uses the last applied rate effective by the end of the period.
+function salary_base_rates_at(PDO $pdo, string $periodEnd): array {
+  $changes = $pdo->query("SELECT employee_id, COALESCE(effective_date, DATE(applied_at)) AS starts_on,
+      before_data, proposed_data
+    FROM hr_proposals WHERE proposal_type='base_salary_change' AND applied_at IS NOT NULL
+    ORDER BY employee_id, starts_on, applied_at, id");
+  $rates = [];
+  while ($change = $changes->fetch(PDO::FETCH_ASSOC)) {
+    $employeeId = (int)$change['employee_id'];
+    if (!isset($rates[$employeeId])) {
+      $before = json_decode($change['before_data'] ?? 'null', true);
+      if (isset($before['base_salary'])) $rates[$employeeId] = (float)$before['base_salary'];
+    }
+    if ($change['starts_on'] <= $periodEnd) {
+      $after = json_decode($change['proposed_data'], true);
+      if (isset($after['base_salary'])) $rates[$employeeId] = (float)$after['base_salary'];
+    }
+  }
+  return $rates;
+}
+
 function salary_earned_base($baseSalary, $paidDays, $standardDays) {
   if ($standardDays <= 0) return 0.0;
   return round(((float)$baseSalary) * ((float)$paidDays) / ((float)$standardDays));
