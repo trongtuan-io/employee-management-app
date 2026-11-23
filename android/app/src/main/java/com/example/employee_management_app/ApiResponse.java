@@ -2,15 +2,13 @@ package com.example.employee_management_app;
 
 import com.google.gson.annotations.SerializedName;
 
-public class ApiResponse<T> {
+public class ApiResponse {
     @SerializedName("success")
     private boolean success;
 
+    // Dùng alternate để hứng được cả key "message" hoặc "error" từ backend
     @SerializedName(value = "message", alternate = {"error"})
     private String message;
-
-    @SerializedName("data")
-    private T data;
 
     public boolean isSuccess() {
         return success;
@@ -18,9 +16,5 @@ public class ApiResponse<T> {
 
     public String getMessage() {
         return message;
-    }
-
-    public T getData() {
-        return data;
     }
 }

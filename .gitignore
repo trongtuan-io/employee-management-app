@@ -14,3 +14,7 @@
 .cxx
 local.properties
 google-services.json
+
+# Config chua thong tin nhay cam (chi giu ban local, dung file .example lam mau)
+api/mail_config.php
+api/sms_config.php

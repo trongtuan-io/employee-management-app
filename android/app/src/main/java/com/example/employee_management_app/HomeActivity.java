@@ -1,0 +1,479 @@
+package com.example.employee_management_app;
+
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+// Trang chu sau dang nhap: loi chao + the cham cong hom nay + bang tin cong ty.
+public class HomeActivity extends AppCompatActivity {
+    private EmployeeApi api;
+    private int myId;
+    private TextView tvHomeName, tvHomeRole, tvAttStatus, tvAttDetail, tvFeedStatus, tvNotifyBadge;
+    private Button btnHomeCheckIn, btnHomeCheckOut, btnBioFace, btnBioFinger;
+    // Hanh dong sinh trac tiep theo: true = cham vao, false = cham ra
+    // (renderToday cap nhat theo trang thai hom nay).
+    private boolean nextIsIn = true;
+
+    // Nhan embedding khuon mat tu FaceCaptureActivity roi gui cham cong.
+    private final ActivityResultLauncher<Intent> faceCaptureLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    float[] emb = result.getData().getFloatArrayExtra(FaceCaptureActivity.EXTRA_EMBEDDING);
+                    if (emb != null && emb.length > 0) {
+                        List<Double> list = new ArrayList<>(emb.length);
+                        for (float v : emb) list.add((double) v);
+                        double[] gps = lastKnownLatLng();
+                        CheckinRequest req = new CheckinRequest(myId,
+                                gps != null ? gps[0] : null, gps != null ? gps[1] : null,
+                                "face", list, null);
+                        submitAttendance(nextIsIn, req);
+                        return;
+                    }
+                }
+                Toast.makeText(this, "Chưa lấy được khuôn mặt để chấm công", Toast.LENGTH_SHORT).show();
+            });
+    private final List<AnnouncementResponse.Item> news = new ArrayList<>();
+    private NewsAdapter newsAdapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_home);
+
+        api = ApiClient.getClient(this).create(EmployeeApi.class);
+        myId = TokenManager.getInstance(this).getUserId();
+
+        tvHomeName = findViewById(R.id.tvHomeName);
+        tvHomeRole = findViewById(R.id.tvHomeRole);
+        tvAttStatus = findViewById(R.id.tvAttStatus);
+        tvAttDetail = findViewById(R.id.tvAttDetail);
+        tvFeedStatus = findViewById(R.id.tvFeedStatus);
+        tvNotifyBadge = findViewById(R.id.tvNotifyBadge);
+        findViewById(R.id.btnNotifyBell).setOnClickListener(v ->
+                startActivity(new Intent(this, NotificationsActivity.class)));
+        findViewById(R.id.btnExplain).setOnClickListener(v ->
+                startActivity(new Intent(this, ExplanationActivity.class)));
+        // Xin quyen vi tri de cham cong kem GPS (bi tu choi van cham cong duoc,
+        // chi la khong co toa do de doi chieu).
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 41);
+        }
+        btnHomeCheckIn = findViewById(R.id.btnHomeCheckIn);
+        btnHomeCheckOut = findViewById(R.id.btnHomeCheckOut);
+        btnBioFace = findViewById(R.id.btnBioFace);
+        btnBioFinger = findViewById(R.id.btnBioFinger);
+        btnBioFace.setEnabled(false);
+        btnBioFinger.setEnabled(false);
+        findViewById(R.id.tvFaceEnroll).setOnClickListener(v ->
+                startActivity(new Intent(this, FaceEnrollActivity.class)));
+        btnBioFace.setOnClickListener(v -> startFaceAttendance());
+        btnBioFinger.setOnClickListener(v -> startFingerprintAttendance());
+        ListView lvNews = findViewById(R.id.lvNews);
+        newsAdapter = new NewsAdapter();
+        lvNews.setAdapter(newsAdapter);
+
+        String myRole = TokenManager.getInstance(this).getRole();
+        String myDept = TokenManager.getInstance(this).getDepartmentName();
+        boolean isAdmin = "admin".equalsIgnoreCase(myRole);
+        tvHomeRole.setText(roleToVietnamese(myRole)
+                + (myDept != null && !myDept.isEmpty() ? " · " + deptToVietnamese(myDept) : ""));
+        setupDeptSection(myRole, myDept);
+
+        if (isAdmin) {
+            tvAttStatus.setText("Quản trị hệ thống");
+            tvAttDetail.setText("Tài khoản Quản trị viên (Admin) không yêu cầu chấm công vào ra.");
+            btnHomeCheckIn.setVisibility(View.GONE);
+            btnHomeCheckOut.setVisibility(View.GONE);
+            btnBioFace.setVisibility(View.GONE);
+            btnBioFinger.setVisibility(View.GONE);
+        } else {
+            // Mac dinh khoa ca 2 nut cham cong; renderToday() se mo dung nut khi biet trang thai.
+            btnHomeCheckIn.setEnabled(false);
+            btnHomeCheckOut.setEnabled(false);
+            btnHomeCheckIn.setOnClickListener(v -> doAttendance(true));
+            btnHomeCheckOut.setOnClickListener(v -> doAttendance(false));
+        }
+
+        BottomNavHelper.setup(this, R.id.nav_home);
+        loadProfile();
+        loadNews();
+        // loadToday() de onResume goi (tranh goi trung 2 lan khi vua mo man).
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!"admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole())) {
+            loadToday();
+        }
+        loadNotifyBadge();
+    }
+
+    // Badge so thong bao chua doc tren chuong o Trang chu (an khi = 0).
+    private void loadNotifyBadge() {
+        api.getNotifications().enqueue(new Callback<NotificationListResponse>() {
+            @Override
+            public void onResponse(Call<NotificationListResponse> c, Response<NotificationListResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    int unread = r.body().getData().getUnread();
+                    tvNotifyBadge.setVisibility(unread > 0 ? View.VISIBLE : View.GONE);
+                    tvNotifyBadge.setText(unread > 99 ? "99+" : String.valueOf(unread));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<NotificationListResponse> c, Throwable t) { }
+        });
+    }
+
+    // Khoi nghiep vu theo phong: Trang chu chi hien khoi dung phong/vai tro cua
+    // nguoi dang nhap (Ke toan thay khoi luong, Nhan su thay khoi ho so...).
+    // Day chi la hien thi - API tu kiem tra quyen that o moi thao tac.
+    private void setupDeptSection(String role, String dept) {
+        View section = findViewById(R.id.layoutDeptSection);
+        TextView tvTitle = findViewById(R.id.tvDeptTitle);
+        TextView tvDesc = findViewById(R.id.tvDeptDesc);
+        String title = null, desc = null;
+        boolean isAdmin = "admin".equalsIgnoreCase(role);
+        boolean isManager = "manager".equalsIgnoreCase(role);
+        if (isAdmin) {
+            title = "Quản trị hệ thống";
+            desc = "Toàn quyền: phòng ban, tài khoản, bảng lương và dữ liệu toàn công ty.";
+        } else if ("ACC".equalsIgnoreCase(dept)) {
+            title = "Phòng Kế toán";
+            desc = isManager
+                    ? "Tính lương, điều chỉnh và chốt bảng lương toàn công ty tại tab Bảng lương."
+                    : "Soạn bảng lương nháp và điều chỉnh các khoản tại tab Bảng lương; chốt lương do Kế toán trưởng thực hiện.";
+        } else if ("HR".equalsIgnoreCase(dept)) {
+            title = "Phòng Nhân sự";
+            desc = isManager
+                    ? "Quản lý hồ sơ nhân viên trong phòng Nhân sự và đặt lương cơ bản; tạo nhân viên cho phòng khác do Admin phụ trách."
+                    : "Xem và tổng hợp chấm công của phòng mình; danh sách nhân viên do Trưởng phòng quản lý.";
+        } else if (isManager) {
+            title = "Quản lý phòng ban";
+            desc = "Quản lý nhân viên, duyệt nghỉ và báo cáo chấm công của phòng mình tại các tab Tổng quan, Nhân viên, Duyệt phép.";
+        }
+        if (title == null) {
+            section.setVisibility(View.GONE);
+        } else {
+            section.setVisibility(View.VISIBLE);
+            tvTitle.setText(title);
+            tvDesc.setText(desc);
+        }
+    }
+
+    private String deptToVietnamese(String dept) {
+        if (dept == null) return "";
+        switch (dept.toUpperCase()) {
+            case "IT": return "Phòng IT";
+            case "HR": return "Phòng Nhân sự";
+            case "ACC": return "Phòng Kế toán";
+            case "SALES": return "Phòng Kinh doanh";
+            case "MKT": return "Phòng Marketing";
+            case "OPS": return "Phòng Hành chính";
+            case "CS": return "Phòng CSKH";
+            default: return "Phòng " + dept;
+        }
+    }
+
+    private void loadProfile() {
+        if (myId <= 0) return;
+        api.getDetail(myId).enqueue(new Callback<EmployeeDetailResponse>() {
+            @Override
+            public void onResponse(Call<EmployeeDetailResponse> c, Response<EmployeeDetailResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    tvHomeName.setText(r.body().getData().getFullName());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<EmployeeDetailResponse> c, Throwable t) { }
+        });
+    }
+
+    private void loadToday() {
+        api.getAttendanceToday().enqueue(new Callback<AttendanceTodayResponse>() {
+            @Override
+            public void onResponse(Call<AttendanceTodayResponse> c, Response<AttendanceTodayResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    renderToday(r.body().getData());
+                } else {
+                    tvAttStatus.setText("Lỗi HTTP " + r.code());
+                    tvAttDetail.setText(ApiError.message(r, "Phản hồi server lỗi"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<AttendanceTodayResponse> c, Throwable t) {
+                tvAttStatus.setText("Lỗi kết nối");
+                tvAttDetail.setText("Chi tiết: " + (t.getMessage() != null ? t.getMessage() : t.toString()));
+            }
+        });
+    }
+
+    private void renderToday(AttendanceTodayResponse.Data d) {
+        if (!d.isCheckedIn()) {
+            nextIsIn = true;
+            tvAttStatus.setText("Chưa chấm công hôm nay");
+            tvAttDetail.setText("Nhấn \"Chấm công vào\" khi bắt đầu ca làm việc.");
+            btnHomeCheckIn.setEnabled(true);
+            btnHomeCheckOut.setEnabled(false);
+            btnBioFace.setEnabled(true);
+            btnBioFinger.setEnabled(true);
+        } else if (!d.isCheckedOut()) {
+            nextIsIn = false;
+            String late = "late".equals(d.getStatus()) ? " (đi muộn)" : "";
+            String remote = d.getCheckInRemote() != null && d.getCheckInRemote() == 1 ? " · Ngoài văn phòng" : "";
+            String method = methodLabel(d.getCheckInMethod());
+            tvAttStatus.setText("Đã vào lúc " + timeOnly(d.getCheckIn()) + late + remote
+                    + (method.isEmpty() ? "" : " · " + method));
+            tvAttDetail.setText("Đang trong ca làm việc. Nhớ chấm công ra khi kết thúc.");
+            btnHomeCheckIn.setEnabled(false);
+            btnHomeCheckOut.setEnabled(true);
+            btnBioFace.setEnabled(true);
+            btnBioFinger.setEnabled(true);
+        } else {
+            tvAttStatus.setText("Đã hoàn thành hôm nay");
+            String detail = "Vào " + timeOnly(d.getCheckIn()) + " · Ra " + timeOnly(d.getCheckOut());
+            if (d.getCheckInRemote() != null && d.getCheckInRemote() == 1) detail += " · Vào ngoài văn phòng";
+            if (d.getCheckOutRemote() != null && d.getCheckOutRemote() == 1) detail += " · Ra ngoài văn phòng";
+            String mIn = methodLabel(d.getCheckInMethod());
+            String mOut = methodLabel(d.getCheckOutMethod());
+            if (!mIn.isEmpty()) detail += " · Vào bằng " + mIn;
+            if (!mOut.isEmpty()) detail += " · Ra bằng " + mOut;
+            tvAttDetail.setText(detail);
+            btnHomeCheckIn.setEnabled(false);
+            btnHomeCheckOut.setEnabled(false);
+            btnBioFace.setEnabled(false);
+            btnBioFinger.setEnabled(false);
+        }
+    }
+
+    private String methodLabel(String method) {
+        if (method == null) return "";
+        switch (method) {
+            case "face": return "Khuôn mặt";
+            case "fingerprint": return "Vân tay";
+            case "gps": return "GPS";
+            default: return "";
+        }
+    }
+
+    private void doAttendance(boolean isIn) {
+        double[] gps = lastKnownLatLng();
+        CheckinRequest req = gps != null ? new CheckinRequest(myId, gps[0], gps[1]) : new CheckinRequest(myId);
+        submitAttendance(isIn, req);
+    }
+
+    // Cham cong bang khuon mat: mo man chup mat, embedding tra ve qua
+    // faceCaptureLauncher se goi submitAttendance voi method="face".
+    private void startFaceAttendance() {
+        if (myId <= 0) {
+            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent it = new Intent(this, FaceCaptureActivity.class);
+        it.putExtra(FaceCaptureActivity.EXTRA_PURPOSE, "verify");
+        faceCaptureLauncher.launch(it);
+    }
+
+    // Cham cong bang van tay: BiometricPrompt xac thuc tren may truoc,
+    // thanh cong moi goi API voi method="fingerprint".
+    private void startFingerprintAttendance() {
+        if (myId <= 0) {
+            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!BiometricHelper.canUseFingerprint(this)) {
+            Toast.makeText(this, "Thiết bị chưa đăng ký vân tay hoặc không có cảm biến vân tay. "
+                    + "Vào Cài đặt của máy để thêm vân tay trước.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        boolean isIn = nextIsIn;
+        BiometricHelper.authenticate(this, isIn ? "Chấm công vào bằng vân tay" : "Chấm công ra bằng vân tay",
+                new BiometricHelper.Callback() {
+                    @Override
+                    public void onSuccess() {
+                        double[] gps = lastKnownLatLng();
+                        CheckinRequest req = new CheckinRequest(myId,
+                                gps != null ? gps[0] : null, gps != null ? gps[1] : null,
+                                "fingerprint", null, true);
+                        submitAttendance(isIn, req);
+                    }
+
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(HomeActivity.this, message, Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void submitAttendance(boolean isIn, CheckinRequest req) {
+        if (myId <= 0) {
+            Toast.makeText(this, "Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Khoa ca 4 nut cham cong trong luc cho server, tranh bam 2 lan gui trung request.
+        btnHomeCheckIn.setEnabled(false);
+        btnHomeCheckOut.setEnabled(false);
+        btnBioFace.setEnabled(false);
+        btnBioFinger.setEnabled(false);
+        Call<AttendanceResponse> call = isIn
+                ? api.checkIn(req)
+                : api.checkOut(req);
+        call.enqueue(new Callback<AttendanceResponse>() {
+            @Override
+            public void onResponse(Call<AttendanceResponse> c, Response<AttendanceResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
+                    Toast.makeText(HomeActivity.this,
+                            isIn ? "Chấm công vào thành công" : "Chấm công ra thành công",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    // Hien dung loi server (409 da cham cong, 401 het phien...) thay vi doan sai.
+                    Toast.makeText(HomeActivity.this,
+                            ApiError.message(r, isIn ? "Không chấm công vào được" : "Không chấm công ra được"),
+                            Toast.LENGTH_LONG).show();
+                }
+                loadToday(); // renderToday se mo/khoa nut dung trang thai moi nhat
+            }
+
+            @Override
+            public void onFailure(Call<AttendanceResponse> c, Throwable t) {
+                Toast.makeText(HomeActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                loadToday();
+            }
+        });
+    }
+
+    // Vi tri gan nhat da biet de gui kem cham cong (server doi chieu voi toa do
+    // van phong va gan co "ngoai van phong" neu xa). Khong co quyen/khong co
+    // vi tri thi tra null — cham cong van dien ra binh thuong, chi thieu GPS.
+    private double[] lastKnownLatLng() {
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED
+                    && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return null;
+            }
+            LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+            if (lm == null) return null;
+            Location best = null;
+            String[] providers = {LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER};
+            for (String p : providers) {
+                try {
+                    Location l = lm.getLastKnownLocation(p);
+                    if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+                } catch (Exception ignored) { }
+            }
+            if (best == null) return null;
+            return new double[]{best.getLatitude(), best.getLongitude()};
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void loadNews() {
+        api.getAnnouncements().enqueue(new Callback<AnnouncementResponse>() {
+            @Override
+            public void onResponse(Call<AnnouncementResponse> c, Response<AnnouncementResponse> r) {
+                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
+                    news.clear();
+                    news.addAll(r.body().getData());
+                    newsAdapter.notifyDataSetChanged();
+                    tvFeedStatus.setVisibility(news.isEmpty() ? View.VISIBLE : View.GONE);
+                    if (news.isEmpty()) tvFeedStatus.setText("Chưa có thông báo nào.");
+                } else {
+                    tvFeedStatus.setVisibility(View.VISIBLE);
+                    tvFeedStatus.setText("Lỗi tin tức: " + ApiError.message(r, "HTTP " + r.code()));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<AnnouncementResponse> c, Throwable t) {
+                tvFeedStatus.setVisibility(View.VISIBLE);
+                tvFeedStatus.setText("Lỗi mạng tin tức: " + t.getMessage());
+            }
+        });
+    }
+
+    private String timeOnly(String datetime) {
+        if (datetime == null) return "--:--";
+        // "2026-11-07 08:02:11" -> "08:02"
+        try {
+            return datetime.substring(11, 16);
+        } catch (Exception e) {
+            return datetime;
+        }
+    }
+
+    private String dateOnly(String datetime) {
+        if (datetime == null) return "";
+        try {
+            return datetime.substring(8, 10) + "/" + datetime.substring(5, 7) + "/" + datetime.substring(0, 4);
+        } catch (Exception e) {
+            return datetime;
+        }
+    }
+
+    private String roleToVietnamese(String role) {
+        if (role == null) return "Nhân viên";
+        switch (role.toLowerCase()) {
+            case "admin": return "Quản trị viên";
+            case "manager": return "Quản lý";
+            case "staff": return "Nhân viên";
+            default: return role;
+        }
+    }
+
+    private class NewsAdapter extends BaseAdapter {
+        @Override public int getCount() { return news.size(); }
+        @Override public Object getItem(int position) { return news.get(position); }
+        @Override public long getItemId(int position) { return news.get(position).getId(); }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View v = convertView;
+            if (v == null) {
+                v = LayoutInflater.from(HomeActivity.this)
+                        .inflate(R.layout.item_announcement, parent, false);
+            }
+            AnnouncementResponse.Item item = news.get(position);
+            TextView tvTitle = v.findViewById(R.id.tvNewsTitle);
+            TextView tvMeta = v.findViewById(R.id.tvNewsMeta);
+            TextView tvContent = v.findViewById(R.id.tvNewsContent);
+            tvTitle.setText(item.getTitle());
+            String author = (item.getAuthorName() != null && !item.getAuthorName().isEmpty())
+                    ? item.getAuthorName() : "Ban quản trị";
+            tvMeta.setText(dateOnly(item.getCreatedAt()) + " · " + author);
+            tvContent.setText(item.getContent());
+            return v;
+        }
+    }
+}

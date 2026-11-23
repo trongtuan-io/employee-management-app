@@ -3,6 +3,7 @@ package com.example.employee_management_app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -23,8 +24,25 @@ public class StaffListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Trang nay chi cho admin/manager: nhan vien bi chan ngay o giao dien
+        // (server cung tra 403 nen mo thang bang duong khac cung khong xem duoc).
+        String myRole = TokenManager.getInstance(this).getRole();
+        if (!"admin".equalsIgnoreCase(myRole) && !"manager".equalsIgnoreCase(myRole)) {
+            Toast.makeText(this, "Trang Quản lý nhân viên chỉ dành cho quản lý", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, HomeActivity.class));
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_staff_list);
+        BottomNavHelper.setup(this, R.id.nav_staff);
         setTitle("Quản lý nhân viên");
+
+        Button btnDept = findViewById(R.id.btnManageDepartments);
+        btnDept.setOnClickListener(v ->
+                startActivity(new Intent(this, DepartmentActivity.class)));
+        Button btnImport = findViewById(R.id.btnImportEmployees);
+        btnImport.setOnClickListener(v ->
+                startActivity(new Intent(this, ImportEmployeesActivity.class)));
 
         ListView lv = findViewById(R.id.lvStaff);
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, items);

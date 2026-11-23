@@ -1,9 +1,9 @@
 package com.example.employee_management_app;
 
 import android.content.Context;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.IOException;
 
@@ -15,43 +15,56 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
-    private static final String BASE_URL = "http://10.0.2.2/employee-api/";
-    // Thêm hàm getter này
-    public static String getBaseUrl() {
-        return BASE_URL;
-    }
+    // IP backend lay tu BuildConfig (doc tu apiUrl trong local.properties
+    // hoac bien moi truong API_URL). Moi may tu cau hinh, khong sua code.
+    private static final String BASE_URL = BuildConfig.API_URL;
     private static Retrofit retrofit = null;
+    private static Context appContext = null;
 
     public static String baseUrl() {
         return BASE_URL;
     }
 
     public static Retrofit getClient(Context context) {
+        // Chi giu application context, tranh ro ri Activity vao client tinh.
+        appContext = context.getApplicationContext();
         if (retrofit == null) {
-            
-            // Tạo Interceptor để tự động đính kèm JWT Token vào Header của mọi API
+            final Context appCtx = appContext;
+            // Interceptor: dinh kem token vao moi request; gap 401 (phien het han /
+            // tai khoan bi khoa) thi xoa phien va dua nguoi dung ve man dang nhap.
             OkHttpClient client = new OkHttpClient.Builder().addInterceptor(new Interceptor() {
                 @Override
                 public Response intercept(Chain chain) throws IOException {
-                    Request.Builder requestBuilder = chain.request().newBuilder();
-                    
-                    // Lấy token đã lưu
-                    String token = TokenManager.getInstance(context).getToken();
+                    Request original = chain.request();
+                    Request.Builder requestBuilder = original.newBuilder();
+
+                    String token = TokenManager.getInstance(appCtx).getToken();
                     if (token != null && !token.isEmpty()) {
-                        // Thêm Bearer token vào Header Authorization
                         requestBuilder.addHeader("Authorization", "Bearer " + token);
+                        okhttp3.HttpUrl newUrl = original.url().newBuilder()
+                                .addQueryParameter("token", token)
+                                .build();
+                        requestBuilder.url(newUrl);
                     }
-                    
-                    return chain.proceed(requestBuilder.build());
+
+                    Response response = chain.proceed(requestBuilder.build());
+                    boolean isAuthCall = original.url().encodedPath().contains("auth.php");
+                    if (response.code() == 401 && !isAuthCall) {
+                        TokenManager.getInstance(appCtx).clearToken();
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            Intent intent = new Intent(appCtx, LoginActivity.class);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            appCtx.startActivity(intent);
+                        });
+                    }
+                    return response;
                 }
             }).build();
-
-            Gson gson = new GsonBuilder().setLenient().create();
 
             retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .client(client)
-                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .addConverterFactory(GsonConverterFactory.create())
                     .build();
         }
         return retrofit;

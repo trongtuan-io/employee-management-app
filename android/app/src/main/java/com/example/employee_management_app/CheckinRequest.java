@@ -1,38 +1,36 @@
 package com.example.employee_management_app;
 
+import java.util.List;
+
 public class CheckinRequest {
     private int employee_id;
-    private double latitude;
-    private double longitude;
+    private Double lat; // toa do GPS luc cham cong (null = khong lay duoc vi tri)
+    private Double lng;
+    // Phuong thuc cham cong: "gps" (mac dinh) | "face" | "fingerprint"
+    private String method;
+    // method=face: vector embedding 128 chieu trich tu khuon mat vua chup,
+    // server doi khop cosine voi ban dang ky cua chinh nhan vien nay.
+    private List<Double> face_embedding;
+    // method=fingerprint: true khi BiometricPrompt tren may da xac thuc xong.
+    private Boolean biometric_verified;
 
-    // Constructor mới nhận cả ID nhân viên, vĩ độ và kinh độ
-    public CheckinRequest(int employeeId, double latitude, double longitude) {
+    public CheckinRequest(int employeeId) {
         this.employee_id = employeeId;
-        this.latitude = latitude;
-        this.longitude = longitude;
     }
 
-    public int getEmployee_id() {
-        return employee_id;
+    public CheckinRequest(int employeeId, Double lat, Double lng) {
+        this.employee_id = employeeId;
+        this.lat = lat;
+        this.lng = lng;
     }
 
-    public void setEmployee_id(int employee_id) {
-        this.employee_id = employee_id;
-    }
-
-    public double getLatitude() {
-        return latitude;
-    }
-
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
-    }
-
-    public double getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public CheckinRequest(int employeeId, Double lat, Double lng, String method,
+                          List<Double> faceEmbedding, Boolean biometricVerified) {
+        this.employee_id = employeeId;
+        this.lat = lat;
+        this.lng = lng;
+        this.method = method;
+        this.face_embedding = faceEmbedding;
+        this.biometric_verified = biometricVerified;
     }
 }

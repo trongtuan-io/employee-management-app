@@ -8,6 +8,10 @@ public interface AuthApi {
     @POST("auth.php?action=login")
     Call<LoginResponse> login(@Body LoginRequest request);
 
+    // Admin tao tai khoan moi (insert vao employees)
+    @POST("auth.php?action=register")
+    Call<ApiResponse> register(@Body RegisterRequest request);
+
     @POST("auth.php?action=change-password")
     Call<ApiResponse> changePassword(@Body ChangePasswordRequest request);
 
@@ -20,7 +24,7 @@ public interface AuthApi {
     @POST("auth.php?action=reset-password")
     Call<ApiResponse> resetPassword(@Body ResetRequest request);
 
-    // Quen mat khau qua SMS Firebase (client da xac thuc SDT)
-    @POST("auth.php?action=reset-password-by-phone")
-    Call<ApiResponse> resetPasswordByPhone(@Body ResetByPhoneRequest request);
+    // Thu hoi token phia server khi dang xuat (khong chi xoa o client).
+    @POST("auth.php?action=logout")
+    Call<ApiResponse> logout();
 }

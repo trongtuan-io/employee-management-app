@@ -1,89 +1,128 @@
 <?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
+
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="0dp" android:layout_weight="1"
+    android:background="@color/bg_app">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center_horizontal">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="28dp">
 
-        <ImageView
-            android:id="@+id/ivAvatar"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:src="@mipmap/ic_launcher"
-            android:layout_marginBottom="8dp"/>
-
-        <Button
-            android:id="@+id/btnPickAvatar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Đổi ảnh"
-            android:layout_marginBottom="16dp"/>
+        <TextView
+            style="@style/AppTitle"
+            android:textSize="20sp"
+            android:text="Hồ sơ nhân viên" />
 
         <LinearLayout
-            android:id="@+id/layoutLock"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#fef2f2"
-            android:padding="12dp"
-            android:layout_marginBottom="16dp"
-            android:visibility="gone">
+            style="@style/AppCard"
+            android:layout_marginTop="20dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="TRẠNG THÁI TÀI KHOẢN"
-                android:textStyle="bold"
-                android:textColor="#b91c1c"/>
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/bg_avatar_circle"
+                android:contentDescription="Ảnh đại diện nhân viên"
+                android:padding="3dp"
+                android:src="@mipmap/ic_launcher" />
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/swLockAccount"
+            <Button
+                android:id="@+id/btnPickAvatar"
+                style="@style/AppButtonSmall"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:text="Đổi ảnh" />
+
+            <LinearLayout
+                android:id="@+id/layoutLock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Đang hoạt động"
-                android:textSize="18sp"
-                android:layout_marginTop="4dp"/>
+                android:layout_marginTop="16dp"
+                android:background="@color/danger_bg"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tvLockStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="13sp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TRẠNG THÁI TÀI KHOẢN"
+                    android:textColor="@color/danger"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swLockAccount"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Đang hoạt động"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvLockStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="16dp" android:text="Họ tên" />
+            <EditText
+                android:id="@+id/etProfileName"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Họ tên"
+                android:inputType="textPersonName" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Email" />
+            <EditText
+                android:id="@+id/etProfileEmail"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Email (chỉ admin sửa được)"
+                android:inputType="textEmailAddress" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Số điện thoại" />
+            <EditText
+                android:id="@+id/etProfilePhone"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="SĐT (chỉ admin sửa được)"
+                android:inputType="phone" />
+
+            <Button
+                android:id="@+id/btnSaveProfile"
+                style="@style/AppButtonPrimary"
+                android:layout_marginTop="22dp"
+                android:text="Lưu hồ sơ" />
         </LinearLayout>
-
-        <EditText
-            android:id="@+id/etProfileName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Họ tên"
-            android:layout_marginBottom="12dp"/>
-
-        <EditText
-            android:id="@+id/etProfileEmail"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Email (chỉ admin sửa được)"
-            android:inputType="textEmailAddress"
-            android:layout_marginBottom="12dp"/>
-
-        <EditText
-            android:id="@+id/etProfilePhone"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="SĐT (chỉ admin sửa được)"
-            android:inputType="phone"
-            android:layout_marginBottom="16dp"/>
-
         <Button
-            android:id="@+id/btnSaveProfile"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Lưu"/>
-
+        android:id="@+id/btnProfileLogout"
+        style="@style/AppButtonDanger"
+        android:layout_marginTop="16dp"
+        android:text="Đăng xuất" />
     </LinearLayout>
+
 </ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

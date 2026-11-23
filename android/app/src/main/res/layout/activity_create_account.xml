@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            style="@style/AppTitle"
+            android:textSize="20sp"
+            android:text="Tạo tài khoản nhân viên" />
+
+        <TextView
+            style="@style/AppSubtitle"
+            android:layout_marginTop="4dp"
+            android:text="Chỉ admin tạo được tài khoản mới" />
+
+        <LinearLayout
+            style="@style/AppCard"
+            android:layout_marginTop="20dp">
+
+            <TextView style="@style/AppLabel" android:text="Tên đăng nhập *" />
+            <EditText
+                android:id="@+id/etNewUsername"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Ví dụ: nv_hr"
+                android:inputType="text" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Mật khẩu *" />
+            <EditText
+                android:id="@+id/etNewPassword"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Tối thiểu 6 ký tự"
+                android:inputType="textPassword" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Họ tên *" />
+            <EditText
+                android:id="@+id/etNewFullName"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Họ và tên nhân viên"
+                android:inputType="textPersonName" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Số điện thoại" />
+            <EditText
+                android:id="@+id/etNewPhone"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Số điện thoại"
+                android:inputType="phone" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Email" />
+            <EditText
+                android:id="@+id/etNewEmail"
+                style="@style/AppInput"
+                android:layout_marginTop="8dp"
+                android:hint="Email công việc"
+                android:inputType="textEmailAddress" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Vai trò" />
+            <Spinner
+                android:id="@+id/spNewRole"
+                style="@style/AppSpinner"
+                android:layout_marginTop="8dp" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Phòng ban" />
+            <Spinner
+                android:id="@+id/spNewDept"
+                style="@style/AppSpinner"
+                android:layout_marginTop="8dp" />
+
+            <TextView style="@style/AppLabel" android:layout_marginTop="14dp" android:text="Chức vụ" />
+            <Spinner
+                android:id="@+id/spNewPosition"
+                style="@style/AppSpinner"
+                android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/btnDoCreateAccount"
+                style="@style/AppButtonPrimary"
+                android:layout_marginTop="22dp"
+                android:text="Tạo tài khoản" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

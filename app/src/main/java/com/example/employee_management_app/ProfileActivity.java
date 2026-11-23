@@ -44,6 +44,18 @@ public class ProfileActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+        BottomNavHelper.setup(this, R.id.nav_profile);
+
+        Button btnProfileLogout = findViewById(R.id.btnProfileLogout);
+        if (btnProfileLogout != null) {
+            btnProfileLogout.setOnClickListener(v -> {
+                TokenManager.getInstance(this).clearToken();
+                Intent i = new Intent(this, LoginActivity.class);
+                i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(i);
+                finish();
+            });
+        }
 
         ivAvatar = findViewById(R.id.ivAvatar);
         etName = findViewById(R.id.etProfileName);

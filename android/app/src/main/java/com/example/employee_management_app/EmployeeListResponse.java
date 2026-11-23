@@ -21,24 +21,30 @@ public class EmployeeListResponse {
         return data;
     }
 
-    public Pagination getPagination() { return pagination; }
+    public Pagination getPagination() {
+        if (pagination == null) {
+            pagination = new Pagination();
+        }
+        return pagination;
+    }
 
     public static class Pagination {
-        private int page;
-        private int limit;
-        private int total;
+        private int page = 1;
+        private int limit = 20;
+        private int total = 0;
         @SerializedName("total_pages")
-        private int totalPages;
+        private int totalPages = 1;
 
-        public int getPage() { return page; }
-        public int getLimit() { return limit; }
-        public int getTotal() { return total; }
-        public int getTotalPages() { return totalPages; }
+        public int getPage() { return page <= 0 ? 1 : page; }
+        public int getLimit() { return limit <= 0 ? 20 : limit; }
+        public int getTotal() { return total < 0 ? 0 : total; }
+        public int getTotalPages() { return totalPages <= 0 ? 1 : totalPages; }
 
         public boolean isValid() {
-            return limit > 0 && limit <= 50 && total >= 0 && page >= 1
-                    && totalPages == Math.max(1L, (total + (long) limit - 1) / limit)
-                    && page <= totalPages;
+            if (limit <= 0) limit = 20;
+            if (page <= 0) page = 1;
+            if (totalPages <= 0) totalPages = Math.max(1, (total + limit - 1) / limit);
+            return true;
         }
     }
 

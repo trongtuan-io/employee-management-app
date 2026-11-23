@@ -8,6 +8,9 @@ public class TokenManager {
     private static final String KEY_TOKEN = "jwt_token";
     private static final String KEY_USER_ID = "user_id";
     private static final String KEY_ROLE = "user_role";
+    private static final String KEY_DEPT = "user_department";
+    private static final String KEY_DEPT_ID = "user_department_id";
+    private static final String KEY_USERNAME = "user_username";
 
     private SharedPreferences prefs;
     private static TokenManager instance;
@@ -25,6 +28,53 @@ public class TokenManager {
 
     public void saveToken(String token) {
         prefs.edit().putString(KEY_TOKEN, token).apply();
+    }
+
+    // Luu ca phien dang nhap trong MOT lan ghi: tranh app bi kill giua chung
+    // de lai trang thai co token nhung mat user_id/role.
+    public void saveSession(String token, int userId, String role) {
+        saveSession(token, userId, role, null);
+    }
+
+    // Ban luu them ma phong ban (IT/HR/ACC...) de app phan luong giao dien theo
+    // Role x Phong. Server van tu kiem tra quyen o moi API, day chi la hien thi.
+    public void saveSession(String token, int userId, String role, String departmentName) {
+        saveSession(token, userId, role, departmentName, 0);
+    }
+
+    public void saveSession(String token, int userId, String role, String departmentName, int departmentId) {
+        saveSession(token, userId, role, departmentName, departmentId, null);
+    }
+
+    public void saveSession(String token, int userId, String role, String departmentName, int departmentId, String username) {
+        prefs.edit()
+                .putString(KEY_TOKEN, token)
+                .putInt(KEY_USER_ID, userId)
+                .putString(KEY_ROLE, role)
+                .putString(KEY_DEPT, departmentName)
+                .putInt(KEY_DEPT_ID, departmentId)
+                .putString(KEY_USERNAME, username)
+                .commit();
+    }
+
+    public String getDepartmentName() {
+        return prefs.getString(KEY_DEPT, null);
+    }
+
+    public int getDepartmentId() {
+        return prefs.getInt(KEY_DEPT_ID, 0);
+    }
+
+    public boolean isExecutive() {
+        String r = getRole();
+        String d = getDepartmentName();
+        String u = prefs.getString(KEY_USERNAME, "");
+        if ("admin".equalsIgnoreCase(r)) return true;
+        if ("giamdoc".equalsIgnoreCase(u) || "ceo".equalsIgnoreCase(u)) return true;
+        if (d != null && (d.equalsIgnoreCase("BOD") || d.contains("Giám đốc") || d.contains("Ban Giám đốc") || d.equalsIgnoreCase("Ban Giam Doc") || d.equalsIgnoreCase("Ban Giam Đoc") || d.contains("Ban"))) {
+            return true;
+        }
+        return false;
     }
 
     public String getToken() {
@@ -48,6 +98,6 @@ public class TokenManager {
     }
 
     public void clearToken() {
-        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).remove(KEY_ROLE).apply();
+        prefs.edit().remove(KEY_TOKEN).remove(KEY_USER_ID).remove(KEY_ROLE).remove(KEY_DEPT).remove(KEY_DEPT_ID).remove(KEY_USERNAME).apply();
     }
 }

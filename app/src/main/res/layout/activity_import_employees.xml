@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            style="@style/AppTitle"
+            android:textSize="20sp"
+            android:text="Import nhân viên" />
+
+        <TextView
+            style="@style/AppSubtitle"
+            android:layout_marginTop="4dp"
+            android:text="Nhập hàng loạt từ file Excel .xlsx hoặc CSV (UTF-8)" />
+
+        <LinearLayout
+            style="@style/AppCard"
+            android:layout_marginTop="20dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingMultiplier="1.4"
+                android:text="Dòng đầu của file phải có: username, full_name, email. Có thể thêm: phone, department_id, position_id, hire_date (YYYY-MM-DD).\n\nTối đa 500 nhân viên, 3MB. Import tất cả hoặc không nhập dòng nào nếu có lỗi. Tài khoản mới có mật khẩu tạm ngẫu nhiên — hãy lưu bảng mật khẩu và yêu cầu nhân viên đổi mật khẩu."
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnChooseImport"
+                style="@style/AppButtonPrimary"
+                android:layout_marginTop="18dp"
+                android:text="Chọn file Excel / CSV" />
+
+            <TextView
+                android:id="@+id/tvImportStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:accessibilityLiveRegion="polite"
+                android:paddingTop="14dp"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

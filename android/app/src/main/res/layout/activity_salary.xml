@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="0dp" android:layout_weight="1"
+    android:background="@color/bg_app">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp">
+
+        <TextView
+            style="@style/AppTitle"
+            android:textSize="20sp"
+            android:text="Bảng lương" />
+
+        <TextView
+            style="@style/AppSubtitle"
+            android:layout_marginTop="4dp"
+            android:text="Danh sách bảng lương theo từng tháng. Chạm vào một tháng để xem chi tiết các khoản." />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnPrevYear"
+                style="@style/AppButtonSecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀" />
+
+            <TextView
+                android:id="@+id/tvSalaryYear"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnNextYear"
+                style="@style/AppButtonSecondary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▶" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvSalaryOwner"
+            style="@style/AppLabel"
+            android:layout_marginTop="16dp"
+            android:text="Bảng lương của tôi" />
+
+        <ListView
+            android:id="@+id/lvSalaries"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:divider="@color/stroke"
+            android:dividerHeight="1dp"
+            android:padding="6dp" />
+
+        <TextView
+            android:id="@+id/tvSalaryEmpty"
+            style="@style/AppSubtitle"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            android:text="Chưa có bảng lương nào trong năm này. Bảng lương của nhân viên chỉ hiển thị sau khi Kế toán chốt." />
+
+        <LinearLayout
+            android:id="@+id/layoutSalaryAdmin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/AppLabel"
+                android:text="Quản lý bảng lương (Phòng Kế toán — Kế toán trưởng chốt)" />
+
+            <TextView
+                style="@style/AppLabel"
+                android:layout_marginTop="12dp"
+                android:text="Xem lương của nhân viên" />
+
+            <Spinner
+                android:id="@+id/spSalaryEmployee"
+                style="@style/AppSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                style="@style/AppLabel"
+                android:layout_marginTop="12dp"
+                android:text="Tính lương tự động theo ngày công" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etSalaryMonth"
+                    style="@style/AppInput"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:hint="Tháng"
+                    android:inputType="number" />
+
+                <EditText
+                    android:id="@+id/etSalaryYear"
+                    style="@style/AppInput"
+                    android:layout_width="0dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:hint="Năm"
+                    android:inputType="number" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnGenerateSalary"
+                style="@style/AppButtonPrimary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Tính lương tháng này" />
+
+            <Button
+                android:id="@+id/btnSalaryOverview"
+                style="@style/AppButtonSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Xem bảng lương toàn công ty" />
+
+            <TextView
+                style="@style/AppSubtitle"
+                android:layout_marginTop="8dp"
+                android:text="Lương theo ngày công = lương cơ bản ÷ ngày công chuẩn × (ngày có chấm công + ngày nghỉ phép đã duyệt). Chạm vào một dòng lương để xem chi tiết, sửa thưởng/phụ cấp hoặc chốt." />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+</LinearLayout>

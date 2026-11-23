@@ -1,44 +1,682 @@
 <?php
-require_once __DIR__ . "/../employee-api/db.php";
+require_once __DIR__ . "/db.php";
+require_once __DIR__ . "/auth_guard.php";
+require_once __DIR__ . "/salary_calc.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
+// Cot processed_at: thoi diem don duoc duyet/tu choi — phuc vu truy vet o tab
+// Cho duyet (don xu ly xong van con luu lai lam chung cu, khong bien mat).
+// Tu bo sung cot neu DB chua co (nhu cach salary_ensure_columns lam).
+function leave_ensure_columns(PDO $pdo) {
+  static $done = false;
+  if ($done) return;
+  $done = true;
+  $stmt = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'leave_requests'");
+  $stmt->execute();
+  $have = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), "COLUMN_NAME");
+  if (!in_array("processed_at", $have, true)) {
+    $pdo->exec("ALTER TABLE leave_requests ADD COLUMN processed_at DATETIME NULL");
+  }
+  if (!in_array("leave_type", $have, true)) {
+    // Don cu mac dinh la phep nam (dung hanh vi truoc day: moi don duyet deu
+    // tinh cong huong luong va nay tru quy phep).
+    $pdo->exec("ALTER TABLE leave_requests ADD COLUMN leave_type VARCHAR(20) NOT NULL DEFAULT 'annual'");
+  }
+}
+
+// Thong bao: notify_ensure_table/notify_push/notify_vnd/notify_approvers nam
+// o auth_guard.php (dung chung voi attendances.php cho don giai trinh).
+
+// ===== Quy phep nam (2026-11-09) =====
+// Moi nhan vien co LEAVE_ANNUAL_QUOTA ngay phep nam / nam. Chi don loai
+// 'annual' moi tru quy. Ngay nghi dem theo ngay lam viec (tru Chu nhat) nhu
+// chuan ngay cong tinh luong. So da dung tinh DONG tu don approved (+ pending
+// de chan nop don vuot quy khi con don dang cho duyet).
+function leave_annual_quota(PDO $pdo) {
+  try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
+      setting_key VARCHAR(50) PRIMARY KEY,
+      setting_value TEXT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $st = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'annual_leave_quota' LIMIT 1");
+    $st->execute();
+    $v = $st->fetchColumn();
+    if ($v !== false && is_numeric($v) && (int)$v > 0) return (int)$v;
+  } catch (Exception $e) {}
+  return 12;
+}
+
+define("LEAVE_TYPES", ["annual", "sick", "personal", "unpaid"]);
+
+function leave_type_label($t) {
+  switch ($t) {
+    case "sick": return "Nghỉ ốm";
+    case "personal": return "Việc riêng";
+    case "unpaid": return "Nghỉ không lương";
+    default: return "Phép năm";
+  }
+}
+
+// So ngay nghi (tru Chu nhat) cua 1 khoang [s,e] nam trong nam $year.
+function leave_days_in_year($s, $e, $year) {
+  $ys = sprintf("%04d-01-01", (int)$year);
+  $ye = sprintf("%04d-12-31", (int)$year);
+  return salary_leave_workdays($s, $e, $ys, $ye);
+}
+
+// Tra ve [used, pending] so ngay phep nam da dung/dang cho cua 1 nhan vien trong nam.
+function leave_annual_usage(PDO $pdo, $employeeId, $year) {
+  $ys = sprintf("%04d-01-01", (int)$year);
+  $ye = sprintf("%04d-12-31", (int)$year);
+  $stmt = $pdo->prepare("SELECT start_date, end_date, status FROM leave_requests WHERE employee_id=? AND leave_type='annual' AND status IN ('approved','pending') AND start_date<=? AND end_date>=?");
+  $stmt->execute([(int)$employeeId, $ye, $ys]);
+  $used = 0; $pending = 0;
+  foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $d = leave_days_in_year($r["start_date"], $r["end_date"], $year);
+    if ($r["status"] === "approved") $used += $d; else $pending += $d;
+  }
+  return [$used, $pending];
+}
+
+if ($a === "leave-balance" && $m === "GET") {
+  $me = require_login($pdo);
+  leave_ensure_columns($pdo);
+  $empId = isset($_GET["employee_id"]) && is_numeric($_GET["employee_id"]) && (int)$_GET["employee_id"] > 0 ? (int)$_GET["employee_id"] : (int)$me["id"];
+  if ($empId !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true) && !is_hr($me)) {
+    err("Khong co quyen xem so du phep nguoi khac", 403);
+  }
+  $year = (int)($_GET["year"] ?? date("Y"));
+  $quota = leave_annual_quota($pdo);
+  [$used, $pending] = leave_annual_usage($pdo, $empId, $year);
+  $remaining = max(0, $quota - $used - $pending);
+  out([
+    "employee_id" => $empId,
+    "year" => $year,
+    "quota" => $quota,
+    "used" => $used,
+    "pending" => $pending,
+    "remaining" => $remaining
+  ]);
+}
+
 if ($a === "leave-create" && $m === "POST") {
+  $me = require_login($pdo);
   $b = body();
+  if (empty($b["employee_id"])) $b["employee_id"] = $me["id"];
+  if ((int)$b["employee_id"] !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)) err("Chi duoc tao don nghi cho chinh minh", 403);
   if (empty($b["employee_id"]) || empty($b["start_date"]) || empty($b["end_date"])) err("Thieu employee_id/start_date/end_date");
-  $pdo->prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,reason,status) VALUES(?,?,?,?,'pending')")
-    ->execute([$b["employee_id"], $b["start_date"], $b["end_date"], $b["reason"] ?? ""]);
-  out(["id" => $pdo->lastInsertId(), "status" => "pending"]);
+  // Sep phong tao don ho thi chi cho nhan vien phong minh.
+  // Truong phong HR tao don ho duoc cho moi phong (viec cua Nhan su).
+  if ($me["role"] === "manager" && !is_hr_manager($me) && (int)$b["employee_id"] !== (int)$me["id"]) {
+    $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+    $st->execute([(int)$b["employee_id"]]);
+    $tgt = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$tgt) err("Khong tim thay nhan vien", 404);
+    if ((int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi duoc tao don cho nhan vien phong minh", 403);
+  }
+  // Validate ngay o tang ung dung (truoc day dua vao CHECK cua DB -> loi 500 kho hieu).
+  $sd = is_string($b["start_date"]) ? DateTimeImmutable::createFromFormat("!Y-m-d", $b["start_date"]) : false;
+  $ed = is_string($b["end_date"]) ? DateTimeImmutable::createFromFormat("!Y-m-d", $b["end_date"]) : false;
+  if (!$sd || $sd->format("Y-m-d") !== $b["start_date"] || !$ed || $ed->format("Y-m-d") !== $b["end_date"]) err("Ngay nghi phai co dang YYYY-MM-DD hop le", 422);
+  if ($ed < $sd) err("Ngay ket thuc khong duoc truoc ngay bat dau", 422);
+  // Chong gui trung: cung nhan vien + cung khoang ngay ma con don dang cho duyet.
+  $st = $pdo->prepare("SELECT COUNT(*) FROM leave_requests WHERE employee_id=? AND start_date=? AND end_date=? AND status='pending'");
+  $st->execute([(int)$b["employee_id"], $b["start_date"], $b["end_date"]]);
+  if ((int)$st->fetchColumn() > 0) err("Da co don nghi trung khoang ngay nay dang cho duyet", 409);
+  // Loai nghi: mac dinh phep nam (don cu/app cu khong gui loai).
+  leave_ensure_columns($pdo);
+  $leaveType = is_string($b["leave_type"] ?? null) && in_array($b["leave_type"], LEAVE_TYPES, true) ? $b["leave_type"] : "annual";
+  // Quy phep: chi loai 'annual' bi chan khi vuot so du (da dung + dang cho + don moi).
+  // Don keo dai qua 2 nam thi kiem tra tung nam.
+  if ($leaveType === "annual") {
+    $empIdChk = (int)$b["employee_id"];
+    for ($y = (int)$sd->format("Y"); $y <= (int)$ed->format("Y"); $y++) {
+      $newDays = leave_days_in_year($b["start_date"], $b["end_date"], $y);
+      if ($newDays <= 0) continue;
+      [$usedY, $pendingY] = leave_annual_usage($pdo, $empIdChk, $y);
+      $remain = leave_annual_quota($pdo) - $usedY - $pendingY;
+      if ($newDays > $remain) {
+        err("Không đủ phép năm " . $y . ": còn " . max(0, $remain) . " ngày (đã dùng " . $usedY
+          . ($pendingY > 0 ? ", đang chờ duyệt " . $pendingY : "") . "), đơn xin " . $newDays . " ngày làm việc", 422);
+      }
+    }
+  }
+  $pdo->prepare("INSERT INTO leave_requests(employee_id,start_date,end_date,reason,status,leave_type) VALUES(?,?,?,?,'pending',?)")
+    ->execute([$b["employee_id"], $b["start_date"], $b["end_date"], is_string($b["reason"] ?? null) ? $b["reason"] : "", $leaveType]);
+  $newLeaveId = (int)$pdo->lastInsertId();
+  // Thong bao cho nguoi co quyen duyet (Admin + manager cung phong + phong HR).
+  $empId = (int)$b["employee_id"];
+  $st = $pdo->prepare("SELECT full_name FROM employees WHERE id=?");
+  $st->execute([$empId]);
+  $empName = $st->fetchColumn();
+  if ($empName !== false) {
+    $reason = is_string($b["reason"] ?? null) ? trim($b["reason"]) : "";
+    $nBody = $empName . " xin nghỉ (" . leave_type_label($leaveType) . ") từ " . $b["start_date"] . " đến " . $b["end_date"]
+      . ($reason !== "" ? ". Lý do: " . mb_substr($reason, 0, 120) : "");
+    notify_approvers($pdo, $empId, "leave_new", "Đơn nghỉ mới chờ duyệt", $nBody, $newLeaveId);
+  }
+  out(["id" => $newLeaveId, "status" => "pending", "leave_type" => $leaveType]);
+}
+// So du phep nam cua 1 nhan vien trong 1 nam (mac dinh: chinh minh, nam nay).
+if ($a === "leave-balance" && $m === "GET") {
+  $me = require_login($pdo);
+  leave_ensure_columns($pdo);
+  $empId = isset($_GET["employee_id"]) && $_GET["employee_id"] !== "" ? (int)$_GET["employee_id"] : (int)$me["id"];
+  if ($empId !== (int)$me["id"]) {
+    if (!in_array($me["role"], ["admin", "manager"], true) && !is_hr($me) && !can_view_others_salary($me)) {
+      err("Khong co quyen xem quy phep cua nguoi khac", 403);
+    }
+    if ($me["role"] === "manager" && !is_hr($me) && !can_view_others_salary($me)) {
+      $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+      $st->execute([$empId]);
+      $tgt = $st->fetch(PDO::FETCH_ASSOC);
+      if (!$tgt || (int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi xem duoc nhan vien phong minh", 403);
+    }
+  }
+  $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : (int)date("Y");
+  if ($year < 2000 || $year > 2100) err("Nam khong hop le", 422);
+  [$used, $pending] = leave_annual_usage($pdo, $empId, $year);
+  out(["employee_id" => $empId, "year" => $year, "quota" => LEAVE_ANNUAL_QUOTA,
+    "used" => $used, "pending" => $pending, "remaining" => LEAVE_ANNUAL_QUOTA - $used - $pending]);
+}
+// Lich vang theo thang: don da duyet + dang cho duyet giao thang, pham vi theo
+// phong (admin/HR/Ke toan: toan cong ty; manager/staff: phong minh).
+if ($a === "leave-calendar" && $m === "GET") {
+  $me = require_login($pdo);
+  leave_ensure_columns($pdo);
+  $month = isset($_GET["month"]) && is_numeric($_GET["month"]) ? (int)$_GET["month"] : (int)date("n");
+  $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : (int)date("Y");
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $ms = sprintf("%04d-%02d-01", $year, $month);
+  $me2 = date("Y-m-t", strtotime($ms));
+  $global = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  $cols = "l.id, l.employee_id, e.full_name, d.name AS dept_name, l.start_date, l.end_date, l.leave_type, l.status, l.reason";
+  $joins = "FROM leave_requests l JOIN employees e ON e.id=l.employee_id LEFT JOIN departments d ON d.id=e.department_id";
+  $cond = "l.status IN ('approved','pending') AND l.start_date<=? AND l.end_date>=?";
+  if ($global) {
+    $stmt = $pdo->prepare("SELECT $cols $joins WHERE $cond ORDER BY l.start_date, e.full_name");
+    $stmt->execute([$me2, $ms]);
+  } else {
+    $stmt = $pdo->prepare("SELECT $cols $joins WHERE $cond AND e.department_id=? ORDER BY l.start_date, e.full_name");
+    $stmt->execute([$me2, $ms, (int)$me["department_id"]]);
+  }
+  out(["month" => $month, "year" => $year, "scope" => $global ? "company" : "department", "items" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 if ($a === "leave-list" && $m === "GET") {
+  $me = require_login($pdo);
   $emp = $_GET["employee_id"] ?? "";
-  if ($emp !== "") { $stmt = $pdo->prepare("SELECT * FROM leave_requests WHERE employee_id=? ORDER BY id DESC"); $stmt->execute([$emp]); }
-  else { $stmt = $pdo->query("SELECT l.*, e.full_name FROM leave_requests l JOIN employees e ON l.employee_id=e.id WHERE l.status='pending' ORDER BY l.id DESC"); }
+  // Nhan vien khong truyen employee_id: mac dinh xem don cua chinh minh (khong phai hang cho duyet).
+  if ($emp === "" && $me["role"] === "staff") $emp = (string)(int)$me["id"];
+  if ($emp !== "") {
+    if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)
+        && !is_hr($me)) err("Khong co quyen xem don cua nguoi khac", 403);
+  } else {
+    if (!in_array($me["role"], ["admin", "manager"], true) && !is_hr($me)) err("Khong co quyen xem danh sach don cho duyet", 403);
+  }
+  if ($emp !== "") {
+    // Sep phong nghiep vu xem don theo tung nhan vien thi cung chi trong phong minh.
+    // Phong HR xem duoc don cua moi phong (theo doi/tong hop, duyet van theo phong).
+    if ($me["role"] === "manager" && !is_hr($me) && (int)$emp !== (int)$me["id"]) {
+      $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+      $st->execute([(int)$emp]);
+      $tgt = $st->fetch(PDO::FETCH_ASSOC);
+      if (!$tgt || (int)$tgt["department_id"] !== (int)$me["department_id"]) err("Chi xem duoc don cua nhan vien phong minh", 403);
+    }
+    $stmt = $pdo->prepare("SELECT * FROM leave_requests WHERE employee_id=? ORDER BY id DESC"); $stmt->execute([$emp]);
+  }
+  else {
+    // Khu vuc duyet phep: admin thay tat ca, phong HR thay tat ca (chi de theo
+    // doi - duyet thi van chi don phong HR), sep phong nghiep vu chi thay phong
+    // minh. Tra CA don da xu ly (approved/rejected) kem nguoi duyet + thoi diem
+    // xu ly de truy vet: don duyet xong KHONG bien mat khoi danh sach nua.
+    // Don dang cho duyet xep len dau.
+    leave_ensure_columns($pdo);
+    $cols = "l.*, e.full_name, d.name AS dept_name, a.full_name AS approver_name";
+    $joins = "FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN employees a ON a.id=l.approved_by";
+    $order = "ORDER BY (l.status='pending') DESC, l.id DESC";
+    if ($me["role"] === "manager" && !is_hr($me) && !is_executive($me)) {
+      $stmt = $pdo->prepare("SELECT $cols $joins WHERE e.department_id=? $order");
+      $stmt->execute([(int)$me["department_id"]]);
+    } else {
+      $stmt = $pdo->query("SELECT $cols $joins $order");
+    }
+  }
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($a === "leave-approve" && $m === "POST") {
+  $me = require_role($pdo, ["admin", "manager"]); // approved_by lay tu token, client khong tu khai duoc
   $b = body();
   if (empty($b["id"]) || empty($b["status"])) err("Thieu id/status");
-  $pdo->prepare("UPDATE leave_requests SET status=?, approved_by=? WHERE id=?")->execute([$b["status"], $b["approved_by"] ?? null, $b["id"]]);
-  out(["id" => $b["id"], "status" => $b["status"]]);
+  if (!in_array($b["status"], ["approved", "rejected"], true)) err("status chi duoc la approved/rejected");
+  leave_ensure_columns($pdo);
+  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, l.leave_type, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
+  $stmt->execute([(int)$b["id"]]);
+  $leave = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$leave) err("Khong tim thay don nghi", 404);
+  if ($leave["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
+  // Khong ai duoc tu duyet don cua chinh minh; don cua quan ly do Admin duyet.
+  if ((int)$leave["employee_id"] === (int)$me["id"]) err("Khong the tu duyet don cua chinh minh", 403);
+  // Don cua truong phong (manager) chi co Ban Giam Doc (executive) hoac Admin moi duoc duyet.
+  $reqRoleStmt = $pdo->prepare("SELECT r.name FROM employees e LEFT JOIN roles r ON r.id=e.role_id WHERE e.id=?");
+  $reqRoleStmt->execute([$leave["employee_id"]]);
+  $reqRole = strtolower($reqRoleStmt->fetchColumn() ?: "staff");
+  if ($reqRole === "manager" && !in_array($me["role"], ["admin"], true) && !is_executive($me)) {
+    err("Đơn của Trưởng phòng chỉ có Ban Giám đốc mới được duyệt", 403);
+  }
+  // Sep phong chi duyet duoc don cua nhan vien phong minh.
+  if ($me["role"] === "manager" && !is_executive($me) && (int)$leave["department_id"] !== (int)$me["department_id"]) {
+    err("Chi duyet duoc don nghi cua nhan vien phong ban minh", 403);
+  }
+  // Cap nhat kem dieu kien status='pending' de 2 nguoi duyet cung luc khong ghi de nhau.
+  // Ghi luon thoi diem xu ly (processed_at) lam chung cu truy vet.
+  leave_ensure_columns($pdo);
+  $upd = $pdo->prepare("UPDATE leave_requests SET status=?, approved_by=?, processed_at=NOW() WHERE id=? AND status='pending'");
+  $upd->execute([$b["status"], $me["id"], (int)$b["id"]]);
+  if ($upd->rowCount() === 0) err("Don nay da duoc xu ly roi", 409);
+  // Thong bao ket qua cho nguoi nop don.
+  $approved = $b["status"] === "approved";
+  notify_push($pdo, (int)$leave["employee_id"], $approved ? "leave_approved" : "leave_rejected",
+    $approved ? "Đơn nghỉ đã được duyệt" : "Đơn nghỉ bị từ chối",
+    "Đơn nghỉ (" . leave_type_label($leave["leave_type"] ?? "annual") . ") từ " . $leave["start_date"] . " đến " . $leave["end_date"] . " đã được " . $me["full_name"]
+      . ($approved ? " duyệt." : " từ chối."),
+    (int)$b["id"]);
+  out(["id" => (int)$b["id"], "status" => $b["status"]]);
 }
 if ($a === "salary-list" && $m === "GET") {
-  $stmt = $pdo->prepare("SELECT s.*, e.full_name FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=? ORDER BY s.month DESC");
-  $stmt->execute([$_GET["employee_id"] ?? 0, $_GET["year"] ?? date("Y")]);
+  $me = require_login($pdo);
+  employee_salary_ensure_columns($pdo);
+  // Khong truyen employee_id thi mac dinh xem cua chinh minh.
+  $empId = (int)($_GET["employee_id"] ?? $me["id"]);
+  // Xem luong NGUOI KHAC: chi Admin + phong Ke toan (de soan nhap). Moi nhan
+  // vien/truong phong con lai chi xem duoc bang luong CUA CHINH MINH.
+  if ($empId !== (int)$me["id"] && !can_view_others_salary($me)) err("Khong co quyen xem luong nguoi khac", 403);
+  salary_ensure_columns($pdo);
+  // Xem luong CUA MINH: nguoi khong thuoc nhom nghiep vu luong chi thay thang
+  // DA CHOT. Ban nhap (finalized=0) chi Admin/phong Ke toan thay.
+  $onlyFinalized = ($empId === (int)$me["id"] && !can_view_others_salary($me));
+  // full_base_salary = luong co ban GOC trong ho so (cot base_salary cua bang
+  // salaries la luong DA NHAN theo ngay cong) — man chi tiet can ca hai so.
+  $sql = "SELECT s.*, e.full_name, e.base_salary AS full_base_salary, e.insurance_salary, e.dependents FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.employee_id=? AND s.year=?";
+  if ($onlyFinalized) $sql .= " AND s.finalized=1";
+  $sql .= " ORDER BY s.month DESC";
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute([$empId, $_GET["year"] ?? date("Y")]);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
-if ($a === "salary-create" && $m === "POST") {
+// Bang luong TONG HOP toan cong ty theo thang: moi nhan vien dang hoat dong
+// mot dong (kem dong luong cua thang neu da tinh) — Ke toan mo ra xem het
+// mot luot, khoi chon tung nguoi. Chi Admin + phong Ke toan (nhom soan nhap).
+if ($a === "salary-overview" && $m === "GET") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_columns($pdo);
+  $month = (int)($_GET["month"] ?? date("n")); $year = (int)($_GET["year"] ?? date("Y"));
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $stmt = $pdo->prepare("SELECT e.id AS employee_id, e.full_name, d.name AS dept_name, e.base_salary AS full_base_salary, s.id AS salary_id, s.base_salary, s.allowance, s.overtime_pay, s.bonus, s.deduction, s.insurance_base, s.insurance_amount, s.tax_amount, s.net_salary, s.work_days, s.standard_days, s.finalized, COALESCE(s.bod_approved, 0) AS bod_approved, s.paid, e.insurance_salary, e.dependents FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN salaries s ON s.employee_id=e.id AND s.month=? AND s.year=? WHERE e.status=1 ORDER BY d.name, e.full_name");
+  $stmt->execute([$month, $year]);
+  out($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+// Tinh luong TU DONG theo ngay cong cho ca thang: Admin + phong Ke toan
+// (soan nhap), pham vi TOAN CONG TY.
+// Sinh bang luong NHAP: dong da CHOT (finalized=1) khong bi ghi de; phu cap/tang ca/
+// thuong/khau tru cua dong cu duoc GIU NGUYEN, chi tinh lai phan luong theo cong va thuc linh.
+if ($a === "salary-generate" && $m === "POST") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_columns($pdo);
+  employee_salary_ensure_columns($pdo);
   $b = body();
-  if (empty($b["employee_id"]) || empty($b["month"]) || empty($b["year"])) err("Thieu employee_id/month/year");
-  $net = ($b["base_salary"] ?? 0) + ($b["allowance"] ?? 0) + ($b["overtime_pay"] ?? 0) + ($b["bonus"] ?? 0) - ($b["deduction"] ?? 0);
-  $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,net_salary) VALUES(?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE base_salary=VALUES(base_salary),allowance=VALUES(allowance),overtime_pay=VALUES(overtime_pay),bonus=VALUES(bonus),deduction=VALUES(deduction),net_salary=VALUES(net_salary)")
-    ->execute([$b["employee_id"], $b["month"], $b["year"], $b["base_salary"] ?? 0, $b["allowance"] ?? 0, $b["overtime_pay"] ?? 0, $b["bonus"] ?? 0, $b["deduction"] ?? 0, $net]);
-  out(["net_salary" => $net]);
+  $month = (int)($b["month"] ?? date("n")); $year = (int)($b["year"] ?? date("Y"));
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $std = isset($b["standard_days"]) && is_numeric($b["standard_days"]) ? (int)$b["standard_days"] : salary_standard_days($year, $month);
+  if ($std <= 0 || $std > 31) err("Ngay cong chuan khong hop le", 422);
+  $monthStart = sprintf("%04d-%02d-01", $year, $month);
+  $monthEnd = date("Y-m-t", strtotime($monthStart));
+  $emps = $pdo->query("SELECT id, full_name, base_salary, department_id, insurance_salary, dependents FROM employees WHERE status=1 ORDER BY id");
+  $attStmt = $pdo->prepare("SELECT COUNT(*) FROM attendances WHERE employee_id=? AND work_date BETWEEN ? AND ? AND check_in_time IS NOT NULL");
+  // Ngay phep tinh cong: moi don approved TRU loai 'unpaid' (nghi khong luong
+  // thi khong duoc tra luong nhung van anh huong quy tac mien BH qua work_days).
+  leave_ensure_columns($pdo);
+  $leaveStmt = $pdo->prepare("SELECT start_date, end_date FROM leave_requests WHERE employee_id=? AND status='approved' AND leave_type<>'unpaid' AND start_date<=? AND end_date>=?");
+  $findStmt = $pdo->prepare("SELECT * FROM salaries WHERE employee_id=? AND month=? AND year=?");
+  $items = []; $generated = 0; $skipped = 0;
+  foreach ($emps->fetchAll(PDO::FETCH_ASSOC) as $e) {
+    $empId = (int)$e["id"];
+    $attStmt->execute([$empId, $monthStart, $monthEnd]);
+    $attDays = (int)$attStmt->fetchColumn();
+    $leaveStmt->execute([$empId, $monthEnd, $monthStart]);
+    $leaveDays = 0;
+    foreach ($leaveStmt->fetchAll(PDO::FETCH_ASSOC) as $lv) {
+      $leaveDays += salary_leave_workdays($lv["start_date"], $lv["end_date"], $monthStart, $monthEnd);
+    }
+    $paidDays = min($std, $attDays + $leaveDays);
+    $earned = salary_earned_base($e["base_salary"], $paidDays, $std);
+    $insBase = salary_insurance_base($e["base_salary"], $e["insurance_salary"]);
+    $findStmt->execute([$empId, $month, $year]);
+    $old = $findStmt->fetch(PDO::FETCH_ASSOC);
+    if ($old && (int)$old["finalized"] === 1) { $skipped++; continue; }
+    if ($old) {
+      [$ins, $tax, $net] = salary_full_calc($earned, $old["allowance"], $old["overtime_pay"], $old["bonus"], $old["deduction"], $insBase, $paidDays, $e["dependents"], $std);
+      $pdo->prepare("UPDATE salaries SET base_salary=?, work_days=?, standard_days=?, insurance_base=?, insurance_amount=?, tax_amount=?, net_salary=? WHERE id=?")
+        ->execute([$earned, $paidDays, $std, $insBase, $ins, $tax, $net, (int)$old["id"]]);
+      if (abs((float)$old["base_salary"] - $earned) >= 1) {
+        salary_audit($pdo, (int)$old["id"], $empId, (int)$me["id"], "base_salary", (float)$old["base_salary"], $earned);
+      }
+    } else {
+      // Dong moi: phu cap khoi tao = tong phu cap CHINH SACH dang ap dung.
+      $allowance = salary_policy_allowance($pdo, $e["department_id"]);
+      [$ins, $tax, $net] = salary_full_calc($earned, $allowance, 0, 0, 0, $insBase, $paidDays, $e["dependents"], $std);
+      $pdo->prepare("INSERT INTO salaries(employee_id,month,year,base_salary,allowance,overtime_pay,bonus,deduction,insurance_base,insurance_amount,tax_amount,net_salary,work_days,standard_days,finalized) VALUES(?,?,?, ?,?,0,0,0, ?,?,?, ?,?,?,0)")
+        ->execute([$empId, $month, $year, $earned, $allowance, $insBase, $ins, $tax, $net, $paidDays, $std]);
+      salary_audit($pdo, (int)$pdo->lastInsertId(), $empId, (int)$me["id"], "created", null, $net);
+    }
+    $generated++;
+    $items[] = ["employee_id" => $empId, "full_name" => $e["full_name"], "attendance_days" => $attDays,
+      "leave_days" => $leaveDays, "work_days" => $paidDays, "standard_days" => $std,
+      "base_salary" => $earned, "net_salary" => $net];
+  }
+  out(["month" => $month, "year" => $year, "standard_days" => $std,
+    "generated" => $generated, "skipped_finalized" => $skipped, "items" => $items]);
+}
+// Quan ly sua cac khoan cong/tru cua 1 dong bang luong NHAP (thuong, phu cap, tang ca, khau tru).
+if ($a === "salary-adjust" && $m === "POST") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_columns($pdo);
+  employee_salary_ensure_columns($pdo);
+  $b = body();
+  if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
+  $stmt = $pdo->prepare("SELECT s.*, e.department_id, e.base_salary AS full_base_salary, e.insurance_salary, e.dependents FROM salaries s JOIN employees e ON s.employee_id=e.id WHERE s.id=?");
+  $stmt->execute([(int)$b["id"]]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row) err("Khong tim thay bang luong", 404);
+  if ((int)$row["finalized"] === 1) err("Bang luong da chot, khong sua duoc", 409);
+  $changes = [];
+  $fields = ["allowance", "overtime_pay", "bonus", "deduction"];
+  foreach ($fields as $f) {
+    if (isset($b[$f])) {
+      if (!is_numeric($b[$f]) || (float)$b[$f] < 0) err("So tien $f khong hop le", 422);
+      if (abs((float)$row[$f] - (float)$b[$f]) >= 0.5) $changes[] = [$f, (float)$row[$f], (float)$b[$f]];
+      $row[$f] = (float)$b[$f];
+    }
+  }
+  // Du lieu goc cho tinh BH/thue nam o ho so nhan vien: cho sua ngay tai day,
+  // luu lai vao ho so de cac thang sau dung tiep.
+  $insSalary = $row["insurance_salary"] !== null ? (float)$row["insurance_salary"] : null;
+  if (array_key_exists("insurance_salary", $b)) {
+    $newIns = ($b["insurance_salary"] === null || $b["insurance_salary"] === "") ? null : (float)$b["insurance_salary"];
+    if ($newIns !== null && $newIns < 0) err("Luong dong BH khong hop le", 422);
+    if ($newIns !== $insSalary) $changes[] = ["insurance_salary", $insSalary, $newIns];
+    $insSalary = $newIns;
+  }
+  $dependents = (int)$row["dependents"];
+  if (isset($b["dependents"])) {
+    if (!is_numeric($b["dependents"]) || (int)$b["dependents"] < 0 || (int)$b["dependents"] > 20) err("So nguoi phu thuoc khong hop le", 422);
+    if ((int)$b["dependents"] !== $dependents) $changes[] = ["dependents", $dependents, (int)$b["dependents"]];
+    $dependents = (int)$b["dependents"];
+  }
+  if ($changes && (array_filter($changes, fn($c) => $c[0] === "insurance_salary" || $c[0] === "dependents"))) {
+    $pdo->prepare("UPDATE employees SET insurance_salary=?, dependents=? WHERE id=?")
+      ->execute([$insSalary, $dependents, (int)$row["employee_id"]]);
+  }
+  $insBase = salary_insurance_base($row["full_base_salary"], $insSalary);
+  [$ins, $tax, $net] = salary_full_calc($row["base_salary"], $row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"], $insBase, $row["work_days"], $dependents, (int)$row["standard_days"]);
+  if (abs((float)$row["insurance_amount"] - $ins) >= 1) $changes[] = ["insurance_amount", (float)$row["insurance_amount"], $ins];
+  if (abs((float)$row["tax_amount"] - $tax) >= 1) $changes[] = ["tax_amount", (float)$row["tax_amount"], $tax];
+  $pdo->prepare("UPDATE salaries SET allowance=?, overtime_pay=?, bonus=?, deduction=?, insurance_base=?, insurance_amount=?, tax_amount=?, net_salary=? WHERE id=?")
+    ->execute([$row["allowance"], $row["overtime_pay"], $row["bonus"], $row["deduction"], $insBase, $ins, $tax, $net, (int)$row["id"]]);
+  foreach ($changes as [$f, $oldV, $newV]) {
+    salary_audit($pdo, (int)$row["id"], (int)$row["employee_id"], (int)$me["id"], $f, $oldV, $newV);
+  }
+  out(["id" => (int)$row["id"], "insurance_amount" => $ins, "tax_amount" => $tax, "net_salary" => $net]);
+}
+// Chot bang luong: theo tung dong (id) hoac ca thang (month+year).
+// CHI Admin + Ke toan TRUONG (manager phong ACC), pham vi toan cong ty.
+if ($a === "salary-finalize" && $m === "POST") {
+  $me = require_payroll($pdo, true);
+  salary_ensure_columns($pdo);
+  $b = body();
+  if (!empty($b["id"]) && is_numeric($b["id"])) {
+    $stmt = $pdo->prepare("SELECT s.employee_id, s.finalized, s.month, s.year, s.net_salary FROM salaries s WHERE s.id=?");
+    $stmt->execute([(int)$b["id"]]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) err("Khong tim thay bang luong", 404);
+    $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE id=?");
+    $upd->execute([(int)$b["id"]]);
+    if ((int)$row["finalized"] === 0) {
+      salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "finalized", 0, 1);
+      notify_push($pdo, (int)$row["employee_id"], "salary_finalized",
+        "Bảng lương tháng " . (int)$row["month"] . "/" . (int)$row["year"] . " đã chốt",
+        "Thực lĩnh: " . notify_vnd($row["net_salary"]) . ". Mở mục Bảng lương để xem chi tiết các khoản.",
+        (int)$b["id"]);
+    }
+    out(["id" => (int)$b["id"], "finalized" => 1]);
+  }
+  $month = (int)($b["month"] ?? 0); $year = (int)($b["year"] ?? 0);
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Can id hoac month/year hop le", 422);
+  $sel = $pdo->prepare("SELECT id, employee_id, net_salary FROM salaries WHERE month=? AND year=? AND finalized=0");
+  $sel->execute([$month, $year]);
+  $pendingRows = $sel->fetchAll(PDO::FETCH_ASSOC);
+  $upd = $pdo->prepare("UPDATE salaries SET finalized=1 WHERE month=? AND year=?");
+  $upd->execute([$month, $year]);
+  foreach ($pendingRows as $pr) {
+    salary_audit($pdo, (int)$pr["id"], (int)$pr["employee_id"], (int)$me["id"], "finalized", 0, 1);
+    notify_push($pdo, (int)$pr["employee_id"], "salary_finalized",
+      "Bảng lương tháng " . $month . "/" . $year . " đã chốt",
+      "Thực lĩnh: " . notify_vnd($pr["net_salary"]) . ". Mở mục Bảng lương để xem chi tiết các khoản.",
+      (int)$pr["id"]);
+  }
+  out(["month" => $month, "year" => $year, "finalized_count" => $upd->rowCount()]);
+}
+// Mo lai bang luong da chot (sai sot sau khi chot): CHI admin.
+if ($a === "salary-unfinalize" && $m === "POST") {
+  $me = require_role($pdo, ["admin"]);
+  salary_ensure_columns($pdo);
+  $b = body();
+  if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
+  $sel = $pdo->prepare("SELECT employee_id, month, year FROM salaries WHERE id=?");
+  $sel->execute([(int)$b["id"]]);
+  $salRow = $sel->fetch(PDO::FETCH_ASSOC);
+  $empOfSalary = $salRow ? (int)$salRow["employee_id"] : 0;
+  $upd = $pdo->prepare("UPDATE salaries SET finalized=0 WHERE id=? AND finalized=1");
+  $upd->execute([(int)$b["id"]]);
+  if ($upd->rowCount() === 0) err("Khong tim thay bang luong da chot nay", 404);
+  if ($empOfSalary > 0) {
+    salary_audit($pdo, (int)$b["id"], $empOfSalary, (int)$me["id"], "finalized", 1, 0);
+    notify_push($pdo, $empOfSalary, "salary_unfinalized",
+      "Bảng lương tháng " . (int)$salRow["month"] . "/" . (int)$salRow["year"] . " được mở lại",
+      "Bảng lương của bạn được mở lại để chỉnh sửa. Số liệu chốt chính thức sẽ được thông báo sau.",
+      (int)$b["id"]);
+  }
+  out(["id" => (int)$b["id"], "finalized" => 0]);
+}
+// Giam doc (BOD) hoac Admin phe duyet bang luong thang da chot.
+if ($a === "salary-bod-approve" && $m === "POST") {
+  $me = require_login($pdo);
+  if ($me["role"] !== "admin" && !is_director($me)) {
+    err("Chỉ Giám đốc hoặc Phó Giám đốc mới có thẩm quyền phê duyệt bảng lương", 403);
+  }
+  salary_ensure_columns($pdo);
+  $b = body();
+  $month = (int)($b["month"] ?? 0); $year = (int)($b["year"] ?? 0);
+  $id = (int)($b["id"] ?? 0);
+  if ($id > 0) {
+    $upd = $pdo->prepare("UPDATE salaries SET bod_approved=1, bod_approved_by=?, bod_approved_at=NOW() WHERE id=? AND finalized=1");
+    $upd->execute([(int)$me["id"], $id]);
+    out(["id" => $id, "bod_approved" => 1]);
+  }
+  if ($month >= 1 && $month <= 12 && $year >= 2000) {
+    $upd = $pdo->prepare("UPDATE salaries SET bod_approved=1, bod_approved_by=?, bod_approved_at=NOW() WHERE month=? AND year=? AND finalized=1");
+    $upd->execute([(int)$me["id"], $month, $year]);
+    notify_approvers($pdo, (int)$me["id"], "salary_approved", "Giám đốc đã phê duyệt bảng lương", "Bảng lương tháng " . $month . "/" . $year . " đã được Giám đốc " . $me["full_name"] . " phê duyệt. Kế toán có thể giải ngân.", $month);
+    out(["month" => $month, "year" => $year, "bod_approved" => 1, "count" => $upd->rowCount()]);
+  }
+  err("Can id hoac month/year hop le", 422);
+}
+
+// Danh dau DA TRA LUONG cho 1 dong da chot (buoc cuoi cua quy trinh luong).
+// Chi Admin + Ke toan truong; phai duoc GIAM DOC PHE DUYET (bod_approved=1) moi duoc giai ngan.
+if ($a === "salary-paid" && $m === "POST") {
+  $me = require_payroll($pdo, true);
+  salary_ensure_columns($pdo);
+  $b = body();
+  if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id bang luong");
+  $paid = isset($b["paid"]) ? (int)$b["paid"] : 1;
+  if ($paid !== 0 && $paid !== 1) err("paid chi nhan 0 hoac 1", 422);
+  $stmt = $pdo->prepare("SELECT employee_id, finalized, bod_approved, paid, month, year, net_salary FROM salaries WHERE id=?");
+  $stmt->execute([(int)$b["id"]]);
+  $row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if (!$row) err("Khong tim thay bang luong", 404);
+  if ($paid === 1 && (int)$row["finalized"] !== 1) err("Bang luong chua chot, chua tra luong duoc", 422);
+  if ($paid === 1 && (int)($row["bod_approved"] ?? 0) !== 1) {
+    err("Bảng lương chưa được Giám đốc phê duyệt, chưa thể giải ngân!", 403);
+  }
+  $pdo->prepare("UPDATE salaries SET paid=?, paid_at=? WHERE id=?")
+    ->execute([$paid, $paid === 1 ? date("Y-m-d H:i:s") : null, (int)$b["id"]]);
+  if ((int)$row["paid"] !== $paid) {
+    salary_audit($pdo, (int)$b["id"], (int)$row["employee_id"], (int)$me["id"], "paid", (int)$row["paid"], $paid);
+    if ($paid === 1) {
+      notify_push($pdo, (int)$row["employee_id"], "salary_paid",
+        "Đã trả lương tháng " . (int)$row["month"] . "/" . (int)$row["year"],
+        "Số tiền " . notify_vnd($row["net_salary"]) . " đã được đánh dấu đã trả. Cảm ơn bạn!",
+        (int)$b["id"]);
+    }
+  }
+  out(["id" => (int)$b["id"], "paid" => $paid]);
+}
+// Lich su thay doi cua 1 dong bang luong (ai sua khoan nao, tu bao nhieu -> bao nhieu).
+// Nguoi xem: nhom nghiep vu luong, hoac chinh chu nhan cua dong luong.
+if ($a === "salary-history" && $m === "GET") {
+  $me = require_login($pdo);
+  salary_ensure_columns($pdo);
+  salary_ensure_audit_table($pdo);
+  $sid = (int)($_GET["salary_id"] ?? 0);
+  if ($sid <= 0) err("Thieu salary_id");
+  $stmt = $pdo->prepare("SELECT employee_id FROM salaries WHERE id=?");
+  $stmt->execute([$sid]);
+  $empId = $stmt->fetchColumn();
+  if ($empId === false) err("Khong tim thay bang luong", 404);
+  if ((int)$empId !== (int)$me["id"] && !can_view_others_salary($me)) err("Khong co quyen xem lich su nay", 403);
+  $stmt = $pdo->prepare("SELECT l.*, a.full_name AS actor_name FROM salary_audit_logs l JOIN employees a ON a.id=l.actor_id WHERE l.salary_id=? ORDER BY l.id DESC");
+  $stmt->execute([$sid]);
+  out($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+// Xuat bang luong 1 thang ra CSV (mo bang Excel duoc, co dau tieng Viet).
+if ($a === "salary-export" && $m === "GET") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_columns($pdo);
+  $month = (int)($_GET["month"] ?? date("n")); $year = (int)($_GET["year"] ?? date("Y"));
+  if ($month < 1 || $month > 12 || $year < 2000 || $year > 2100) err("Thang/nam khong hop le", 422);
+  $stmt = $pdo->prepare("SELECT e.full_name, d.name AS dept_name, e.base_salary AS full_base_salary, s.* FROM salaries s JOIN employees e ON e.id=s.employee_id LEFT JOIN departments d ON d.id=e.department_id WHERE s.month=? AND s.year=? ORDER BY d.name, e.full_name");
+  $stmt->execute([$month, $year]);
+  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  $num = fn($v) => number_format((float)$v, 0, ",", "");
+  $lines = [];
+  $lines[] = implode(";", ["STT", "Ho ten", "Phong ban", "Luong co ban", "Ngay cong", "Cong chuan", "Luong theo cong", "Phu cap", "Tang ca", "Thuong", "Khau tru khac", "Bao hiem (10.5%)", "Thue TNCN", "Thuc linh", "Trang thai"]);
+  $i = 0; $totNet = 0; $totIns = 0; $totTax = 0;
+  foreach ($rows as $r) {
+    $i++;
+    $status = (int)$r["paid"] === 1 ? "Da tra luong" : ((int)$r["finalized"] === 1 ? "Da chot" : "Ban nhap");
+    $lines[] = implode(";", [$i, $r["full_name"], $r["dept_name"] ?? "", $num($r["full_base_salary"]),
+      rtrim(rtrim(number_format((float)$r["work_days"], 2, ".", ""), "0"), "."), (int)$r["standard_days"],
+      $num($r["base_salary"]), $num($r["allowance"]), $num($r["overtime_pay"]), $num($r["bonus"]),
+      $num($r["deduction"]), $num($r["insurance_amount"]), $num($r["tax_amount"]), $num($r["net_salary"]), $status]);
+    $totNet += (float)$r["net_salary"]; $totIns += (float)$r["insurance_amount"]; $totTax += (float)$r["tax_amount"];
+  }
+  $lines[] = implode(";", ["", "TONG", "", "", "", "", "", "", "", "", "", $num($totIns), $num($totTax), $num($totNet), ""]);
+  header("Content-Type: text/csv; charset=UTF-8");
+  header("Content-Disposition: attachment; filename=\"bang_luong_" . sprintf("%02d_%d", $month, $year) . ".csv\"");
+  echo "\xEF\xBB\xBF" . implode("\r\n", $lines);
+  exit;
+}
+// Danh sach phu cap co dinh theo chinh sach.
+if ($a === "salary-policies" && $m === "GET") {
+  $me = require_payroll($pdo, false);
+  salary_ensure_policies_table($pdo);
+  $rows = $pdo->query("SELECT p.*, d.name AS dept_name FROM salary_policies p LEFT JOIN departments d ON d.id=p.department_id ORDER BY p.department_id, p.name")->fetchAll(PDO::FETCH_ASSOC);
+  out($rows);
+}
+// Them/sua 1 muc phu cap chinh sach (Admin + Ke toan truong).
+if ($a === "salary-policy-save" && $m === "POST") {
+  $me = require_payroll($pdo, true);
+  salary_ensure_policies_table($pdo);
+  $b = body();
+  $name = trim((string)($b["name"] ?? ""));
+  if ($name === "") err("Thieu ten khoan phu cap", 422);
+  if (!isset($b["amount"]) || !is_numeric($b["amount"]) || (float)$b["amount"] < 0) err("So tien khong hop le", 422);
+  $deptId = null;
+  if (isset($b["department_id"]) && $b["department_id"] !== "" && $b["department_id"] !== null) {
+    $chk = $pdo->prepare("SELECT id FROM departments WHERE id=?");
+    $chk->execute([(int)$b["department_id"]]);
+    if (!$chk->fetch()) err("Phong ban khong ton tai", 422);
+    $deptId = (int)$b["department_id"];
+  }
+  $active = isset($b["active"]) ? (int)$b["active"] : 1;
+  if (!empty($b["id"]) && is_numeric($b["id"])) {
+    $pdo->prepare("UPDATE salary_policies SET name=?, amount=?, department_id=?, active=? WHERE id=?")
+      ->execute([$name, (float)$b["amount"], $deptId, $active, (int)$b["id"]]);
+    out(["id" => (int)$b["id"], "updated" => 1]);
+  }
+  $pdo->prepare("INSERT INTO salary_policies(name, amount, department_id, active) VALUES(?,?,?,?)")
+    ->execute([$name, (float)$b["amount"], $deptId, $active]);
+  out(["id" => (int)$pdo->lastInsertId(), "created" => 1]);
+}
+// Xoa 1 muc phu cap chinh sach (Admin + Ke toan truong).
+if ($a === "salary-policy-delete" && $m === "POST") {
+  $me = require_payroll($pdo, true);
+  salary_ensure_policies_table($pdo);
+  $b = body();
+  if (empty($b["id"]) || !is_numeric($b["id"])) err("Thieu id phu cap");
+  $del = $pdo->prepare("DELETE FROM salary_policies WHERE id=?");
+  $del->execute([(int)$b["id"]]);
+  if ($del->rowCount() === 0) err("Khong tim thay khoan phu cap", 404);
+  out(["id" => (int)$b["id"], "deleted" => 1]);
 }
 if ($a === "dashboard" && $m === "GET") {
-  $total = $pdo->query("SELECT COUNT(*) c FROM employees WHERE status=1")->fetch()["c"];
-  $pending = $pdo->query("SELECT COUNT(*) c FROM leave_requests WHERE status='pending'")->fetch()["c"];
-  $todayLate = $pdo->query("SELECT COUNT(*) c FROM attendances WHERE work_date=CURDATE() AND status='late'")->fetch()["c"];
+  $me = require_login($pdo);
+  // Chi admin xem so lieu TOAN cong ty. Moi manager/staff (ke ca HR va Ke toan)
+  // chi thay so lieu phong ban cua minh — cung quy tac siet danh sach nhan vien.
+  if ($me["role"] === "admin" || is_executive($me)) {
+    $total = $pdo->query("SELECT COUNT(*) c FROM employees WHERE status=1")->fetch()["c"];
+    $pending = $pdo->query("SELECT COUNT(*) c FROM leave_requests WHERE status='pending'")->fetch()["c"];
+    $todayLate = $pdo->query("SELECT COUNT(*) c FROM attendances WHERE work_date=CURDATE() AND status='late'")->fetch()["c"];
+  } else {
+    // Manager/staff: so lieu chi trong phong ban cua minh.
+    $dept = (int)$me["department_id"];
+    $s = $pdo->prepare("SELECT COUNT(*) c FROM employees WHERE status=1 AND department_id=?"); $s->execute([$dept]);
+    $total = $s->fetch()["c"];
+    $s = $pdo->prepare("SELECT COUNT(*) c FROM leave_requests l JOIN employees e ON l.employee_id=e.id WHERE l.status='pending' AND e.department_id=?"); $s->execute([$dept]);
+    $pending = $s->fetch()["c"];
+    $s = $pdo->prepare("SELECT COUNT(*) c FROM attendances a JOIN employees e ON a.employee_id=e.id WHERE a.work_date=CURDATE() AND a.status='late' AND e.department_id=?"); $s->execute([$dept]);
+    $todayLate = $s->fetch()["c"];
+  }
   out(["total_active" => (int)$total, "pending_leaves" => (int)$pending, "late_today" => (int)$todayLate]);
+}
+// Danh sach thong bao CUA CHINH MINH (moi nhat truoc) + so chua doc cho badge.
+if ($a === "notify-list" && $m === "GET") {
+  $me = require_login($pdo);
+  notify_ensure_table($pdo);
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+  $stmt->execute([(int)$me["id"]]);
+  $unread = (int)$stmt->fetchColumn();
+  $stmt = $pdo->prepare("SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100");
+  $stmt->execute([(int)$me["id"]]);
+  out(["unread" => $unread, "items" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+}
+// Danh dau da doc: 1 thong bao (id) hoac tat ca (all=true). Chi cua chinh minh.
+if ($a === "notify-read" && $m === "POST") {
+  $me = require_login($pdo);
+  notify_ensure_table($pdo);
+  $b = body();
+  if (!empty($b["all"])) {
+    $pdo->prepare("UPDATE notifications SET is_read=1 WHERE user_id=? AND is_read=0")->execute([(int)$me["id"]]);
+  } elseif (!empty($b["id"]) && is_numeric($b["id"])) {
+    $pdo->prepare("UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?")->execute([(int)$b["id"], (int)$me["id"]]);
+  } else {
+    err("Can id hoac all=true", 422);
+  }
+  $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+  $stmt->execute([(int)$me["id"]]);
+  out(["unread" => (int)$stmt->fetchColumn()]);
 }
 err("Unknown action");
 ?>

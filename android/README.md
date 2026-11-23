@@ -6,33 +6,33 @@
 
 Khi bạn chạy máy chủ PHP (XAMPP/MAMP/WAMP) trên máy tính của bạn (Localhost), máy ảo Android **KHÔNG THỂ** kết nối tới bằng địa chỉ `localhost` hay `127.0.0.1`. Bạn BẮT BUỘC phải sử dụng **Địa chỉ IP mạng LAN (Wi-Fi)** thực tế của máy tính.
 
-Đôi khi cục phát Wi-Fi sẽ cấp lại một IP mới cho máy tính của bạn, dẫn đến lỗi **"failed to connect"**. Khi đó, bạn cần lấy lại IP và cập nhật vào ứng dụng.
+Đôi khi cục phát Wi-Fi sẽ cấp lại một IP mới cho máy tính của bạn, dẫn đến lỗi **"failed to connect" / "Lỗi kết nối"**. Khi đó, bạn cần lấy lại IP và cập nhật vào ứng dụng. Điện thoại phải bắt **cùng Wi-Fi** với laptop.
 
 ### Hướng dẫn tự lấy URL (Địa chỉ IP) để chạy App:
 
 #### BƯỚC 1: Lấy địa chỉ IP của máy tính
-**Nếu bạn dùng máy Mac (Macbook):**
-1. Mở ứng dụng **Terminal** (Nhấn `Command + Space` gõ Terminal).
-2. Copy và dán lệnh sau vào Terminal rồi nhấn Enter:
-   ```bash
-   ifconfig | grep "inet " | grep -v 127.0.0.1
-   ```
-3. Bạn sẽ thấy một dòng chứa địa chỉ IP dạng `192.168.x.x` (Ví dụ: `192.168.11.3`). Hãy ghi nhớ dãy số này.
+**Nếu bạn dùng máy Mac (Macbook):** mở **Terminal**, chạy:
+```bash
+ipconfig getifaddr en0
+```
+Bạn sẽ thấy địa chỉ IP dạng `192.168.x.x` (Ví dụ: `192.168.11.10`). Hãy ghi nhớ dãy số này.
 
 *(**Nếu bạn dùng máy Windows:** Mở Command Prompt (cmd), gõ `ipconfig`, tìm dòng `IPv4 Address` trong phần Wi-Fi).*
 
-#### BƯỚC 2: Cập nhật URL vào mã nguồn Android
-1. Mở Android Studio.
-2. Điều hướng tới file cấu hình API:
-   `app -> java -> com.example.employee_management_app -> ApiClient.java`
-3. Cập nhật lại chuỗi `BASE_URL` bằng IP bạn vừa lấy được. Chú ý thêm `http://` ở trước và tên thư mục chứa PHP `/employee-api/` ở sau.
-   ```java
-   // Ví dụ nếu IP là 192.168.11.3
-   private static final String BASE_URL = "http://192.168.11.3/employee-api/";
-   ```
+#### BƯỚC 2: Cập nhật IP (không sửa code)
+Mở file `local.properties` (ngang hàng `settings.gradle.kts`, file này gitignore nên mỗi máy tự giữ), thêm/sửa 1 dòng:
+```properties
+apiUrl=http://<IP-cua-ban>/employee-api/
+```
+Ví dụ: `apiUrl=http://192.168.11.10/employee-api/` (máy ảo dùng `http://10.0.2.2/employee-api/`).
+Không sửa `ApiClient.java` — app tự đọc IP này lúc Sync Gradle.
 
 #### BƯỚC 3: Chạy lại ứng dụng
-- Nhấn nút **Run / Rerun** (biểu tượng hình tam giác hoặc mũi tên vòng cung màu xanh) trên thanh công cụ của Android Studio để cài đặt lại ứng dụng với cấu hình IP mới nhất.
+- Bấm **Sync Now** trong Android Studio, rồi nhấn **Run / Rerun** để cài lại app với IP mới nhất.
+
+## Ghi chú: đã gỡ Firebase
+
+Quên mật khẩu chỉ dùng Email (server gửi mã 6 số). Kênh SMS Firebase đã gỡ nên clone về build chạy ngay, không cần `google-services.json`.
 
 ---
 

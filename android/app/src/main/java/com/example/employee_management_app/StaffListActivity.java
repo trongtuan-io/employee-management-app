@@ -17,6 +17,7 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -62,7 +63,17 @@ public class StaffListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Trang nay chi cho admin/manager: nhan vien bi chan ngay o giao dien
+        // (server cung tra 403 nen mo thang bang duong khac cung khong xem duoc).
+        String myRole = TokenManager.getInstance(this).getRole();
+        if (!"admin".equalsIgnoreCase(myRole) && !"manager".equalsIgnoreCase(myRole)) {
+            Toast.makeText(this, "Trang Quản lý nhân viên chỉ dành cho quản lý", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, HomeActivity.class));
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_staff_list);
+        BottomNavHelper.setup(this, R.id.nav_staff);
         applyWindowInsets();
         setTitle(R.string.staff_title);
         api = ApiClient.getClient(this).create(EmployeeApi.class);
@@ -86,9 +97,18 @@ public class StaffListActivity extends AppCompatActivity {
             cancelStaffCall();
             loadStaff();
         });
-        boolean admin = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        boolean admin = TokenManager.getInstance(this).isExecutive();
+        int myDeptId = TokenManager.getInstance(this).getDepartmentId();
+        if (!admin && myDeptId > 0) {
+            query = query.withDepartment(myDeptId);
+        }
         findViewById(R.id.btnManageDepartments).setVisibility(admin ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnImportEmployees).setVisibility(admin ? View.VISIBLE : View.GONE);
+        Button btnHistory = findViewById(R.id.btnStaffHistory);
+        if (btnHistory != null) {
+            btnHistory.setVisibility(admin ? View.VISIBLE : View.GONE);
+            btnHistory.setOnClickListener(v -> startActivity(new Intent(this, HrHistoryActivity.class)));
+        }
         findViewById(R.id.btnManageDepartments).setOnClickListener(v ->
                 startActivity(new Intent(this, DepartmentActivity.class)));
         findViewById(R.id.btnImportEmployees).setOnClickListener(v ->
@@ -347,21 +367,39 @@ public class StaffListActivity extends AppCompatActivity {
                         return;
                     }
                 }
+                boolean admin = TokenManager.getInstance(StaffListActivity.this).isExecutive();
+                int myDeptId = TokenManager.getInstance(StaffListActivity.this).getDepartmentId();
+
                 departmentAdapter.clear();
-                departmentAdapter.add(new DepartmentListResponse.Item(0, getString(R.string.staff_all_departments)));
-                departmentAdapter.addAll(departments);
+                if (admin) {
+                    departmentAdapter.add(new DepartmentListResponse.Item(0, getString(R.string.staff_all_departments)));
+                    departmentAdapter.addAll(departments);
+                } else {
+                    for (DepartmentListResponse.Item item : departments) {
+                        if (item.getId() == myDeptId) {
+                            departmentAdapter.add(item);
+                            break;
+                        }
+                    }
+                    if (departmentAdapter.getCount() == 0 && !departments.isEmpty()) {
+                        departmentAdapter.add(departments.get(0));
+                    }
+                }
                 int selectedPosition = 0;
-                for (int i = 1; i < departmentAdapter.getCount(); i++) {
+                for (int i = 0; i < departmentAdapter.getCount(); i++) {
                     if (departmentAdapter.getItem(i).getId() == query.departmentId) selectedPosition = i;
                 }
                 DepartmentListResponse.Item selected = departmentAdapter.getItem(selectedPosition);
-                departmentName = selected.getName();
+                if (selected != null) {
+                    departmentName = selected.getName();
+                }
                 departmentSpinner.setSelection(selectedPosition);
-                departmentSpinner.setEnabled(true);
+                departmentSpinner.setEnabled(admin);
                 departmentMessage.setText(R.string.staff_departments_empty);
                 departmentMessage.setVisibility(departments.isEmpty() ? View.VISIBLE : View.GONE);
-                // Phong ban da bi xoa: tro ve tat ca phong ban va trang dau.
-                changeQuery(query.withDepartment(selected.getId()), false);
+                if (selected != null) {
+                    changeQuery(query.withDepartment(selected.getId()), false);
+                }
             }
 
             @Override

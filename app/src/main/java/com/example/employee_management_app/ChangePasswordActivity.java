@@ -29,12 +29,23 @@ public class ChangePasswordActivity extends AppCompatActivity {
     }
 
     private void changePassword() {
-        String oldPass = etOldPassword.getText().toString().trim();
-        String newPass = etNewPassword.getText().toString().trim();
-        String confirmPass = etConfirmPassword.getText().toString().trim();
+        // Khong trim mat khau (khoang trang la mot phan cua mat khau).
+        String oldPass = etOldPassword.getText().toString();
+        String newPass = etNewPassword.getText().toString();
+        String confirmPass = etConfirmPassword.getText().toString();
 
         if (oldPass.isEmpty() || newPass.isEmpty() || confirmPass.isEmpty()) {
             Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (newPass.length() < 6) {
+            etNewPassword.setError("Mật khẩu mới phải có ít nhất 6 ký tự");
+            return;
+        }
+
+        if (newPass.equals(oldPass)) {
+            etNewPassword.setError("Mật khẩu mới phải khác mật khẩu cũ");
             return;
         }
 

@@ -41,6 +41,12 @@ public class LoginResponse {
         @SerializedName("token")
         private String token;
 
+        @SerializedName("department_id")
+        private int departmentId;
+
+        @SerializedName("department_name")
+        private String departmentName;
+
         public int getId() {
             return id;
         }
@@ -55,6 +61,14 @@ public class LoginResponse {
 
         public String getToken() {
             return token;
+        }
+
+        public int getDepartmentId() {
+            return departmentId;
+        }
+
+        public String getDepartmentName() {
+            return departmentName;
         }
     }
 }

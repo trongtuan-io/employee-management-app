@@ -43,7 +43,7 @@ public class DepartmentActivity extends AppCompatActivity {
         api = ApiClient.getClient(this).create(EmployeeApi.class);
         message = findViewById(R.id.tvDepartmentStatus);
         addButton = findViewById(R.id.btnAddDepartment);
-        boolean admin = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        boolean admin = TokenManager.getInstance(this).isExecutive();
         addButton.setVisibility(admin ? View.VISIBLE : View.GONE);
         addButton.setOnClickListener(v -> editDepartment(null));
         ListView list = findViewById(R.id.lvDepartments);

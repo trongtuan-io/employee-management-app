@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            style="@style/AppTitle"
+            android:text="Giải trình quên chấm công"
+            android:textSize="18sp" />
+
+        <TextView
+            style="@style/AppLabel"
+            android:layout_marginTop="16dp"
+            android:text="Ngày cần giải trình" />
+
+        <EditText
+            android:id="@+id/edtExplDate"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:clickable="true"
+            android:focusable="false"
+            android:hint="Chọn ngày (YYYY-MM-DD)"
+            android:inputType="none" />
+
+        <TextView
+            style="@style/AppLabel"
+            android:layout_marginTop="14dp"
+            android:text="Loại giải trình" />
+
+        <Spinner
+            android:id="@+id/spExplKind"
+            style="@style/AppSpinner"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            style="@style/AppLabel"
+            android:layout_marginTop="14dp"
+            android:text="Giờ vào đề xuất (HH:MM) — chỉ điền nếu quên chấm vào" />
+
+        <EditText
+            android:id="@+id/edtExplIn"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="Ví dụ 08:00"
+            android:inputType="time" />
+
+        <TextView
+            style="@style/AppLabel"
+            android:layout_marginTop="14dp"
+            android:text="Giờ ra đề xuất (HH:MM) — chỉ điền nếu quên chấm ra" />
+
+        <EditText
+            android:id="@+id/edtExplOut"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="Ví dụ 17:30"
+            android:inputType="time" />
+
+        <TextView
+            style="@style/AppLabel"
+            android:layout_marginTop="14dp"
+            android:text="Lý do" />
+
+        <EditText
+            android:id="@+id/edtExplReason"
+            style="@style/AppInput"
+            android:layout_marginTop="8dp"
+            android:hint="Ví dụ: quên điện thoại ở nhà"
+            android:inputType="text" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnExplCancel"
+                style="@style/AppButtonSecondary"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="Huỷ" />
+
+            <Button
+                android:id="@+id/btnExplSubmit"
+                style="@style/AppButtonPrimary"
+                android:layout_width="0dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Gửi giải trình" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

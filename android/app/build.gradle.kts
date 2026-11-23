@@ -1,25 +1,46 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.google.services)
 }
+
+import java.util.Properties
+
+// IP backend rieng tung may: dat trong local.properties (file nay gitignore,
+// khong day len GitHub) -> khong con phai sua code khi doi mang.
+// Vi du them 1 dong: apiUrl=http://192.168.11.10/employee-api/
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use(::load)
+}
+val apiUrl: String = (localProps.getProperty("apiUrl")
+    ?: System.getenv("API_URL")
+    ?: "http://172.16.8.36/employee-api/")
 
 android {
     namespace = "com.example.employee_management_app"
-    compileSdk = 36
+    compileSdk {
+        version = release(37)
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.example.employee_management_app"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "API_URL", "\"$apiUrl\"")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            optimization {
+                enable = false
+            }
         }
     }
     compileOptions {
@@ -39,16 +60,16 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:3.14.9")
 
-    // Google Play Services Location
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-
-    // Firebase Phone Auth (SMS mien phi)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-
     // Tai + hien thi anh dai dien
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
+    // Cham cong sinh trac hoc (2026-11-16):
+    // - Van tay: BiometricPrompt cua AndroidX (xac thuc van tay tren may)
+    // - Khuon mat: ML Kit phat hien/cat khuon mat + FaceNet TFLite trich embedding
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)

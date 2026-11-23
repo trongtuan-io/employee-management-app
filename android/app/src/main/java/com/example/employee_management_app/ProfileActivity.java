@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -54,10 +55,15 @@ public class ProfileActivity extends AppCompatActivity {
     private EmployeeDetailResponse.Detail loadedProfile;
     private Call<EmployeeDetailResponse> profileCall;
     private Call<ApiResponse> saveCall;
+    private Call<PositionListResponse> positionsCall;
+    private int positionsForDept = -1;
+    private Call<ApiResponse> lockCall;
+    private boolean lockInFlight;
     private boolean loading, saving;
     private EditText etHireDate;
     private Spinner spDepartment, spPosition;
     private boolean departmentsLoaded, positionsLoaded;
+    private boolean suppressDeptEvent;
     private final List<DepartmentListResponse.Item> departmentChoices = new ArrayList<>();
     private final List<PositionListResponse.Item> positionChoices = new ArrayList<>();
 
@@ -65,6 +71,23 @@ public class ProfileActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
+        BottomNavHelper.setup(this, R.id.nav_profile);
+
+        Button btnProfileLogout = findViewById(R.id.btnProfileLogout);
+        if (btnProfileLogout != null) {
+            btnProfileLogout.setOnClickListener(v -> {
+                // Thu hoi token phia server truoc, roi moi xoa phien o client.
+                ApiClient.getClient(this).create(AuthApi.class).logout().enqueue(new Callback<ApiResponse>() {
+                    @Override public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) { }
+                    @Override public void onFailure(Call<ApiResponse> c, Throwable t) { }
+                });
+                TokenManager.getInstance(this).clearToken();
+                Intent i = new Intent(this, LoginActivity.class);
+                i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(i);
+                finish();
+            });
+        }
         findViewById(R.id.btnBackProfile).setOnClickListener(v -> finish());
         View root = findViewById(R.id.profileRoot);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
@@ -113,14 +136,35 @@ public class ProfileActivity extends AppCompatActivity {
         // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
         // Dat SAU khi xac dinh isAdminMode o tren.
         findViewById(R.id.layoutLock).setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
+        boolean isExec = TokenManager.getInstance(this).isExecutive();
+        findViewById(R.id.btnDeleteProfileEmployee).setVisibility(isExec && targetId != myId ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnDeleteProfileEmployee).setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Xóa tài khoản?")
+                    .setMessage("Hành động này sẽ xóa vĩnh viễn nhân viên này khỏi hệ thống. Không thể hoàn tác.")
+                    .setNegativeButton("Hủy", null)
+                    .setPositiveButton("Xóa", (dlg, which) -> deleteEmployee())
+                    .show();
+        });
         ((TextView) findViewById(R.id.tvProfilePermissions)).setText(isAdminMode
                 ? "* Trường bắt buộc. Số điện thoại có thể để trống."
                 : "Bạn được sửa họ tên và ảnh đại diện. Liên hệ người quản lý để cập nhật thông tin khác.");
-        ((TextView) findViewById(R.id.tvProfileHireDate)).setText("Ngày vào làm: Chưa có dữ liệu");
+        ((TextView) findViewById(R.id.tvProfileHireDate)).setText("Chưa có dữ liệu");
         etHireDate.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         spDepartment.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         spPosition.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnRetryProfileLookups).setOnClickListener(v -> loadLookups());
+        // Doi phong ban -> tai lai chuc vu chi cua phong do (+ chuc vu dung chung).
+        spDepartment.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                if (suppressDeptEvent || !departmentsLoaded || pos < 0 || pos >= departmentChoices.size()) return;
+                loadPositions(departmentChoices.get(pos).getId());
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
         if (isAdminMode) loadLookups();
         etHireDate.setOnClickListener(v -> {
             java.util.Calendar calendar = java.util.Calendar.getInstance();
@@ -148,11 +192,20 @@ public class ProfileActivity extends AppCompatActivity {
 
     // Gat cong tac: server tu chan theo quyen (admin moi phong / sep cung phong)
     private void setLock(boolean enable) {
+        if (lockInFlight) { // dang cho server: bo qua lan gat them, giu nguyen trang thai cong tac
+            revertLock(enable);
+            return;
+        }
         int newStatus = enable ? 1 : 0;
+        lockInFlight = true;
+        swLock.setEnabled(false);
         EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
-        api.setStatus(new SetStatusRequest(targetId, myId, newStatus)).enqueue(new Callback<ApiResponse>() {
+        lockCall = api.setStatus(new SetStatusRequest(targetId, myId, newStatus));
+        lockCall.enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                lockInFlight = false;
+                if (isFinishing() || isDestroyed() || c.isCanceled()) return;
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
                     Toast.makeText(ProfileActivity.this,
                             newStatus == 0 ? "Đã khóa tài khoản!" : "Đã mở khóa!",
@@ -160,14 +213,18 @@ public class ProfileActivity extends AppCompatActivity {
                     loadProfile(); // tai lai de dong bo trang thai that tu server
                 } else {
                     revertLock(enable);
-                    Toast.makeText(ProfileActivity.this, "Không có quyền (sếp chỉ khóa NV phòng mình)", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ProfileActivity.this, apiError(r, "Không đổi được trạng thái khóa"), Toast.LENGTH_LONG).show();
                 }
+                updateControls();
             }
 
             @Override
             public void onFailure(Call<ApiResponse> c, Throwable t) {
+                lockInFlight = false;
+                if (isFinishing() || isDestroyed() || c.isCanceled()) return;
                 revertLock(enable);
                 Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                updateControls();
             }
         });
     }
@@ -198,19 +255,24 @@ public class ProfileActivity extends AppCompatActivity {
                     etEmail.setText(ProfileValidation.text(d.getEmail()));
                     etPhone.setText(ProfileValidation.text(d.getPhone()));
                     ((TextView) findViewById(R.id.tvProfileCode)).setText(
-                            "Mã NV / Tên đăng nhập: " + ProfileValidation.display(d.getUsername()));
-                    ((TextView) findViewById(R.id.tvProfileId)).setText("ID nhân viên: " + d.getId());
+                            ProfileValidation.display(d.getUsername()));
+                    ((TextView) findViewById(R.id.tvProfileId)).setText(String.valueOf(d.getId()));
                     ((TextView) findViewById(R.id.tvProfileDepartment)).setText(ProfileValidation.display(d.getDeptName()));
                     ((TextView) findViewById(R.id.tvProfilePosition)).setText(ProfileValidation.display(d.getPositionName()));
                     ((TextView) findViewById(R.id.tvProfileCreatedAt)).setText(
-                            "Ngày tạo tài khoản: " + ProfileValidation.display(d.getCreatedAt()));
+                            ProfileValidation.display(d.getCreatedAt()));
                     ((TextView) findViewById(R.id.tvProfileHireDate)).setText(
-                            "Ngày vào làm: " + ProfileValidation.display(d.getHireDate()));
+                            ProfileValidation.display(d.getHireDate()));
                     etHireDate.setText(ProfileValidation.text(d.getHireDate()));
                     selectLookupValues();
+                    // Loc lai chuc vu theo dung phong ban cua ho so nay (ke ca khi lan tai truoc chua xong).
+                    if (isAdminMode && positionsForDept != d.getDepartmentId()) loadPositions(d.getDepartmentId());
                     currentStatus = d.getStatus();
-                    ((TextView) findViewById(R.id.tvProfileStatus)).setText("Trạng thái tài khoản: "
-                            + (currentStatus == 1 ? "Đang hoạt động" : currentStatus == 0 ? "Đã khóa" : "Chưa xác định"));
+                    TextView tvStatusBox = findViewById(R.id.tvProfileStatus);
+                    tvStatusBox.setText(
+                            currentStatus == 1 ? "Đang hoạt động" : currentStatus == 0 ? "Đã khóa" : "Chưa xác định");
+                    tvStatusBox.setTextColor(getColor(
+                            currentStatus == 1 ? R.color.success : currentStatus == 0 ? R.color.danger : R.color.text_secondary));
                     suppressLockEvent = true;
                     swLock.setChecked(currentStatus == 1);
                     suppressLockEvent = false;
@@ -334,9 +396,21 @@ public class ProfileActivity extends AppCompatActivity {
             }
             @Override public void onFailure(Call<DepartmentListResponse> c, Throwable e) { if (!isFinishing()) lookupError(); }
         });
-        api.getPositions().enqueue(new Callback<PositionListResponse>() {
+        loadPositions(loadedProfile != null ? loadedProfile.getDepartmentId() : 0);
+    }
+
+    // deptId = 0 -> tat ca chuc vu; > 0 -> chuc vu cua phong do + chuc vu dung chung.
+    // Huy call cu va bo qua response ve tre (tranh spinner chua chuc vu cua phong truoc).
+    private void loadPositions(int deptId) {
+        if (positionsCall != null) positionsCall.cancel();
+        positionsForDept = deptId;
+        positionsLoaded = false;
+        updateControls();
+        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
+        positionsCall = deptId > 0 ? api.getPositions(deptId) : api.getPositions();
+        positionsCall.enqueue(new Callback<PositionListResponse>() {
             @Override public void onResponse(Call<PositionListResponse> c, Response<PositionListResponse> r) {
-                if (isFinishing()) return;
+                if (isFinishing() || isDestroyed() || c.isCanceled() || deptId != positionsForDept) return;
                 if (!r.isSuccessful() || r.body() == null || !r.body().isSuccess() || r.body().getData() == null) {
                     lookupError(); return;
                 }
@@ -350,17 +424,22 @@ public class ProfileActivity extends AppCompatActivity {
                 positionsLoaded = true;
                 selectLookupValues(); lookupReady();
             }
-            @Override public void onFailure(Call<PositionListResponse> c, Throwable e) { if (!isFinishing()) lookupError(); }
+            @Override public void onFailure(Call<PositionListResponse> c, Throwable e) {
+                if (isFinishing() || isDestroyed() || c.isCanceled() || deptId != positionsForDept) return;
+                lookupError();
+            }
         });
     }
     private void selectLookupValues() {
         if (loadedProfile == null) return;
+        suppressDeptEvent = true;
         if (departmentsLoaded) for (int i=0; i<departmentChoices.size(); i++) {
             if (departmentChoices.get(i).getId() == loadedProfile.getDepartmentId()) { spDepartment.setSelection(i); break; }
         }
         if (positionsLoaded) for (int i=0; i<positionChoices.size(); i++) {
             if (positionChoices.get(i).getId() == loadedProfile.getPositionId()) { spPosition.setSelection(i); break; }
         }
+        suppressDeptEvent = false;
     }
     private void lookupReady() {
         if (departmentsLoaded && positionsLoaded) {
@@ -377,12 +456,17 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void updateControls() {
         boolean editable = loadedProfile != null && !loading && !saving;
+        boolean isAdminAccount = loadedProfile != null && ("admin".equalsIgnoreCase(loadedProfile.getUsername()) || loadedProfile.getId() == 1);
         etName.setEnabled(editable);
         etEmail.setEnabled(editable && isAdminMode);
         etPhone.setEnabled(editable && isAdminMode);
         btnSave.setEnabled(editable);
         btnAvatar.setEnabled(editable);
-        swLock.setEnabled(editable);
+        // Khong cho khoa tai khoan admin goc hoac chinh minh
+        swLock.setEnabled(editable && targetId != myId && !lockInFlight && !isAdminAccount);
+        if (isAdminAccount) {
+            findViewById(R.id.btnDeleteProfileEmployee).setVisibility(View.GONE);
+        }
         etHireDate.setEnabled(editable && isAdminMode);
         spDepartment.setEnabled(editable && isAdminMode && departmentsLoaded);
         spPosition.setEnabled(editable && isAdminMode && positionsLoaded);
@@ -415,6 +499,8 @@ public class ProfileActivity extends AppCompatActivity {
     @Override protected void onDestroy() {
         if (profileCall != null) profileCall.cancel();
         if (saveCall != null) saveCall.cancel();
+        if (positionsCall != null) positionsCall.cancel();
+        if (lockCall != null) lockCall.cancel();
         super.onDestroy();
     }
 
@@ -478,5 +564,28 @@ public class ProfileActivity extends AppCompatActivity {
             temporaryFile.delete();
             Toast.makeText(this, "Không đọc được ảnh: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void deleteEmployee() {
+        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
+        api.deleteEmployee(new SalaryFinalizeRequest(targetId)).enqueue(new Callback<ApiResponse>() {
+            @Override
+            public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+                if (isFinishing() || isDestroyed()) return;
+                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
+                    Toast.makeText(ProfileActivity.this, "Đã xóa tài khoản nhân viên", Toast.LENGTH_SHORT).show();
+                    finish();
+                } else {
+                    Toast.makeText(ProfileActivity.this, ApiError.message(r, "Không thể xóa tài khoản"), Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ApiResponse> c, Throwable t) {
+                if (!isFinishing()) {
+                    Toast.makeText(ProfileActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 }
