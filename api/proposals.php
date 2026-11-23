@@ -174,13 +174,20 @@ if ($a === "approve" && $m === "POST") {
   $stmt->execute([$id]);
   $prop = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$prop) err("Khong tim thay de xuat", 404);
-  if ($prop["status"] !== "pending" && $prop["status"] !== "hr_pending") {
-    err("Đề xuất này đã được xử lý từ trước", 409);
+
+  // 1. BOD CHỈ ĐƯỢC DUYỆT KHI TRẠNG THÁI LÀ 'pending' (ĐÃ QUA HR KIỂM DUYỆT).
+  // Nếu là 'hr_pending' (vẫn đang chờ Manager HR kiểm duyệt nội bộ), BOD chưa có thẩm quyền duyệt.
+  if ($prop["status"] === "hr_pending") {
+    err("Hồ sơ này còn đang chờ Trưởng phòng HR kiểm duyệt nội bộ (hr_pending), BOD chưa có thẩm quyền duyệt", 409);
+  }
+  if ($prop["status"] !== "pending") {
+    err("Đề xuất này không ở trạng thái chờ duyệt (pending)", 409);
   }
 
   // Cập nhật trạng thái đề xuất
-  $upd = $pdo->prepare("UPDATE hr_proposals SET status=?, $approverCol=?, $approverTimeCol=NOW() WHERE id=?");
+  $upd = $pdo->prepare("UPDATE hr_proposals SET status=?, $approverCol=?, $approverTimeCol=NOW() WHERE id=? AND status='pending'");
   $upd->execute([$status, (int)$me["id"], $id]);
+  if ($upd->rowCount() === 0) err("Đề xuất đã được xử lý bởi người khác", 409);
 
   $applied = false;
   if ($status === "approved") {
@@ -197,35 +204,10 @@ if ($a === "approve" && $m === "POST") {
     switch ($propType) {
       case "recruitment":
       case "new_hire":
-        if ($empId > 0) {
-          $pdo->prepare("UPDATE employees SET status=1 WHERE id=?")->execute([$empId]);
-          $applied = true;
-        } elseif (!empty($pData["username"]) && !empty($pData["email"])) {
-          // Kích hoạt/Tạo nhân viên mới từ dữ liệu tuyển dụng
-          $username = employee_username($pData["username"]);
-          $email = employee_email($pData["email"]);
-          $name = employee_name($pData["full_name"] ?? "Nhân viên mới");
-          $deptId = !empty($pData["department_id"]) ? (int)$pData["department_id"] : null;
-          $posId = !empty($pData["position_id"]) ? (int)$pData["position_id"] : null;
-          $roleId = !empty($pData["role_id"]) ? (int)$pData["role_id"] : 3;
-          $salary = !empty($pData["base_salary"]) ? (float)$pData["base_salary"] : 0;
-
-          $chk = $pdo->prepare("SELECT id FROM employees WHERE username=? OR email=? LIMIT 1");
-          $chk->execute([$username, $email]);
-          $existingId = $chk->fetchColumn();
-          if ($existingId) {
-            $pdo->prepare("UPDATE employees SET status=1, department_id=?, position_id=?, role_id=? WHERE id=?")
-               ->execute([$deptId, $posId, $roleId, (int)$existingId]);
-            $pdo->prepare("UPDATE hr_proposals SET employee_id=? WHERE id=?")->execute([(int)$existingId, $id]);
-          } else {
-            $tempPass = password_hash("123456", PASSWORD_BCRYPT);
-            $ins = $pdo->prepare("INSERT INTO employees(username, password_hash, full_name, email, status, role_id, department_id, position_id, base_salary) VALUES(?,?,?,?,1,?,?,?,?)");
-            $ins->execute([$username, $tempPass, $name, $email, $roleId, $deptId, $posId, $salary]);
-            $newEmpId = (int)$pdo->lastInsertId();
-            $pdo->prepare("UPDATE hr_proposals SET employee_id=? WHERE id=?")->execute([$newEmpId, $id]);
-          }
-          $applied = true;
-        }
+        // THEO LUỒNG ĐÃ CHỐT: BOD CHỈ DUYỆT ĐỀ XUẤT TUYỂN DỤNG.
+        // KHÔNG TỰ ĐỘNG TẠO TÀI KHOẢN HOẶC GÁN MẬT KHẨU MẶC ĐỊNH 123456 TẠI ĐÂY.
+        // SAU KHI BOD DUYỆT, HR SẼ LÀ NGƯỜI HOÀN THIỆN VÀ KÍCH HOẠT TÀI KHOẢN QUA LUỒNG HR (hr_proposals.php?action=activate).
+        $applied = true;
         break;
 
       case "salary_change":
