@@ -2,6 +2,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/employee_validation.php';
 require_once __DIR__ . '/auth_guard.php';
+require_once __DIR__ . '/hr_employee_policy.php';
 require_once __DIR__ . '/positions_logic.php';
 $action = $_GET['action'] ?? 'list';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -16,7 +17,7 @@ if ($action === 'members' && $method === 'GET') {
     // - manager (MOI phong): chi xem phong cua minh.
     // - staff: khong xem duoc.
     $me = require_login($pdo);
-    $isGlobal = $me['role'] === 'admin';
+    $isGlobal = $me['role'] === 'admin' || hr_employee_actor($me);
     if (!$isGlobal && $me['role'] !== 'manager') err('Khong co quyen xem thanh vien phong ban', 403);
     $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
     if (!$id) err('Thieu id phong ban', 422);

@@ -52,7 +52,9 @@ public class AdminActivity extends AppCompatActivity {
         // Tao tai khoan chi cho admin/manager; NV phong HR/Ke toan vao duoc man
         // Tong quan qua menu day du nhung khong thay nut nay (API cung se chan).
         String myRole = TokenManager.getInstance(this).getRole();
-        if (!("admin".equalsIgnoreCase(myRole) || "manager".equalsIgnoreCase(myRole))) {
+        boolean hrManager = "manager".equalsIgnoreCase(myRole)
+                && "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
+        if (!("admin".equalsIgnoreCase(myRole) || hrManager)) {
             btnCreateAccount.setVisibility(android.view.View.GONE);
         }
         Button btnPass = findViewById(R.id.btnAdminChangePass);

@@ -35,11 +35,11 @@ public class ImportEmployeesActivity extends AppCompatActivity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         setContentView(R.layout.activity_import_employees);
-        setTitle("Nhập Excel nhân viên");
+        setTitle("Nhập Excel/CSV - HR");
         status = findViewById(R.id.tvImportStatus);
         choose = findViewById(R.id.btnChooseImport);
-        if (!"admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole())) {
-            choose.setEnabled(false); status.setText("Chỉ quản trị viên được import dữ liệu."); return;
+        if (!HrUi.hr(this)) {
+            choose.setEnabled(false); status.setText("Chỉ phòng Nhân sự được import dữ liệu."); return;
         }
         choose.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -65,7 +65,7 @@ public class ImportEmployeesActivity extends AppCompatActivity {
         }
         final String selectedName = fileName;
         new AlertDialog.Builder(this).setTitle("Xác nhận import")
-                .setMessage("Nhập tất cả nhân viên từ " + fileName + "? Dòng bị lỗi sẽ khiến cả lần nhập bị hủy.")
+                .setMessage("Nhập từ " + fileName + "? Nhân viên thường do Manager HR duyệt; trưởng phòng trở lên cần BOD phê duyệt. Dòng lỗi sẽ rollback cả đợt.")
                 .setNegativeButton("Hủy", null).setPositiveButton("Nhập", (d,w) -> upload(uri, selectedName)).show();
     }
     private void upload(Uri uri, String fileName) {
@@ -93,7 +93,11 @@ public class ImportEmployeesActivity extends AppCompatActivity {
                             if (!response.isSuccessful() || r == null || !r.isSuccess() || r.getData() == null) {
                                 status.setText("Nhập thất bại (HTTP " + response.code() + "). Kiểm tra tên cột, dữ liệu trùng và migration."); return;
                             }
-                            status.setText("Đã nhập " + r.getData().getImported() + " nhân viên. Lưu mật khẩu tạm ngay; chỉ hiển thị một lần.");
+                            String workflow = "draft".equals(r.getData().getStatus()) ? "nháp (Staff HR cần gửi Manager HR)" : "chờ Manager HR kiểm duyệt";
+                            status.setText("Đã tạo " + r.getData().getProposed() +
+                                    " đề xuất tuyển dụng; cập nhật " + r.getData().getUpdated() +
+                                    " hồ sơ; làm mới " + r.getData().getRefreshed() +
+                                    " đề xuất (" + workflow + "). Tài khoản chỉ kích hoạt sau khi Manager HR duyệt (nhân viên thường) hoặc BOD duyệt (trưởng phòng trở lên).");
                             List<EmployeeImportResponse.Credential> creds = r.getData().getCredentials();
                             if (creds != null && !creds.isEmpty()) {
                                 StringBuilder text = new StringBuilder();

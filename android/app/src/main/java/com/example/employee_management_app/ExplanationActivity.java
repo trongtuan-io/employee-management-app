@@ -67,7 +67,11 @@ public class ExplanationActivity extends AppCompatActivity {
         lv.setAdapter(adapter);
         lv.setOnItemClickListener((parent, view, position, id) -> {
             ExplanationListResponse.Item item = items.get(position);
-            if (mode == MODE_QUEUE && "pending".equals(item.getStatus())) showApproveDialog(item);
+            boolean hrWatcher = "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
+            boolean staffHr = hrWatcher && "staff".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+            boolean otherDept = hrWatcher && item.getDeptName()!=null && !"HR".equalsIgnoreCase(item.getDeptName());
+            if (mode == MODE_QUEUE && "pending".equals(item.getStatus()) && !staffHr && !otherDept && item.getTargetRoleId()!=2)
+                showApproveDialog(item);
             else showDetailDialog(item);
         });
 

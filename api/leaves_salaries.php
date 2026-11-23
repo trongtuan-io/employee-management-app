@@ -172,7 +172,7 @@ if ($a === "leave-list" && $m === "GET") {
   $me = require_login($pdo);
   $emp = $_GET["employee_id"] ?? "";
   // Nhan vien khong truyen employee_id: mac dinh xem don cua chinh minh (khong phai hang cho duyet).
-  if ($emp === "" && $me["role"] === "staff") $emp = (string)(int)$me["id"];
+  if ($emp === "" && $me["role"] === "staff" && !is_hr($me)) $emp = (string)(int)$me["id"];
   if ($emp !== "") {
     if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true)
         && !is_hr($me)) err("Khong co quyen xem don cua nguoi khac", 403);
@@ -197,7 +197,7 @@ if ($a === "leave-list" && $m === "GET") {
     // xu ly de truy vet: don duyet xong KHONG bien mat khoi danh sach nua.
     // Don dang cho duyet xep len dau.
     leave_ensure_columns($pdo);
-    $cols = "l.*, e.full_name, d.name AS dept_name, a.full_name AS approver_name";
+    $cols = "l.*, e.full_name, d.name AS dept_name, e.role_id AS target_role_id, a.full_name AS approver_name";
     $joins = "FROM leave_requests l JOIN employees e ON l.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN employees a ON a.id=l.approved_by";
     $order = "ORDER BY (l.status='pending') DESC, l.id DESC";
     if ($me["role"] === "manager" && !is_hr($me)) {
@@ -215,13 +215,14 @@ if ($a === "leave-approve" && $m === "POST") {
   if (empty($b["id"]) || empty($b["status"])) err("Thieu id/status");
   if (!in_array($b["status"], ["approved", "rejected"], true)) err("status chi duoc la approved/rejected");
   leave_ensure_columns($pdo);
-  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, l.leave_type, e.department_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
+  $stmt = $pdo->prepare("SELECT l.status, l.employee_id, l.start_date, l.end_date, l.leave_type, e.department_id, e.role_id AS target_role_id FROM leave_requests l JOIN employees e ON l.employee_id = e.id WHERE l.id = ? LIMIT 1");
   $stmt->execute([(int)$b["id"]]);
   $leave = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$leave) err("Khong tim thay don nghi", 404);
   if ($leave["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
   // Khong ai duoc tu duyet don cua chinh minh; don cua quan ly do Admin duyet.
   if ((int)$leave["employee_id"] === (int)$me["id"]) err("Khong the tu duyet don cua chinh minh", 403);
+  if ((int)$leave['target_role_id'] === 2) err('Don truong phong can nguoi co tham quyen BOD duyet', 403);
   // Sep phong chi duyet duoc don cua nhan vien phong minh.
   if ($me["role"] === "manager" && (int)$leave["department_id"] !== (int)$me["department_id"]) {
     err("Chi duyet duoc don nghi cua nhan vien phong ban minh", 403);

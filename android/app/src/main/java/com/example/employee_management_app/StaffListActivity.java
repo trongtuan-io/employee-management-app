@@ -66,8 +66,10 @@ public class StaffListActivity extends AppCompatActivity {
         // Trang nay chi cho admin/manager: nhan vien bi chan ngay o giao dien
         // (server cung tra 403 nen mo thang bang duong khac cung khong xem duoc).
         String myRole = TokenManager.getInstance(this).getRole();
-        if (!"admin".equalsIgnoreCase(myRole) && !"manager".equalsIgnoreCase(myRole)) {
-            Toast.makeText(this, "Trang Quản lý nhân viên chỉ dành cho quản lý", Toast.LENGTH_LONG).show();
+        boolean hrStaff = "staff".equalsIgnoreCase(myRole)
+                && "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
+        if (!"admin".equalsIgnoreCase(myRole) && !"manager".equalsIgnoreCase(myRole) && !hrStaff) {
+            Toast.makeText(this, "Không có quyền xem danh sách nhân viên", Toast.LENGTH_LONG).show();
             startActivity(new Intent(this, HomeActivity.class));
             finish();
             return;
@@ -99,7 +101,12 @@ public class StaffListActivity extends AppCompatActivity {
         });
         boolean admin = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
         findViewById(R.id.btnManageDepartments).setVisibility(admin ? View.VISIBLE : View.GONE);
-        findViewById(R.id.btnImportEmployees).setVisibility(admin ? View.VISIBLE : View.GONE);
+        boolean hrMember = "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName())
+                && ("manager".equalsIgnoreCase(myRole) || "staff".equalsIgnoreCase(myRole));
+        findViewById(R.id.btnImportEmployees).setVisibility(hrMember ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnOpenHrHub).setVisibility(hrMember ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnOpenHrHub).setOnClickListener(v ->
+                startActivity(new Intent(this, HrHubActivity.class)));
         findViewById(R.id.btnManageDepartments).setOnClickListener(v ->
                 startActivity(new Intent(this, DepartmentActivity.class)));
         findViewById(R.id.btnImportEmployees).setOnClickListener(v ->
@@ -358,8 +365,9 @@ public class StaffListActivity extends AppCompatActivity {
                         return;
                     }
                 }
-                // Manager chi co the loc nhan vien phong minh; khong hien cac phong khac.
-                if ("manager".equalsIgnoreCase(TokenManager.getInstance(StaffListActivity.this).getRole())) {
+                // Manager ngoai HR chi loc nhan vien phong minh. HR quan ly toan cong ty.
+                if ("manager".equalsIgnoreCase(TokenManager.getInstance(StaffListActivity.this).getRole())
+                        && !"HR".equalsIgnoreCase(TokenManager.getInstance(StaffListActivity.this).getDepartmentName())) {
                     String ownDept = TokenManager.getInstance(StaffListActivity.this).getDepartmentName();
                     DepartmentListResponse.Item mine = null;
                     for (DepartmentListResponse.Item item : departments) {
@@ -405,7 +413,8 @@ public class StaffListActivity extends AppCompatActivity {
     private void showDepartmentError() {
         // Giu lua chon da co; van co the chon lai "Tat ca" neu API phong ban loi.
         departmentSpinner.setEnabled(!"manager".equalsIgnoreCase(
-                TokenManager.getInstance(this).getRole()));
+                TokenManager.getInstance(this).getRole())
+                || "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName()));
         departmentMessage.setText(R.string.staff_departments_error);
         departmentMessage.setVisibility(View.VISIBLE);
         retryDepartments.setVisibility(View.VISIBLE);

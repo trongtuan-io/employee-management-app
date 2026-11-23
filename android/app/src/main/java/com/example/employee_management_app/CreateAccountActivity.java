@@ -13,6 +13,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import android.view.ViewGroup;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -28,6 +31,7 @@ public class CreateAccountActivity extends AppCompatActivity {
     private EditText etUsername, etPassword, etFullName, etPhone, etEmail;
     private Spinner spRole, spDept, spPosition;
     private Button btnCreate;
+    private EditText etReason, etDraftId;
     private final List<DepartmentListResponse.Item> deptChoices = new ArrayList<>();
     private final List<PositionListResponse.Item> positionChoices = new ArrayList<>();
     private Call<PositionListResponse> positionsCall;
@@ -44,16 +48,19 @@ public class CreateAccountActivity extends AppCompatActivity {
         setTitle("Tạo tài khoản nhân viên");
 
         String role = TokenManager.getInstance(this).getRole();
-        if (!role.equalsIgnoreCase("admin") && !role.equalsIgnoreCase("manager")) {
-            Toast.makeText(this, "Chỉ quản trị viên hoặc trưởng phòng được tạo tài khoản", Toast.LENGTH_LONG).show();
+        boolean sysAdmin = "admin".equalsIgnoreCase(role);
+        if (!HrUi.hr(this) && !sysAdmin) {
+            Toast.makeText(this, "Chỉ HR hoặc Admin kỹ thuật được tạo hồ sơ", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
-        isManagerRole = role.equalsIgnoreCase("manager");
+        isManagerRole = false;
+        setTitle(sysAdmin ? "Tạo tài khoản Admin kỹ thuật" : "Hồ sơ tuyển dụng HR");
         myId = TokenManager.getInstance(this).getUserId();
 
         etUsername = findViewById(R.id.etNewUsername);
         etPassword = findViewById(R.id.etNewPassword);
+        etPassword.setVisibility("admin".equalsIgnoreCase(role) ? View.VISIBLE : View.GONE);
         etFullName = findViewById(R.id.etNewFullName);
         etPhone = findViewById(R.id.etNewPhone);
         etEmail = findViewById(R.id.etNewEmail);
@@ -61,11 +68,22 @@ public class CreateAccountActivity extends AppCompatActivity {
         spPosition = findViewById(R.id.spNewPosition);
         spRole = findViewById(R.id.spNewRole);
         btnCreate = findViewById(R.id.btnDoCreateAccount);
+        if(!sysAdmin){
+            ViewGroup parent = (ViewGroup) btnCreate.getParent();
+            int idx = parent.indexOfChild(btnCreate);
+            etReason = new EditText(this); etReason.setHint("Lý do tuyển dụng (bắt buộc)");
+            etReason.setSingleLine(true);
+            parent.addView(etReason,idx++);
+            etDraftId = new EditText(this);
+            etDraftId.setHint("ID hồ sơ nháp cần sửa (để trống nếu tạo mới)");
+            etDraftId.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            parent.addView(etDraftId,idx);
+            btnCreate.setText("Lưu hồ sơ HR (chưa tạo tài khoản)");
+        }
 
-        // Manager chi duoc tao tai khoan staff (server cung ep vay) - chi hien dung lua chon do.
-        String[] roleNames = isManagerRole
-                ? new String[]{"Nhân viên (staff)"}
-                : new String[]{"Nhân viên (staff)", "Quản lý (manager)", "Quản trị (admin)"};
+        // HR creates candidate proposals only; server derives approval level from position.
+        String[] roleNames = "admin".equalsIgnoreCase(role)
+                ? new String[]{"Admin kỹ thuật"} : new String[]{"Cấp duyệt tự xác định theo chức vụ"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item, roleNames);
         spRole.setAdapter(adapter);
@@ -203,13 +221,12 @@ public class CreateAccountActivity extends AppCompatActivity {
         String phone = etPhone.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
 
-        if (username.isEmpty() || password.isEmpty() || fullName.isEmpty()) {
-            Toast.makeText(this, "Nhập đủ tên đăng nhập, mật khẩu, họ tên", Toast.LENGTH_SHORT).show();
+        if (username.isEmpty() || fullName.isEmpty()) {
+            Toast.makeText(this, "Nhập mã nhân viên và họ tên", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (password.length() < 6) {
-            Toast.makeText(this, "Mật khẩu tối thiểu 6 ký tự", Toast.LENGTH_SHORT).show();
-            return;
+        if ("admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole()) && password.length() < 8) {
+            etPassword.setError("Mật khẩu Admin ít nhất 8 ký tự");return;
         }
         // Server bat buoc email hop le (truoc day app cho bo trong roi bao loi sai nguyen nhan).
         if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
@@ -218,13 +235,8 @@ public class CreateAccountActivity extends AppCompatActivity {
             return;
         }
 
-        // Spinner: 0 = staff(3), 1 = manager(2), 2 = admin(1)
-        int roleId;
-        switch (spRole.getSelectedItemPosition()) {
-            case 1: roleId = 2; break;
-            case 2: roleId = 1; break;
-            default: roleId = 3; break;
-        }
+        boolean adminTechnical = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        int roleId = adminTechnical ? 1 : 3;
 
         Integer deptId = null;
         int deptPos = spDept.getSelectedItemPosition();
@@ -237,33 +249,55 @@ public class CreateAccountActivity extends AppCompatActivity {
             posId = positionChoices.get(posPos).getId();
         }
 
+        if(!adminTechnical && (posId==null || posId<=0)){
+            Toast.makeText(this,"Chọn chức vụ để xác định cấp duyệt",Toast.LENGTH_LONG).show();
+            return;
+        }
+        btnCreate.setEnabled(false); // prevent accidental double submission
+        if(!adminTechnical){
+            String reason=etReason.getText().toString().trim();
+            if(reason.isEmpty()){etReason.setError("Cần lý do tuyển dụng");btnCreate.setEnabled(true);return;}
+            Map<String,Object> b=new HashMap<>();
+            b.put("proposal_type","recruitment");b.put("username",username);
+            b.put("full_name",fullName);b.put("email",email);
+            b.put("phone",phone.isEmpty()?null:phone);
+            b.put("department_id",deptId);b.put("position_id",posId);b.put("reason",reason);
+            String draftText=etDraftId.getText().toString().trim();
+            if(!draftText.isEmpty()){
+                try{int draftId=Integer.parseInt(draftText);if(draftId<=0)throw new NumberFormatException();b.put("id",draftId);}
+                catch(NumberFormatException e){etDraftId.setError("ID phải là số dương");btnCreate.setEnabled(true);return;}
+            }
+            retrofit2.Call<Map<String,Object>> request = draftText.isEmpty()
+                ? HrUi.api(this).createProposal(b) : HrUi.api(this).updateRecruitmentDraft(b);
+            request.enqueue(new Callback<Map<String,Object>>(){
+                @Override public void onResponse(Call<Map<String,Object>> c,Response<Map<String,Object>> r){
+                    btnCreate.setEnabled(true);
+                    if(r.isSuccessful()&&r.body()!=null&&Boolean.TRUE.equals(r.body().get("success"))){
+                        Toast.makeText(CreateAccountActivity.this,"Đã lưu hồ sơ. Staff HR gửi Manager HR duyệt; cấp cao mới trình BOD.",Toast.LENGTH_LONG).show();finish();
+                    }else Toast.makeText(CreateAccountActivity.this,
+                        ApiError.message(r,"Không lưu được hồ sơ tuyển dụng"),Toast.LENGTH_LONG).show();
+                }
+                @Override public void onFailure(Call<Map<String,Object>> c,Throwable t){
+                    btnCreate.setEnabled(true);
+                    Toast.makeText(CreateAccountActivity.this,"Lỗi kết nối: "+t.getMessage(),Toast.LENGTH_LONG).show();
+                }
+            });
+            return;
+        }
         RegisterRequest req = new RegisterRequest(username, password, fullName,
-                phone.isEmpty() ? null : phone,
-                email,
-                roleId, deptId, posId);
-
-        btnCreate.setEnabled(false); // tranh bam dup tao 2 tai khoan
+                phone.isEmpty() ? null : phone, email, roleId, deptId, posId);
         AuthApi api = ApiClient.getClient(this).create(AuthApi.class);
         api.register(req).enqueue(new Callback<ApiResponse>() {
-            @Override
-            public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
+            @Override public void onResponse(Call<ApiResponse> c, Response<ApiResponse> r) {
                 btnCreate.setEnabled(true);
-                if (r.isSuccessful() && r.body() != null && r.body().isSuccess()) {
-                    Toast.makeText(CreateAccountActivity.this,
-                            "Tạo tài khoản thành công!", Toast.LENGTH_SHORT).show();
-                    finish();
-                } else {
-                    String msg = (r.body() != null && r.body().getMessage() != null)
-                            ? r.body().getMessage() : ApiError.message(r, "Tạo tài khoản thất bại");
-                    Toast.makeText(CreateAccountActivity.this, msg, Toast.LENGTH_LONG).show();
-                }
+                if(r.isSuccessful()&&r.body()!=null&&r.body().isSuccess()){
+                    Toast.makeText(CreateAccountActivity.this,"Đã tạo tài khoản Admin kỹ thuật",Toast.LENGTH_LONG).show();finish();
+                }else Toast.makeText(CreateAccountActivity.this,
+                    ApiError.message(r,"Tạo tài khoản thất bại"),Toast.LENGTH_LONG).show();
             }
-
-            @Override
-            public void onFailure(Call<ApiResponse> c, Throwable t) {
+            @Override public void onFailure(Call<ApiResponse> c,Throwable t){
                 btnCreate.setEnabled(true);
-                Toast.makeText(CreateAccountActivity.this,
-                        "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(CreateAccountActivity.this,"Lỗi kết nối: "+t.getMessage(),Toast.LENGTH_LONG).show();
             }
         });
     }
