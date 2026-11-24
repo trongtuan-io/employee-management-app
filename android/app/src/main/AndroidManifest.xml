@@ -103,7 +103,9 @@
         <activity android:name=".ImportEmployeesActivity" android:exported="false" />
         <activity android:name=".CreateAccountActivity" android:exported="false" />
         <activity android:name=".HrHubActivity" android:exported="false" />
+        <activity android:name=".ProposalApprovalActivity" android:exported="false" />
         <activity android:name=".HrProposalsActivity" android:exported="false" />
+        <activity android:name=".HrPersonnelProposalActivity" android:exported="false" />
         <activity android:name=".HrPositionsActivity" android:exported="false" />
         <activity android:name=".HrHistoryActivity" android:exported="false" />
         <activity android:name=".HrDocumentsActivity" android:exported="false" />

@@ -181,9 +181,20 @@ public class ProfileActivity extends AppCompatActivity {
         findViewById(R.id.btnHrDocuments).setVisibility(targetId == myId || hrMember ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnHrDocuments).setOnClickListener(v -> openHr(HrDocumentsActivity.class));
         findViewById(R.id.btnHrProposal).setVisibility(hrMember ? View.VISIBLE : View.GONE);
-        findViewById(R.id.btnHrProposal).setOnClickListener(v -> openHr(HrProposalsActivity.class));
+        findViewById(R.id.btnHrProposal).setOnClickListener(v -> openHr(
+                HrUi.managerHr(this) ? HrPersonnelProposalActivity.class : HrProposalsActivity.class));
         findViewById(R.id.btnHrHistory).setVisibility(hrMember ? View.VISIBLE : View.GONE);
         findViewById(R.id.btnHrHistory).setOnClickListener(v -> openHr(HrHistoryActivity.class));
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        TextView progress=findViewById(R.id.tvHrDocumentProgress);
+        if(progress==null || targetId<=0 || (targetId!=myId && !HrUi.hr(this))) return;
+        HrUi.call(this,HrUi.api(this).documentSummary(targetId),data->{
+            progress.setText(HrDocumentsActivity.progressText(HrUi.map(data)));
+            progress.setVisibility(View.VISIBLE);
+        });
     }
 
     private void openHr(Class<?> screen) {

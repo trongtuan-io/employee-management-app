@@ -20,6 +20,12 @@ function hr_flow_locked(PDO $pdo,int $id): array {
     if(!$p)hr_flow_error('Khong tim thay ho so',404);
     return $p;
 }
+function hr_check_recruitment_version(array $p,array $request): void {
+    if($p['proposal_type']!=='recruitment')return;
+    if(!array_key_exists('version',$request) && (int)$p['workflow_version']<4)return;
+    $version=filter_var($request['version']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+    if($version!==(int)$p['version'])hr_flow_error('Ho so da thay doi, vui long tai lai');
+}
 function hr_flow_transaction(PDO $pdo,callable $fn): void {
     try {
         $pdo->beginTransaction();
@@ -40,19 +46,20 @@ if($a==='create'&&$m==='POST'){
 }
 if($a==='submit'&&$m==='POST'){
     $b=body();$id=hr_flow_id($b);
-    hr_flow_transaction($pdo,function()use($pdo,$me,$id){
+    hr_flow_transaction($pdo,function()use($pdo,$me,$id,$b){
         $p=hr_flow_locked($pdo,$id);
         if($p['proposal_type']!=='recruitment'){
             if(!hr_manager_actor($me)||$p['status']!=='draft')hr_flow_error('Khong co quyen gui de xuat nay',403);
             $next='pending'; // Existing non-recruitment proposals still go directly to BOD.
         }else{
             if(!hr_recruitment_can_submit($p,$me))hr_flow_error('Chi duoc gui ho so nhap cua minh',403);
+            hr_check_recruitment_version($p,$b);
             $next=hr_recruitment_next($p['status'],'submit');
         }
         $pdo->prepare('UPDATE hr_proposals SET status=?,version=version+1 WHERE id=?')->execute([$next,$id]);
         hr_record_history($pdo,(int)$me['id'],$p['employee_id']===null?null:(int)$p['employee_id'],
             'proposal.submitted',['status'=>$p['status']],['status'=>$next],$id);
-        return ['id'=>$id,'status'=>$next];
+        return ['id'=>$id,'status'=>$next,'version'=>(int)$p['version']+1];
     });
 }
 if($a==='review-internal'&&$m==='POST'){
@@ -62,10 +69,11 @@ if($a==='review-internal'&&$m==='POST'){
     if(!in_array($decision,['approve','return'],true))err('Quyet dinh khong hop le',422);
     $note=trim((string)($b['review_note']??''));
     if(hr_length($note)>500||($decision==='return'&&$note===''))err('Tra lai ho so can ly do (toi da 500 ky tu)',422);
-    hr_flow_transaction($pdo,function()use($pdo,$me,$id,$decision,$note){
+    hr_flow_transaction($pdo,function()use($pdo,$me,$id,$decision,$note,$b){
         $p=hr_flow_locked($pdo,$id);
         if($p['proposal_type']!=='recruitment'||(int)$p['workflow_version']<2)
             hr_flow_error('Khong phai ho so tuyen dung moi can duyet noi bo',403);
+        hr_check_recruitment_version($p,$b);
         // A draft/import or renamed position must not turn a senior hire into HR-only approval.
         if($decision==='approve' && (int)$p['workflow_version']>=3
             && hr_recruitment_verified_level($pdo,$p)===null)
@@ -79,30 +87,38 @@ if($a==='review-internal'&&$m==='POST'){
             ->execute([$next,(int)$me['id'],$note,$id]);
         hr_record_history($pdo,(int)$me['id'],null,'recruitment.hr.'.$decision,
             ['status'=>$p['status']],['status'=>$next,'review_note'=>$note],$id);
-        return ['id'=>$id,'status'=>$next,'next_owner'=>$decision==='return'?'staff_hr':($next==='pending'?'bod':'manager_hr')];
+        return ['id'=>$id,'status'=>$next,'version'=>(int)$p['version']+1,
+            'next_owner'=>$decision==='return'?'staff_hr':($next==='pending'?'bod':'manager_hr')];
     });
 }
 if($a==='update-draft'&&$m==='POST'){
     $b=body();$id=hr_flow_id($b);
+    hr_lock_hiring($pdo);
     hr_flow_transaction($pdo,function()use($pdo,$me,$id,$b){
         $p=hr_flow_locked($pdo,$id);
         if(!hr_recruitment_can_edit_draft($p,$me))hr_flow_error('Chi duoc sua ho so nhap cua minh',403);
-        [$emp,$before,$data]=hr_proposal_payload($pdo,'recruitment',$b);
+        hr_check_recruitment_version($p,$b);
+        [,,$data]=hr_proposal_payload($pdo,'recruitment',$b,(int)$p['workflow_version']);
+        if(hr_candidate_reserved($pdo,$data['username'],$data['email'],$id))
+            hr_flow_error('Ho so tuyen dung dang giu ma nhan vien hoac email');
         $note=trim((string)($b['reason']??''));
         if($note===''||hr_length($note)>1000)hr_flow_error('Ly do tuyen dung khong hop le',422);
         // Unique index reserves candidate IDs/emails even during HR rework.
         $pdo->prepare('UPDATE hr_proposals SET proposed_data=?,reservation_username=?,reservation_email=?,reason=?,version=version+1 WHERE id=?')
             ->execute([hr_json($data),$data['username'],$data['email'],$note,$id]);
         hr_record_history($pdo,(int)$me['id'],null,'recruitment.draft.edited',null,['proposal_id'=>$id],$id);
-        return ['id'=>$id,'status'=>'draft'];
+        return ['id'=>$id,'status'=>'draft','version'=>(int)$p['version']+1];
     });
 }
 if($a==='activate'&&$m==='POST'){
     if(!hr_manager_actor($me))err('Chi Truong phong HR duoc hoan tat tuyen dung',403);
     $b=body();$id=hr_flow_id($b);
-    hr_flow_transaction($pdo,function()use($pdo,$me,$id){
+    hr_lock_hiring($pdo);
+    header('Cache-Control: no-store');
+    hr_flow_transaction($pdo,function()use($pdo,$me,$id,$b){
         $p=hr_flow_locked($pdo,$id);
         if(!hr_recruitment_can_activate($p))hr_flow_error('Ho so chua duoc duyet dung cap hoac tai khoan da tao',403);
+        hr_check_recruitment_version($p,$b);
         $data=json_decode((string)$p['proposed_data'],true);
         if(!is_array($data))hr_flow_error('Ho so ung vien khong hop le',422);
         $username=employee_username($data['username']??null);
@@ -114,7 +130,7 @@ if($a==='activate'&&$m==='POST'){
         $v=(int)($p['workflow_version']??1);
         if($v>=3){
             if(!$position)hr_flow_error('Ho so thieu chuc vu',422);
-            $senior=hr_recruitment_position_requires_bod($pdo,$position);
+            $senior=hr_recruitment_position_requires_bod($pdo,$position,$dep);
             $level=$senior?'senior':'ordinary';
             if(($data['hiring_level']??'')!==$level)hr_flow_error('Chuc vu da doi phan cap; can kiem tra lai ho so',409);
             $expectedRole=$senior?2:3;
@@ -123,18 +139,28 @@ if($a==='activate'&&$m==='POST'){
         $check=$pdo->prepare('SELECT id FROM employees WHERE username=? OR email=? LIMIT 1');
         $check->execute([$username,$email]);
         if($check->fetchColumn())hr_flow_error('Nhan vien da ton tai',409);
-        $tempPassword=rtrim(strtr(base64_encode(random_bytes(18)),'+/','-_'),'=');
-        $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,role_id,department_id,position_id,hire_date,employment_status)
-            VALUES(?,?,?,?,?,0,1,?,?,?, ?, 'working')")
-            ->execute([$username,password_hash($tempPassword,PASSWORD_BCRYPT),$name,
-                empty($data['phone'])?null:employee_phone($data['phone']),$email,$expectedRole,$dep,$position,
-                hr_date($data['hire_date']??null)]);
-        $employeeId=(int)$pdo->lastInsertId();
+        $account=hr_create_employee_account($pdo,['username'=>$username,'email'=>$email,'full_name'=>$name,
+            'phone'=>empty($data['phone'])?null:employee_phone($data['phone']),'department_id'=>$dep,
+            'position_id'=>$position,'hire_date'=>hr_date($data['hire_date']??null)],
+            $expectedRole,$v>=3 && $expectedRole===3);
+        $employeeId=$account['employee_id'];
         $pdo->prepare("UPDATE hr_proposals SET employee_id=?,status='activated',applied_at=NOW(),version=version+1,reservation_username=NULL,reservation_email=NULL WHERE id=?")
             ->execute([$employeeId,$id]);
         hr_record_history($pdo,(int)$me['id'],$employeeId,'recruitment.account.activated',null,
             ['proposal_id'=>$id,'username'=>$username],$id);
-        return ['id'=>$id,'employee_id'=>$employeeId,'status'=>'activated','username'=>$username,'temporary_password'=>$tempPassword];
+        $pdo->prepare('UPDATE hr_documents SET employee_id=? WHERE proposal_id=? AND employee_id IS NULL')
+            ->execute([$employeeId,$id]);
+        $pdo->prepare('UPDATE hr_history SET employee_id=? WHERE proposal_id=? AND employee_id IS NULL AND action=?')
+            ->execute([$employeeId,$id,'document.uploaded']);
+        return ['id'=>$id,'status'=>'activated']+$account;
+    });
+}
+if($a==='apply'&&$m==='POST'){
+    if(!hr_manager_actor($me))err('Chi Truong phong HR duoc ap dung de xuat da duyet',403);
+    $id=hr_flow_id(body());
+    hr_flow_transaction($pdo,function()use($pdo,$me,$id){
+        hr_apply_personnel_change($pdo,hr_flow_locked($pdo,$id),(int)$me['id']);
+        return ['id'=>$id,'status'=>'approved','applied'=>true];
     });
 }
 if($a==='list'&&$m==='GET'){
@@ -143,7 +169,7 @@ if($a==='list'&&$m==='GET'){
     $where=' WHERE 1=1 ';$args=[];
     if($status!==''){$where.=' AND p.status=?';$args[]=$status;}
     if(hr_staff_actor($me)){$where.=" AND p.proposal_type='recruitment' AND p.proposed_by=?";$args[]=(int)$me['id'];}
-    $sql='SELECT p.id,p.proposal_type,p.employee_id,p.proposed_by,p.proposed_data,p.reason,p.effective_date,p.status,p.hr_reviewed_by,p.hr_reviewed_at,p.hr_review_note,p.reviewed_by,p.reviewed_at,p.review_note,p.workflow_version,p.version,p.created_at FROM hr_proposals p'
+    $sql='SELECT p.id,p.proposal_type,p.employee_id,p.proposed_by,p.proposed_data,p.reason,p.effective_date,p.status,p.hr_reviewed_by,p.hr_reviewed_at,p.hr_review_note,p.reviewed_by,p.reviewed_at,p.review_note,p.applied_at,p.workflow_version,p.version,p.created_at FROM hr_proposals p'
         .$where.' ORDER BY p.created_at DESC,p.id DESC LIMIT 200';
     $st=$pdo->prepare($sql);$st->execute($args);$items=$st->fetchAll(PDO::FETCH_ASSOC);
     foreach($items as &$row){$row['proposed_data']=json_decode($row['proposed_data'],true);}

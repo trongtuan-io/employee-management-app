@@ -9,7 +9,6 @@ import android.provider.OpenableColumns;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
@@ -31,31 +30,63 @@ import retrofit2.Response;
 
 public class HrDocumentsActivity extends AppCompatActivity {
     private static final int OPEN_DOC=330, SAVE_DOC=331;
-    private static final String[] TYPES={"cccd_front","cccd_back","insurance","degree","certificate","contract","other"};
-    private int employeeId, selectedDownloadId;
+    private static final String[] TYPES={"portrait","cccd_front","cccd_back","insurance","degree","certificate","contract","other"};
+    private static final String[] CANDIDATE_TYPES={"portrait","cccd_front","cccd_back","degree","certificate","other"};
+    private int employeeId, proposalId, selectedDownloadId;
+    private boolean canReview;
     private Spinner type;
-    private TextView summary;
-    private ListView list;
+    private TextView summary, checklist;
+    private LinearLayout list;
     private final List<Map<String,Object>> rows=new ArrayList<>();
+
+    static Intent candidateIntent(Activity activity,int proposalId,boolean draft){
+        return new Intent(activity,HrDocumentsActivity.class)
+                .putExtra("PROPOSAL_ID",proposalId).putExtra("CANDIDATE_DRAFT",draft);
+    }
+
     @Override public void onCreate(Bundle state){super.onCreate(state);
-        employeeId=getIntent().getIntExtra("EMPLOYEE_ID",TokenManager.getInstance(this).getUserId());
-        if(employeeId!=TokenManager.getInstance(this).getUserId()&&!HrUi.hr(this)){finish();return;}
-        LinearLayout root=HrUi.page(this,"Giấy tờ nhân sự - NV #"+employeeId);
-        summary=HrUi.label(root,"Chưa nộp / Chờ xác nhận / Hợp lệ / Cần bổ sung");
-        type=new Spinner(this);type.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,TYPES));root.addView(type);
-        HrUi.button(root,"Tải lên PDF / ảnh",()->{
-            Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);
-            i.setType("*/*");i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","image/jpeg","image/png","image/webp"});
-            startActivityForResult(i,OPEN_DOC);
-        });
+        TokenManager token=TokenManager.getInstance(this);
+        proposalId=getIntent().getIntExtra("PROPOSAL_ID",0);
+        employeeId=getIntent().getIntExtra("EMPLOYEE_ID",token.getUserId());
+        if(proposalId==0 && employeeId!=token.getUserId() && !HrUi.hr(this)){finish();return;}
+        canReview=proposalId==0 && HrUi.hr(this) && employeeId!=token.getUserId();
+        if(state!=null)selectedDownloadId=state.getInt("download_id");
+        LinearLayout root=HrUi.page(this,proposalId>0?"Giấy tờ ứng viên #"+proposalId:"Giấy tờ nhân sự - NV #"+employeeId);
+        if(proposalId==0){
+            summary=HrUi.label(root,"Đang tải tiến độ…");
+            checklist=HrUi.label(root,"");
+        }
+        if(proposalId==0 || (HrUi.hr(this) && getIntent().getBooleanExtra("CANDIDATE_DRAFT",false))){
+            String[] groups=proposalId>0?CANDIDATE_TYPES:TYPES;
+            List<String> labels=new ArrayList<>();
+            for(String group:groups)labels.add(typeLabel(group));
+            type=new Spinner(this);
+            type.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,labels));
+            root.addView(type);
+            HrUi.button(root,"Tải lên PDF / ảnh",()->{
+                Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("*/*");i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","image/jpeg","image/png","image/webp"});
+                startActivityForResult(i,OPEN_DOC);
+            });
+        }
         HrUi.button(root,"Làm mới",this::load);
-        list=new ListView(this);list.setMinimumHeight(400);root.addView(list);
-        list.setOnItemClickListener((parent,v,pos,id)->{
-            if(pos>=rows.size())return;Map<String,Object> d=rows.get(pos);
+        HrUi.section(root,proposalId>0?"Tài liệu đã đính kèm":"Lịch sử giấy tờ");
+        list=new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        root.addView(list);
+        load();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle out){
+        out.putInt("download_id",selectedDownloadId);
+        super.onSaveInstanceState(out);
+    }
+
+    private void showActions(Map<String,Object> d){
             int documentId=HrUi.n(d.get("id"));
-            String[] options=HrUi.hr(this) && employeeId!=TokenManager.getInstance(this).getUserId()
-                    ?new String[]{"Tải xuống","Hợp lệ","Cần bổ sung"}:new String[]{"Tải xuống"};
-            new AlertDialog.Builder(this).setTitle(HrUi.s(d.get("original_filename")))
+            String[] options=canReview && HrUi.n(d.get("is_latest"))==1
+                    ?new String[]{"Tải xuống","Hợp lệ","Yêu cầu bổ sung"}:new String[]{"Tải xuống"};
+            new AlertDialog.Builder(this).setTitle(typeLabel(HrUi.s(d.get("document_type"))))
               .setItems(options,(dialog,which)->{
                 if(which==0)chooseDownload(documentId);
                 else if(which==1)review(documentId,"valid","");
@@ -64,19 +95,71 @@ public class HrDocumentsActivity extends AppCompatActivity {
                       .setPositiveButton("Gửi",(d2,w)->review(documentId,"needs_update",note.getText().toString()))
                       .setNegativeButton("Hủy",null).show();}
             }).show();
-        });
-        load();
     }
-    private void load(){HrApi api=HrUi.api(this);
-        HrUi.call(this,api.documentSummary(employeeId),d->{Map<String,Object> m=HrUi.map(d);
-            summary.setText("Hợp lệ "+HrUi.n(m.get("valid"))+" | Chờ xác nhận "+HrUi.n(m.get("pending"))+
-              " | Cần bổ sung "+HrUi.n(m.get("needs_update"))+" | Chưa nộp "+HrUi.n(m.get("missing")));});
-        HrUi.call(this,api.documents(employeeId),data->{rows.clear();rows.addAll(HrUi.rows(data));
-            ArrayList<String> display=new ArrayList<>();
-            for(Map<String,Object> row:rows)display.add("#"+HrUi.s(row.get("id"))+" | "+HrUi.s(row.get("document_type"))+
-                    "\n"+HrUi.s(row.get("original_filename"))+" - "+HrUi.s(row.get("status"))+
-                    "\n"+HrUi.s(row.get("review_note")));
-            list.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_list_item_1,display));});
+
+    static String progressText(Map<String,Object> data){
+        String deadline=HrUi.s(data.get("due_at"));
+        return "Hồ sơ đã duyệt "+HrUi.n(data.get("valid"))+"/"+HrUi.n(data.get("required_count"))
+                +" · Chưa nộp "+HrUi.n(data.get("missing"))+" · Chờ duyệt "+HrUi.n(data.get("pending"))
+                +" · Cần bổ sung "+HrUi.n(data.get("needs_update"))
+                +(deadline.isEmpty()?"":"\nHạn nộp "+deadline);
+    }
+
+    private static String statusLabel(String status){
+        switch(status){
+            case "pending":return "Chờ duyệt";
+            case "valid":return "Hợp lệ";
+            case "needs_update":return "Yêu cầu bổ sung";
+            default:return "Chưa nộp";
+        }
+    }
+
+    private static String typeLabel(String value){
+        switch(value){
+            case "portrait":return "Ảnh chân dung";
+            case "cccd_front":return "CCCD mặt trước";
+            case "cccd_back":return "CCCD mặt sau";
+            case "insurance":return "BHXH";
+            case "degree":return "Bằng cấp";
+            case "certificate":return "Chứng chỉ";
+            case "contract":return "Hợp đồng";
+            default:return "Giấy tờ khác";
+        }
+    }
+
+    private void load(){
+        HrApi api=HrUi.api(this);
+        if(proposalId==0)HrUi.call(this,api.documentSummary(employeeId),data->{
+            Map<String,Object> details=HrUi.map(data);
+            summary.setText(progressText(details));
+            StringBuilder text=new StringBuilder();
+            for(Map<String,Object> item:HrUi.rows(details.get("checklist"))){
+                if(text.length()>0)text.append('\n');
+                text.append(typeLabel(HrUi.s(item.get("document_type"))));
+                if(Boolean.TRUE.equals(item.get("required")))text.append(" (bắt buộc)");
+                text.append(" · ").append(statusLabel(HrUi.s(item.get("status"))));
+            }
+            checklist.setText(text.toString());
+        });
+        HrUi.call(this,proposalId>0?api.candidateDocuments(proposalId):api.documents(employeeId),data->{
+            rows.clear();
+            rows.addAll(HrUi.rows(data));
+            list.removeAllViews();
+            if(rows.isEmpty())HrUi.label(list,"Chưa có giấy tờ.");
+            for(Map<String,Object> row:rows){
+                LinearLayout card=HrUi.card(list);
+                String label=typeLabel(HrUi.s(row.get("document_type")));
+                String state=HrUi.s(row.get("status"));
+                HrUi.title(card,label+(state.isEmpty()?"":" · "+statusLabel(state)));
+                String filename=HrUi.s(row.get("original_filename"));
+                if(!filename.isEmpty())HrUi.label(card,filename+" · "+HrUi.s(row.get("created_at")));
+                String note=HrUi.s(row.get("review_note"));
+                if(!note.isEmpty())HrUi.label(card,note);
+                HrUi.secondary(card,canReview && HrUi.n(row.get("is_latest"))==1?"Tải xuống hoặc kiểm duyệt":"Tải xuống",
+                        ()->{if(canReview && HrUi.n(row.get("is_latest"))==1)showActions(row);
+                            else chooseDownload(HrUi.n(row.get("id")));});
+            }
+        });
     }
     private void review(int id,String status,String note){Map<String,Object> b=new HashMap<>();b.put("id",id);
         b.put("status",status);b.put("review_note",note);
@@ -88,6 +171,14 @@ public class HrDocumentsActivity extends AppCompatActivity {
         for(Map<String,Object> row:rows)if(HrUi.n(row.get("id"))==id){
             String original=HrUi.s(row.get("original_filename"));
             String extension=original.contains(".")?original.substring(original.lastIndexOf('.')):"";
+            if(extension.isEmpty()){
+                switch(HrUi.s(row.get("mime_type"))){
+                    case "application/pdf":extension=".pdf";break;
+                    case "image/jpeg":extension=".jpg";break;
+                    case "image/png":extension=".png";break;
+                    case "image/webp":extension=".webp";break;
+                }
+            }
             if(extension.matches("\\.[A-Za-z0-9]{1,6}"))filename+=extension;
             break;
         }
@@ -111,12 +202,21 @@ public class HrDocumentsActivity extends AppCompatActivity {
             if(mime==null)mime="application/octet-stream";
             RequestBody content=RequestBody.create(MediaType.parse(mime),bytes.toByteArray());
             MultipartBody.Part part=MultipartBody.Part.createFormData("file",filename,content);
-            RequestBody id=RequestBody.create(MediaType.parse("text/plain"),String.valueOf(employeeId));
-            RequestBody docType=RequestBody.create(MediaType.parse("text/plain"),TYPES[type.getSelectedItemPosition()]);
-            HrUi.call(this,HrUi.api(this).uploadDocument(id,docType,part),result->load());
+            String[] groups=proposalId>0?CANDIDATE_TYPES:TYPES;
+            int selected=type.getSelectedItemPosition();
+            if(selected<0)return;
+            RequestBody docType=RequestBody.create(MediaType.parse("text/plain"),groups[selected]);
+            HrApi api=HrUi.api(this);
+            if(proposalId>0)HrUi.call(this,api.uploadCandidateDocument(proposalId,docType,part),result->load());
+            else{
+                RequestBody id=RequestBody.create(MediaType.parse("text/plain"),String.valueOf(employeeId));
+                HrUi.call(this,api.uploadDocument(id,docType,part),result->load());
+            }
         }catch(Exception e){android.widget.Toast.makeText(this,e.getMessage(),android.widget.Toast.LENGTH_LONG).show();}
     }
-    private void download(Uri uri,int id){HrUi.api(this).downloadDocument(employeeId,id).enqueue(new Callback<ResponseBody>(){
+    private void download(Uri uri,int id){
+        HrApi api=HrUi.api(this);
+        (proposalId>0?api.downloadCandidateDocument(proposalId,id):api.downloadDocument(employeeId,id)).enqueue(new Callback<ResponseBody>(){
         @Override public void onResponse(Call<ResponseBody> c,Response<ResponseBody> r){
             if(!r.isSuccessful()||r.body()==null){android.widget.Toast.makeText(HrDocumentsActivity.this,"Không tải được tài liệu",android.widget.Toast.LENGTH_LONG).show();return;}
             ResponseBody body=r.body();new Thread(()->{

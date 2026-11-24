@@ -22,15 +22,24 @@ public interface HrApi {
     @POST("hr_proposals.php?action=submit") Call<Map<String,Object>> submitProposal(@Body Map<String,Object> body);
     @POST("hr_proposals.php?action=review-internal") Call<Map<String,Object>> reviewRecruitmentInternal(@Body Map<String,Object> body);
     @POST("hr_proposals.php?action=update-draft") Call<Map<String,Object>> updateRecruitmentDraft(@Body Map<String,Object> body);
+    @POST("hr_proposals.php?action=apply") Call<Map<String,Object>> applyProposal(@Body Map<String,Object> body);
     @POST("hr_proposals.php?action=activate") Call<Map<String,Object>> activateRecruitment(@Body Map<String,Object> body);
     @GET("hr_positions.php?action=manager-options") Call<Map<String,Object>> managerOptions(@Query("employee_id") int employeeId);
     @GET("departments.php?action=list") Call<Map<String,Object>> departments();
     @GET("hr_positions.php?action=list") Call<Map<String,Object>> positions();
+    @GET("hr_positions.php?action=list") Call<Map<String,Object>> departmentPositions(@Query("department_id") int departmentId);
+    @GET("hr_positions.php?action=candidate-options") Call<PositionListResponse> candidatePositions(@Query("department_id") int departmentId);
     @POST("hr_positions.php?action=create") Call<Map<String,Object>> createPosition(@Body Map<String,Object> body);
     @POST("hr_positions.php?action=update") Call<Map<String,Object>> updatePosition(@Body Map<String,Object> body);
     @POST("hr_positions.php?action=deactivate") Call<Map<String,Object>> deactivatePosition(@Body Map<String,Object> body);
     @GET("hr_history.php") Call<Map<String,Object>> history(@Query("employee_id") Integer employeeId);
     @GET("hr_documents.php?action=list") Call<Map<String,Object>> documents(@Query("employee_id") int employeeId);
+    @GET("hr_documents.php?action=list") Call<Map<String,Object>> candidateDocuments(@Query("proposal_id") int proposalId);
+    @Multipart @POST("hr_documents.php?action=upload") Call<Map<String,Object>> uploadCandidateDocument(
+            @Query("proposal_id") int proposalId, @Part("document_type") RequestBody documentType,
+            @Part MultipartBody.Part file);
+    @Streaming @GET("hr_documents.php?action=download") Call<ResponseBody> downloadCandidateDocument(
+            @Query("proposal_id") int proposalId, @Query("id") int documentId);
     @GET("hr_documents.php?action=summary") Call<Map<String,Object>> documentSummary(@Query("employee_id") int employeeId);
     @Multipart @POST("hr_documents.php?action=upload") Call<Map<String,Object>> uploadDocument(
             @Part("employee_id") RequestBody employeeId,
@@ -40,4 +49,5 @@ public interface HrApi {
             @Query("employee_id") int employeeId, @Body Map<String,Object> body);
     @Streaming @GET("hr_documents.php?action=download") Call<ResponseBody> downloadDocument(
             @Query("employee_id") int employeeId,@Query("id") int documentId);
+    @GET("import_employees.php?action=batches") Call<Map<String,Object>> importBatches();
 }

@@ -71,6 +71,7 @@ public class HrHistoryActivity extends AppCompatActivity {
             case "recruitment.account.activated":return "Tạo tài khoản nhân viên";
             case "employee.profile.updated":return "Cập nhật hồ sơ nhân viên";
             case "employee.import.updated":return "Cập nhật hồ sơ từ tệp nhập";
+            case "employee.import.created":return "Tạo tài khoản Staff từ tệp nhập";
             case "position.created":return "Tạo chức vụ";
             case "position.updated":return "Cập nhật chức vụ";
             case "position.deactivated":return "Ngừng sử dụng chức vụ";

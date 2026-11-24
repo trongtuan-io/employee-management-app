@@ -180,6 +180,13 @@
         </LinearLayout>
 
         <!-- Khoi nghiep vu theo phong ban (chi hien voi quan ly / phong chuyen mon) -->
+        <Button
+            android:id="@+id/btnBodProposals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Phê duyệt nhân sự"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/layoutDeptSection"
             style="@style/AppCard"

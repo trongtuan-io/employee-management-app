@@ -9,7 +9,7 @@ require_once __DIR__ . '/hr_import_policy.php';
 $importer=hr_auth($pdo);
 hr_require_migration($pdo);
 if($_SERVER['REQUEST_METHOD']==='GET'&&($_GET['action']??'')==='batches'){
-    $st=$pdo->query('SELECT id,source_name,submitted_by,rows_total,rows_proposed,rows_updated,rows_refreshed,created_at FROM hr_import_batches ORDER BY id DESC LIMIT 100');
+    $st=$pdo->query('SELECT id,source_name,submitted_by,rows_total,rows_created,rows_proposed,rows_updated,rows_refreshed,created_at FROM hr_import_batches ORDER BY id DESC LIMIT 100');
     out($st->fetchAll(PDO::FETCH_ASSOC));
 }
 if($_SERVER['REQUEST_METHOD']!=='POST')err('Method not allowed',405);
@@ -26,8 +26,10 @@ function import_xlsx_rows($path) {
     if ($zip->open($path) !== true) throw new InvalidArgumentException('File XLSX khong hop le');
     try {
         $read = function($path) use ($zip) {
+            $entry = $zip->statName($path);
+            if ($entry === false || $entry['size'] > 8*1024*1024) throw new InvalidArgumentException('File XLSX thieu sheet hoac qua lon');
             $xml = $zip->getFromName($path);
-            if ($xml === false || strlen($xml) > 8*1024*1024) throw new InvalidArgumentException('File XLSX thieu sheet hoac qua lon');
+            if ($xml === false) throw new InvalidArgumentException('Khong doc duoc noi dung XLSX');
             $dom = simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA);
             if ($dom === false) throw new InvalidArgumentException('XML khong hop le');
             $dom->registerXPathNamespace('x','http://schemas.openxmlformats.org/spreadsheetml/2006/main');
@@ -97,11 +99,12 @@ try {
     $rows = $ext === 'xlsx' ? import_xlsx_rows($f['tmp_name']) : import_csv_rows($f['tmp_name']);
     if (count($rows) < 2) throw new InvalidArgumentException('Can dong tieu de va it nhat mot nhan vien');
     $headers = array_map(fn($v)=>strtolower(trim((string)$v)), array_shift($rows));
-    $required = ['username','full_name','email'];
+    $required = ['username','full_name','email','department_id','position_id'];
     foreach ($required as $h) if (!in_array($h,$headers,true)) throw new InvalidArgumentException("Thieu cot $h");
     if (count(array_unique($headers)) !== count($headers))
         throw new InvalidArgumentException('File co cot tieu de trung');
     $allowed = ['username','full_name','email','phone','department_id','position_id','hire_date'];
+    if(array_diff($headers,$allowed)) throw new InvalidArgumentException('File chi duoc dung bay cot theo mau');
     $input = [];
     foreach ($rows as $i=>$r) {
         // Guard BEFORE array_combine: PHP 8 throws ValueError on extra cells.
@@ -117,16 +120,8 @@ try {
             $item['phone'] = hr_import_phone($item['phone']);
             $item['department_id'] = employee_optional_fk($pdo, $item['department_id'], 'departments');
             $item['position_id'] = employee_optional_fk($pdo, $item['position_id'], 'positions');
-            // Chuc vu phai thuoc phong ban cua nhan vien (nhat quan voi create/update).
-            if ($item['position_id'] !== null) {
-                positions_ensure($pdo);
-                $pq = $pdo->prepare('SELECT department_id FROM positions WHERE id=?');
-                $pq->execute([$item['position_id']]);
-                $pDept = $pq->fetchColumn();
-                if ($pDept !== false && $pDept !== null && (int)$pDept !== (int)$item['department_id']) {
-                    throw new InvalidArgumentException('Chuc vu khong thuoc phong ban cua nhan vien');
-                }
-            }
+            if (!$item['department_id'] || !$item['position_id'])
+                throw new InvalidArgumentException('Bat buoc nhap phong ban va chuc vu');
             // Excel may store dates as day serials, even when displayed as dates.
             if ($ext === 'xlsx' && is_string($item['hire_date']) && preg_match('/^\d{5}(?:\.0+)?$/', $item['hire_date'])) {
                 $origin = new DateTimeImmutable('1899-12-30');
@@ -136,27 +131,30 @@ try {
         } catch (InvalidArgumentException $e) { throw new InvalidArgumentException('Dong '.($i+2).': '.$e->getMessage()); }
         $input[] = $item;
     }
-    // Transaction is all-or-nothing. New hires remain proposals; approval level follows the position.
-    // No account is activated by importing a file.
     $seenUsers=[];$seenEmails=[];
     foreach($input as $it){
         $u=strtolower($it['username']);$e=strtolower($it['email']);
         if(isset($seenUsers[$u])||isset($seenEmails[$e]))throw new InvalidArgumentException('Ma NV/email trung trong file');
         $seenUsers[$u]=1;$seenEmails[$e]=1;
     }
+    hr_lock_hiring($pdo);
     $pdo->beginTransaction();
     $st=$pdo->prepare('INSERT INTO hr_import_batches(source_name,submitted_by,rows_total) VALUES(?,?,?)');
     $st->execute([basename($f['name']),(int)$importer['id'],count($input)]);
     $batchId=(int)$pdo->lastInsertId();
-    $proposed=0;$updated=0;$refreshed=0;
-    foreach($input as $item){
-        $st=$pdo->prepare('SELECT * FROM employees WHERE username=? OR email=? FOR UPDATE');
-        $st->execute([$item['username'],$item['email']]);$rowsFound=$st->fetchAll(PDO::FETCH_ASSOC);
+    $credentials=[];$updated=0;$unchanged=0;
+    $lookup=$pdo->prepare('SELECT * FROM employees WHERE username=? OR email=? FOR UPDATE');
+    foreach($input as $i=>$item){
+        if(hr_recruitment_position_requires_bod($pdo,$item['position_id'],$item['department_id']))
+            throw new InvalidArgumentException('Dong '.($i+2).': chuc vu cap cao phai qua ho so ung vien');
+        if(hr_candidate_reserved($pdo,$item['username'],$item['email']))
+            throw new InvalidArgumentException('Dong '.($i+2).': ma nhan vien/email da duoc giu cho ho so tuyen dung');
+        $lookup->execute([$item['username'],$item['email']]);$rowsFound=$lookup->fetchAll(PDO::FETCH_ASSOC);
         if(count($rowsFound)>1)throw new InvalidArgumentException('Username/email thuoc nhieu nhan vien khac nhau');
         if($rowsFound){
             $existing=$rowsFound[0];
             if(strcasecmp($existing['username'],$item['username'])!==0)throw new InvalidArgumentException('Email trung voi ma nhan vien khac');
-            if((int)$existing['role_id']===1)throw new InvalidArgumentException('Khong duoc import de sua tai khoan Admin');
+            if((int)$existing['role_id']!==3)throw new InvalidArgumentException('Import chi xu ly tai khoan Staff');
             if($item['department_id']!==null&&(int)$item['department_id']!==(int)$existing['department_id'])throw new InvalidArgumentException('Chuyen phong phai tao de xuat BOD');
             if($item['position_id']!==null&&(int)$item['position_id']!==(int)$existing['position_id'])throw new InvalidArgumentException('Thang chuc phai tao de xuat BOD');
             $changed=hr_import_existing_changes($pdo,$item,$existing,hr_manager_actor($importer));
@@ -165,40 +163,25 @@ try {
                 $sql='UPDATE employees SET '.implode(',',array_map(fn($k)=>$k.'=?',array_keys($changed))).' WHERE id=?';
                 $pdo->prepare($sql)->execute([...array_values($changed),(int)$existing['id']]);
                 hr_record_history($pdo,(int)$importer['id'],(int)$existing['id'],'employee.import.updated',$before,$changed);
-            }
-            $updated++;continue;
+                $updated++;
+            }else $unchanged++;
+            continue;
         }
-        // Reimport an existing pending/draft candidate: refresh that proposal and increase
-        // version so BOD can detect changed content. Do not create duplicate candidates.
-        $st=$pdo->query("SELECT id,proposed_data,status,proposed_by,workflow_version FROM hr_proposals WHERE proposal_type='recruitment' AND status IN ('draft','hr_pending','pending','approved') FOR UPDATE");
-        $existingProposal=null;
-        foreach($st->fetchAll(PDO::FETCH_ASSOC) as $p){$old=json_decode($p['proposed_data'],true)?:[];
-            if(($old['username']??null)===$item['username']||strcasecmp((string)($old['email']??''),$item['email'])===0){$existingProposal=$p;break;}}
-        if($existingProposal){
-            if($existingProposal['status']!=='draft')throw new InvalidArgumentException('Ho so da gui duyet; khong duoc import de thay doi');
-            if((int)$existingProposal['proposed_by']!==(int)$importer['id'])throw new InvalidArgumentException('Chi duoc sua ho so nhap cua minh qua import');
-            $old=json_decode($existingProposal['proposed_data'],true)?:[];
-            if(($old['username']??'')!==$item['username'])throw new InvalidArgumentException('Email dang cho duyet voi ma NV khac');
-            $new=hr_import_merge_draft($pdo,$old,$item,(int)($existingProposal['workflow_version']??1));
-            $pdo->prepare('UPDATE hr_proposals SET proposed_data=?,reservation_email=?,version=version+1 WHERE id=?')
-                ->execute([hr_json($new),$new['email'],(int)$existingProposal['id']]);
-            hr_record_history($pdo,(int)$importer['id'],null,'proposal.import.refreshed',null,['proposal_id'=>(int)$existingProposal['id']],(int)$existingProposal['id']);
-            $refreshed++;continue;
-        }
-        if(empty($item['position_id']))throw new InvalidArgumentException('Ho so tuyen dung moi phai co position_id');
-        $item['reason']='De xuat tuyen dung qua import: '.basename($f['name']);
-        hr_save_proposal($pdo,$importer,'recruitment',$item,$batchId);
-        $proposed++;
+        $account=hr_create_employee_account($pdo,$item,3,true);
+        hr_record_history($pdo,(int)$importer['id'],$account['employee_id'],'employee.import.created',null,
+            ['batch_id'=>$batchId,'username'=>$account['username']]);
+        $credentials[]=$account;
     }
-    $pdo->prepare('UPDATE hr_import_batches SET rows_proposed=?,rows_updated=?,rows_refreshed=? WHERE id=?')
-        ->execute([$proposed,$updated,$refreshed,$batchId]);
+    $pdo->prepare('UPDATE hr_import_batches SET rows_created=?,rows_updated=? WHERE id=?')
+        ->execute([count($credentials),$updated,$batchId]);
     $pdo->commit();
-    out(['imported'=>0,'proposed'=>$proposed,'updated'=>$updated,'refreshed'=>$refreshed,
-         'batch_id'=>$batchId,'status'=>hr_manager_actor($importer)?'hr_pending':'draft',
-         'pending_approval'=>true,'temporary_credentials'=>[]]);
+    header('Cache-Control: no-store');
+    out(['imported'=>count($credentials),'proposed'=>0,'updated'=>$updated,'unchanged'=>$unchanged,
+         'batch_id'=>$batchId,'pending_approval'=>false,'temporary_credentials'=>$credentials]);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     if ($e instanceof PDOException && $e->getCode() === '23000') err('Trung username/email; da rollback ca dot',409);
     if ($e instanceof InvalidArgumentException) err($e->getMessage(),422);
+    error_log('HR employee import failed ('.get_class($e).', code '.$e->getCode().')');
     err('Import that bai; da rollback ca dot',500);
 }

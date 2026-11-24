@@ -103,6 +103,23 @@ public class HomeActivity extends AppCompatActivity {
         tvHomeRole.setText(roleToVietnamese(myRole)
                 + (myDept != null && !myDept.isEmpty() ? " · " + deptToVietnamese(myDept) : ""));
         setupDeptSection(myRole, myDept);
+        View proposals = findViewById(R.id.btnBodProposals);
+        if ("manager".equalsIgnoreCase(myRole) && "BOD".equalsIgnoreCase(myDept)) {
+            api.getProposalAccess().enqueue(new Callback<ApiResponse>() {
+                @Override
+                public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+                    if (!isFinishing() && response.isSuccessful() && response.body() != null
+                            && response.body().isSuccess()) {
+                        proposals.setVisibility(View.VISIBLE);
+                        proposals.setOnClickListener(view ->
+                                startActivity(new Intent(HomeActivity.this, ProposalApprovalActivity.class)));
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<ApiResponse> call, Throwable error) {}
+            });
+        }
 
         // Mac dinh khoa ca 2 nut cham cong; renderToday() se mo dung nut khi biet trang thai.
         btnHomeCheckIn.setEnabled(false);

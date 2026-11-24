@@ -1,6 +1,102 @@
 <?php
 require_once __DIR__ . '/hr_core.php';
 require_once __DIR__ . '/hr_recruitment_flow.php';
+require_once __DIR__ . '/positions_logic.php';
+
+/** Serialize candidate reservations and account creation across the two HR entry points. */
+function hr_lock_hiring(PDO $pdo): void {
+    static $locked = false;
+    if ($locked) return;
+    if ((int)$pdo->query("SELECT GET_LOCK(CONCAT(DATABASE(),':hr-hiring'),10)")->fetchColumn()!==1)
+        err('He thong dang xu ly tuyen dung, vui long thu lai',409);
+    $locked = true; // Released when the non-persistent request connection closes.
+}
+
+function hr_candidate_reserved(PDO $pdo, string $username, string $email, int $except = 0): bool {
+    $st=$pdo->prepare("SELECT id FROM hr_proposals
+        WHERE proposal_type='recruitment' AND status IN ('draft','hr_pending','pending','approved') AND id<>?
+        AND (COALESCE(reservation_username,JSON_UNQUOTE(JSON_EXTRACT(proposed_data,'$.username'))) COLLATE utf8mb4_unicode_ci=?
+          OR COALESCE(reservation_email,JSON_UNQUOTE(JSON_EXTRACT(proposed_data,'$.email'))) COLLATE utf8mb4_unicode_ci=?)
+        LIMIT 1 FOR UPDATE");
+    $st->execute([$except,$username,$email]);
+    return (bool)$st->fetchColumn();
+}
+
+function hr_create_employee_account(PDO $pdo, array $data, int $roleId, bool $ordinary): array {
+    $password=rtrim(strtr(base64_encode(random_bytes(18)),'+/','-_'),'=');
+    $deadline=$ordinary?'DATE_ADD(NOW(), INTERVAL 15 DAY)':'NULL';
+    $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,
+        role_id,department_id,position_id,hire_date,employment_status,created_at,hr_documents_due_at)
+        VALUES(?,?,?,?,?,0,1,?,?,?,?,'working',NOW(),$deadline)")
+        ->execute([$data['username'],password_hash($password,PASSWORD_BCRYPT),$data['full_name'],
+            $data['phone'],$data['email'],$roleId,$data['department_id'],$data['position_id'],$data['hire_date']]);
+    return ['employee_id'=>(int)$pdo->lastInsertId(),'username'=>$data['username'],'temporary_password'=>$password];
+}
+
+/** Apply an approved HR change inside the caller's transaction, with the proposal locked. */
+function hr_apply_personnel_change(PDO $pdo, array $proposal, int $actorId): void {
+    $type = $proposal['proposal_type'];
+    $fields = [
+        'base_salary_change' => ['base_salary'],
+        'promotion' => ['position_id', 'role_id'],
+        'transfer' => ['department_id', 'position_id'],
+        'termination' => ['employment_status', 'status'],
+    ][$type] ?? null;
+    if ($fields === null || $proposal['status'] !== 'approved' || !$proposal['reviewed_by']
+        || !$proposal['employee_id'] || $proposal['applied_at']
+        || ($proposal['effective_date'] && $proposal['effective_date'] > date('Y-m-d'))) {
+        throw new DomainException('De xuat chua den han hoac khong the ap dung', 409);
+    }
+    $employeeId = (int)$proposal['employee_id'];
+    $stmt = $pdo->prepare('SELECT * FROM employees WHERE id=? FOR UPDATE');
+    $stmt->execute([$employeeId]);
+    $employee = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$employee || (int)$employee['role_id'] === 1 || $employee['employment_status'] === 'left') {
+        throw new DomainException('Nhan vien khong con phu hop voi de xuat', 409);
+    }
+    $before = json_decode($proposal['before_data'] ?? '', true);
+    foreach ($fields as $field) {
+        if (!is_array($before) || !array_key_exists($field, $before)
+            || (string)$before[$field] !== (string)$employee[$field]) {
+            throw new DomainException('Du lieu nhan vien da thay doi, can lap de xuat moi', 409);
+        }
+    }
+    if ($type === 'termination') {
+        $data = ['employment_status'=>'left', 'status'=>0,
+            'termination_effective_date'=>$proposal['effective_date'] ?? date('Y-m-d')];
+    } else {
+        $data = json_decode($proposal['proposed_data'], true);
+        $required = $fields[0];
+        if (!is_array($data) || !isset($data[$required])) {
+            throw new DomainException('De xuat thieu gia tri thay doi', 422);
+        }
+        $data = array_intersect_key($data, array_flip($fields));
+        if (isset($data['role_id']) && !in_array((int)$data['role_id'], [2, 3], true)) {
+            throw new DomainException('Vai tro de xuat khong hop le', 422);
+        }
+        if ($type === 'transfer') {
+            if (!hr_fk($pdo, 'departments', $data['department_id'])) {
+                throw new DomainException('De xuat thieu phong ban moi', 422);
+            }
+            $data['position_id'] = $data['position_id'] ?? null;
+        }
+        if (isset($data['position_id'])) {
+            $department = $data['department_id'] ?? $employee['department_id'];
+            validate_position_for_department($pdo, $data['position_id'], $department);
+            hr_require_active_position($pdo, $data['position_id']);
+        }
+    }
+    $assignments = implode('=?, ', array_keys($data)) . '=?';
+    $pdo->prepare("UPDATE employees SET $assignments WHERE id=?")
+        ->execute([...array_values($data), $employeeId]);
+    if ($type === 'termination') {
+        $pdo->prepare('DELETE FROM api_tokens WHERE employee_id=?')->execute([$employeeId]);
+    }
+    $pdo->prepare('UPDATE hr_proposals SET applied_at=NOW(), version=version+1 WHERE id=?')
+        ->execute([(int)$proposal['id']]);
+    hr_record_history($pdo, $actorId, $employeeId, 'proposal.applied',
+        array_intersect_key($employee, $data), $data, (int)$proposal['id']);
+}
 
 /** Migration 013 is required for HR internal review; never change live database at runtime. */
 function hr_require_internal_review_migration(PDO $pdo): void {
@@ -15,7 +111,7 @@ function hr_require_active_position(PDO $pdo, ?int $positionId): void {
     if ((int)$st->fetchColumn()!==1) err('Chuc vu da ngung su dung',422);
 }
 /** Prepare but NEVER apply a BOD-governed employee change. No activation or employee update here. */
-function hr_proposal_payload(PDO $pdo, string $type, array $b): array {
+function hr_proposal_payload(PDO $pdo, string $type, array $b, int $workflow = 4): array {
     $allowed=['recruitment','base_salary_change','promotion','transfer','termination'];
     if (!in_array($type,$allowed,true)) err('Loai de xuat khong hop le',422);
     if ($type === 'recruitment') {
@@ -27,15 +123,16 @@ function hr_proposal_payload(PDO $pdo, string $type, array $b): array {
         $department=hr_fk($pdo,'departments',$b['department_id']??null);
         $position=hr_fk($pdo,'positions',$b['position_id']??null);
         if ($position !== null) { $position=validate_position_for_department($pdo,$position,$department); hr_require_active_position($pdo,$position); }
-        if(!$position)err('Bat buoc chon chuc vu de phan cap duyet tuyen dung',422);
-        $senior=hr_recruitment_position_requires_bod($pdo,$position);
+        if(!$position || !$department)err('Bat buoc chon phong ban va chuc vu',422);
+        $senior=hr_recruitment_position_requires_bod($pdo,$position,$department);
+        if(!$senior && $workflow>=4)err('Ho so ung vien chi dung cho nhan su cap cao. Hay import nhan vien Staff.',422);
         $data=[
             'hiring_level'=>$senior?'senior':'ordinary',
             'username'=>$username,'full_name'=>employee_name($b['full_name']),'email'=>$email,
             'phone'=>empty($b['phone'])?null:employee_phone($b['phone']),
             'department_id'=>$department,'position_id'=>$position,
             'hire_date'=>hr_date($b['hire_date']??null),
-            'role_id'=>$senior?2:3, // Determined by verified position, not input.
+            'role_id'=>$senior?2:3,
         ];
         return [null,null,$data];
     }
@@ -71,30 +168,24 @@ function hr_proposal_payload(PDO $pdo, string $type, array $b): array {
     }
     return [(int)$id,$before,$data];
 }
-function hr_save_proposal(PDO $pdo, array $me, string $type, array $b, ?int $importBatchId = null, bool $forceDraft = false): array {
+function hr_save_proposal(PDO $pdo, array $me, string $type, array $b): array {
     if (!hr_employee_actor($me)) err('Chi HR duoc lap de xuat',403);
     if(hr_staff_actor($me)&&$type!=='recruitment')err('Staff HR chi duoc soan nhap ho so tuyen dung',403);
+    if($type==='recruitment')hr_lock_hiring($pdo);
     [$employee,$before,$data]=hr_proposal_payload($pdo,$type,$b);
     hr_require_internal_review_migration($pdo);
     $reason=trim((string)($b['reason']??''));
     if($reason===''||hr_length($reason)>1000)err('Can ly do 1-1000 ky tu',422);
     $date=hr_date($b['effective_date']??null);
     // Do not trust status, approver or result provided by the client.
-    $status=$forceDraft||hr_staff_actor($me)?'draft':($type==='recruitment'?'hr_pending':'pending');
-    // Avoid duplicate pending recruitment from both UI and imports.
-    if($type==='recruitment'){
-        $st=$pdo->query("SELECT id, proposed_data FROM hr_proposals WHERE proposal_type='recruitment' AND status IN ('draft','hr_pending','pending','approved')");
-        foreach($st->fetchAll(PDO::FETCH_ASSOC) as $p){
-            $candidate=json_decode($p['proposed_data'],true)?:[];
-            if(($candidate['username']??null)===$data['username']||strcasecmp((string)($candidate['email']??''),$data['email'])===0)
-                err('Ho so tuyen dung dang cho duyet hoac soan nhap; khong tao trung',409);
-        }
-    }
-    $st=$pdo->prepare('INSERT INTO hr_proposals(proposal_type,employee_id,proposed_by,before_data,proposed_data,reservation_username,reservation_email,reason,effective_date,status,import_batch_id,workflow_version) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)');
+    $status=$type==='recruitment'?'draft':'pending';
+    if($type==='recruitment'&&hr_candidate_reserved($pdo,$data['username'],$data['email']))
+        err('Ho so tuyen dung dang cho duyet hoac soan nhap; khong tao trung',409);
+    $st=$pdo->prepare('INSERT INTO hr_proposals(proposal_type,employee_id,proposed_by,before_data,proposed_data,reservation_username,reservation_email,reason,effective_date,status,workflow_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
     $st->execute([$type,$employee,(int)$me['id'],$before===null?null:hr_json($before),hr_json($data),
         $type==='recruitment'?$data['username']:null,$type==='recruitment'?$data['email']:null,
-        $reason,$date,$status,$importBatchId,$type==='recruitment'?3:1]);
+        $reason,$date,$status,$type==='recruitment'?4:1]);
     $id=(int)$pdo->lastInsertId();
     hr_record_history($pdo,(int)$me['id'],$employee,'proposal.created.'.$type,null,['proposal_id'=>$id,'status'=>$status],$id);
-    return ['id'=>$id,'status'=>$status,'proposal_type'=>$type,'employee_id'=>$employee];
+    return ['id'=>$id,'status'=>$status,'proposal_type'=>$type,'employee_id'=>$employee,'version'=>1];
 }

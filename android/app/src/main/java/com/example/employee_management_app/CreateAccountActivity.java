@@ -1,5 +1,6 @@
 package com.example.employee_management_app;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -21,23 +22,19 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-// Man hinh ADMIN tao tai khoan cho nhan vien.
-// Chi role admin/manager duoc mo (giong AdminActivity). Goi AuthApi.register().
-// Phong ban va Chuc vu chon bang SPINNER lay tu server (khong nhap ID bang tay nua);
-// doi phong ban thi danh sach chuc vu tu loc theo phong do (+ chuc vu dung chung).
-// Server van ep quy tac: manager chi tao staff cho phong minh, chuc vu phai thuoc phong.
+/** Candidate drafts for HR and technical account creation for Admin. */
 public class CreateAccountActivity extends AppCompatActivity {
 
     private EditText etUsername, etPassword, etFullName, etPhone, etEmail;
     private Spinner spRole, spDept, spPosition;
     private Button btnCreate;
-    private EditText etReason, etDraftId;
+    private EditText etReason, etHireDate;
     private final List<DepartmentListResponse.Item> deptChoices = new ArrayList<>();
     private final List<PositionListResponse.Item> positionChoices = new ArrayList<>();
     private Call<PositionListResponse> positionsCall;
     private int positionsForDept = -1;
-    private boolean isManagerRole;
-    private int myId;
+    private boolean sysAdmin;
+    private int draftId, draftVersion, draftDepartment, draftPosition, workflowVersion;
 
     // Map spinner -> role_id backend: 1 = admin, 2 = manager, 3 = staff.
 
@@ -48,15 +45,13 @@ public class CreateAccountActivity extends AppCompatActivity {
         setTitle("Tạo tài khoản nhân viên");
 
         String role = TokenManager.getInstance(this).getRole();
-        boolean sysAdmin = "admin".equalsIgnoreCase(role);
+        sysAdmin = "admin".equalsIgnoreCase(role);
         if (!HrUi.hr(this) && !sysAdmin) {
             Toast.makeText(this, "Chỉ HR hoặc Admin kỹ thuật được tạo hồ sơ", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
-        isManagerRole = false;
-        setTitle(sysAdmin ? "Tạo tài khoản Admin kỹ thuật" : "Hồ sơ tuyển dụng HR");
-        myId = TokenManager.getInstance(this).getUserId();
+        setTitle(sysAdmin ? "Tạo tài khoản Admin kỹ thuật" : "Hồ sơ ứng viên cấp cao");
 
         etUsername = findViewById(R.id.etNewUsername);
         etPassword = findViewById(R.id.etNewPassword);
@@ -74,16 +69,28 @@ public class CreateAccountActivity extends AppCompatActivity {
             etReason = new EditText(this); etReason.setHint("Lý do tuyển dụng (bắt buộc)");
             etReason.setSingleLine(true);
             parent.addView(etReason,idx++);
-            etDraftId = new EditText(this);
-            etDraftId.setHint("ID hồ sơ nháp cần sửa (để trống nếu tạo mới)");
-            etDraftId.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-            parent.addView(etDraftId,idx);
-            btnCreate.setText("Lưu hồ sơ HR (chưa tạo tài khoản)");
+            etHireDate = new EditText(this);
+            etHireDate.setSingleLine(true);
+            etHireDate.setHint("Ngày vào làm (YYYY-MM-DD, nếu có)");
+            parent.addView(etHireDate,idx);
+            btnCreate.setText("Lưu nháp và mở giấy tờ");
+            Intent draft = getIntent();
+            draftId = draft.getIntExtra("DRAFT_ID", 0);
+            draftVersion = draft.getIntExtra("DRAFT_VERSION", 0);
+            draftDepartment = draft.getIntExtra("DRAFT_DEPARTMENT", 0);
+            draftPosition = draft.getIntExtra("DRAFT_POSITION", 0);
+            workflowVersion = draft.getIntExtra("WORKFLOW_VERSION", 4);
+            etUsername.setText(draft.getStringExtra("username"));
+            etFullName.setText(draft.getStringExtra("full_name"));
+            etEmail.setText(draft.getStringExtra("email"));
+            etPhone.setText(draft.getStringExtra("phone"));
+            etReason.setText(draft.getStringExtra("reason"));
+            etHireDate.setText(draft.getStringExtra("hire_date"));
         }
 
         // HR creates candidate proposals only; server derives approval level from position.
         String[] roleNames = "admin".equalsIgnoreCase(role)
-                ? new String[]{"Admin kỹ thuật"} : new String[]{"Cấp duyệt tự xác định theo chức vụ"};
+                ? new String[]{"Admin kỹ thuật"} : new String[]{"Tuyển cấp cao · Manager HR và BOD duyệt"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_dropdown_item, roleNames);
         spRole.setAdapter(adapter);
@@ -101,40 +108,8 @@ public class CreateAccountActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        if (isManagerRole) {
-            spDept.setEnabled(false);
-            btnCreate.setEnabled(false);
-        }
         loadDepartments();
         btnCreate.setOnClickListener(v -> doCreate());
-    }
-
-    // Manager: khoa spinner Phong ve phong cua chinh minh (server cung ep nhu vay).
-    private void lockDepartmentToMine() {
-        if (myId <= 0) return;
-        EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
-        api.getDetail(myId).enqueue(new Callback<EmployeeDetailResponse>() {
-            @Override
-            public void onResponse(Call<EmployeeDetailResponse> c, Response<EmployeeDetailResponse> r) {
-                if (isFinishing() || isDestroyed()) return;
-                if (r.isSuccessful() && r.body() != null && r.body().getData() != null) {
-                    Integer myDept = r.body().getData().getDepartmentId();
-                    if (myDept != null) {
-                        for (int i = 0; i < deptChoices.size(); i++) {
-                            if (deptChoices.get(i).getId() == myDept) {
-                                spDept.setSelection(i);
-                                break;
-                            }
-                        }
-                        spDept.setEnabled(false);
-                        btnCreate.setEnabled(true);
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Call<EmployeeDetailResponse> c, Throwable t) { }
-        });
     }
 
     private void loadDepartments() {
@@ -150,8 +125,13 @@ public class CreateAccountActivity extends AppCompatActivity {
                             CreateAccountActivity.this,
                             android.R.layout.simple_spinner_dropdown_item, deptChoices);
                     spDept.setAdapter(a);
-                    loadPositions(0);
-                    if (isManagerRole) lockDepartmentToMine();
+                    for (int i = 0; i < deptChoices.size(); i++) {
+                        if (deptChoices.get(i).getId() == draftDepartment) {
+                            spDept.setSelection(i);
+                            loadPositions(draftDepartment);
+                            break;
+                        }
+                    }
                 } else {
                     Toast.makeText(CreateAccountActivity.this,
                             "Không tải được danh sách phòng ban", Toast.LENGTH_LONG).show();
@@ -177,12 +157,19 @@ public class CreateAccountActivity extends AppCompatActivity {
                 this, android.R.layout.simple_spinner_dropdown_item, positionChoices);
         spPosition.setAdapter(loading);
         spPosition.setEnabled(false);
+        if (!sysAdmin && deptId == 0) {
+            positionChoices.set(0, new PositionListResponse.Item(0, "Chọn phòng ban trước"));
+            loading.notifyDataSetChanged();
+            return;
+        }
         EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
-        positionsCall = deptId > 0 ? api.getPositions(deptId) : api.getPositions();
+        positionsCall = !sysAdmin && workflowVersion >= 4
+                ? HrUi.api(this).candidatePositions(deptId)
+                : (deptId > 0 ? api.getPositions(deptId) : api.getPositions());
         positionsCall.enqueue(new Callback<PositionListResponse>() {
             @Override
             public void onResponse(Call<PositionListResponse> c, Response<PositionListResponse> r) {
-                if (isFinishing() || isDestroyed() || deptId != positionsForDept) return; // response cu, bo qua
+                if (isFinishing() || isDestroyed() || deptId != positionsForDept || c.isCanceled()) return;
                 spPosition.setEnabled(true);
                 if (r.isSuccessful() && r.body() != null && r.body().isSuccess() && r.body().getData() != null) {
                     positionChoices.clear();
@@ -192,6 +179,14 @@ public class CreateAccountActivity extends AppCompatActivity {
                             CreateAccountActivity.this,
                             android.R.layout.simple_spinner_dropdown_item, positionChoices);
                     spPosition.setAdapter(a);
+                    if (deptId == draftDepartment) {
+                        for (int i = 0; i < positionChoices.size(); i++) {
+                            if (positionChoices.get(i).getId() == draftPosition) {
+                                spPosition.setSelection(i);
+                                break;
+                            }
+                        }
+                    }
                 } else {
                     positionChoices.clear();
                     positionChoices.add(new PositionListResponse.Item(0, "Không tải được chức vụ"));
@@ -249,8 +244,8 @@ public class CreateAccountActivity extends AppCompatActivity {
             posId = positionChoices.get(posPos).getId();
         }
 
-        if(!adminTechnical && (posId==null || posId<=0)){
-            Toast.makeText(this,"Chọn chức vụ để xác định cấp duyệt",Toast.LENGTH_LONG).show();
+        if(!adminTechnical && (deptId==null || posId==null)){
+            Toast.makeText(this,"Chọn phòng ban và chức vụ tuyển dụng",Toast.LENGTH_LONG).show();
             return;
         }
         btnCreate.setEnabled(false); // prevent accidental double submission
@@ -262,18 +257,20 @@ public class CreateAccountActivity extends AppCompatActivity {
             b.put("full_name",fullName);b.put("email",email);
             b.put("phone",phone.isEmpty()?null:phone);
             b.put("department_id",deptId);b.put("position_id",posId);b.put("reason",reason);
-            String draftText=etDraftId.getText().toString().trim();
-            if(!draftText.isEmpty()){
-                try{int draftId=Integer.parseInt(draftText);if(draftId<=0)throw new NumberFormatException();b.put("id",draftId);}
-                catch(NumberFormatException e){etDraftId.setError("ID phải là số dương");btnCreate.setEnabled(true);return;}
+            b.put("hire_date",etHireDate.getText().toString().trim());
+            if(draftId>0){
+                b.put("id",draftId);
+                b.put("version",draftVersion);
             }
-            retrofit2.Call<Map<String,Object>> request = draftText.isEmpty()
+            Call<Map<String,Object>> request = draftId==0
                 ? HrUi.api(this).createProposal(b) : HrUi.api(this).updateRecruitmentDraft(b);
             request.enqueue(new Callback<Map<String,Object>>(){
                 @Override public void onResponse(Call<Map<String,Object>> c,Response<Map<String,Object>> r){
                     btnCreate.setEnabled(true);
                     if(r.isSuccessful()&&r.body()!=null&&Boolean.TRUE.equals(r.body().get("success"))){
-                        Toast.makeText(CreateAccountActivity.this,"Đã lưu hồ sơ. Staff HR gửi Manager HR duyệt; cấp cao mới trình BOD.",Toast.LENGTH_LONG).show();finish();
+                        int id=HrUi.n(HrUi.map(r.body().get("data")).get("id"));
+                        startActivity(HrDocumentsActivity.candidateIntent(CreateAccountActivity.this,id,true));
+                        finish();
                     }else Toast.makeText(CreateAccountActivity.this,
                         ApiError.message(r,"Không lưu được hồ sơ tuyển dụng"),Toast.LENGTH_LONG).show();
                 }

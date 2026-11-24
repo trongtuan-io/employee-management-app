@@ -22,7 +22,7 @@ public class HrPositionsActivity extends AppCompatActivity {
     private Spinner department;
     private TextView summary,editHeading;
     private LinearLayout rows,editor;
-    private Button saveButton,deactivateButton;
+    private Button saveButton;
     private final List<Integer> departmentIds=new ArrayList<>();
     private final Map<Integer,String> departmentNames=new HashMap<>();
     private boolean departmentsReady=false;
@@ -45,11 +45,6 @@ public class HrPositionsActivity extends AppCompatActivity {
             editor.addView(department,new LinearLayout.LayoutParams(-1,HrUi.dp(this,48)));
             HrUi.label(editor,"Chọn “Dùng chung” nếu chức vụ không thuộc riêng phòng ban nào.");
             saveButton=HrUi.button(editor,"Lưu chức vụ",this::save);
-            deactivateButton=HrUi.danger(editor,"Ngừng sử dụng chức vụ",()->new AlertDialog.Builder(this)
-                    .setTitle("Ngừng sử dụng chức vụ?")
-                    .setMessage("Chức vụ sẽ không được chọn cho nhân viên mới.")
-                    .setNegativeButton("Hủy",null).setPositiveButton("Xác nhận",(d,w)->deactivate()).show());
-            deactivateButton.setVisibility(View.GONE);
             HrUi.secondary(editor,"Đóng",()->editor.setVisibility(View.GONE));
         }
         HrUi.section(root,"Danh sách chức vụ");
@@ -105,7 +100,6 @@ public class HrPositionsActivity extends AppCompatActivity {
     private void openCreate(){
         editor.setVisibility(View.VISIBLE);
         editHeading.setText("Thêm chức vụ");id.setText("");title.setText("");
-        deactivateButton.setVisibility(View.GONE);
         selectDepartment(0);
         if(departmentsReady)saveButton.setEnabled(true);
         title.requestFocus();
@@ -115,7 +109,6 @@ public class HrPositionsActivity extends AppCompatActivity {
         id.setText(HrUi.id(position.get("id")));
         title.setText(HrUi.s(position.get("title")));
         editHeading.setText("Chỉnh sửa chức vụ #"+HrUi.id(position.get("id")));
-        deactivateButton.setVisibility(View.VISIBLE);
         selectDepartment(position.get("department_id")==null?0:HrUi.n(position.get("department_id")));
         if(departmentsReady&&departmentIds.contains(selectedDepartmentId))saveButton.setEnabled(true);
         title.requestFocus();
@@ -147,14 +140,20 @@ public class HrPositionsActivity extends AppCompatActivity {
         // Keep the form visible if the server reports an error; user may retry.
         saveButton.postDelayed(()->{if(editor.getVisibility()==View.VISIBLE)saveButton.setEnabled(departmentsReady);},2200);
     }
-    private void deactivate(){
-        int positionId=number(id.getText().toString());
-        if(positionId<=0){Toast.makeText(this,"Hãy chọn chức vụ cần ngừng",Toast.LENGTH_LONG).show();return;}
-        Map<String,Object> b=new HashMap<>();b.put("id",positionId);
-        HrUi.call(this,HrUi.api(this).deactivatePosition(b),data->{
-            Toast.makeText(this,"Đã ngừng sử dụng chức vụ",Toast.LENGTH_SHORT).show();
-            editor.setVisibility(View.GONE);load();
-        });
+    private void confirmStatusChange(int positionId,String name,boolean activate){
+        String action=activate?"Kích hoạt lại":"Ngừng sử dụng";
+        new AlertDialog.Builder(this).setTitle(action+" chức vụ?")
+                .setMessage(name)
+                .setNegativeButton("Hủy",null)
+                .setPositiveButton("Xác nhận",(dialog,which)->{
+                    Map<String,Object> body=new HashMap<>();
+                    body.put("id",positionId);
+                    body.put("is_active",activate?1:0);
+                    HrUi.call(this,HrUi.api(this).updatePosition(body),data->{
+                        Toast.makeText(this,"Đã "+(activate?"kích hoạt lại":"ngừng sử dụng")+" chức vụ",Toast.LENGTH_SHORT).show();
+                        load();
+                    });
+                }).show();
     }
     private void load(){
         summary.setText("Đang tải danh sách…");
@@ -171,7 +170,13 @@ public class HrPositionsActivity extends AppCompatActivity {
                 String departmentLabel=r.get("department_id")==null?"Dùng chung":departmentNames.get(depId);
                 if(departmentLabel==null){departmentLabel="Chưa tải được tên phòng ban";}
                 HrUi.label(card,"Phòng ban: "+departmentLabel+"  ·  Nhân viên: "+HrUi.id(r.get("assigned_count")));
-                if(HrUi.managerHr(this))HrUi.secondary(card,"Chọn để chỉnh sửa",()->openEdit(r));
+                if(HrUi.managerHr(this)){
+                    HrUi.secondary(card,"Chọn để chỉnh sửa",()->openEdit(r));
+                    int positionId=HrUi.n(r.get("id"));
+                    String name=HrUi.s(r.get("title"));
+                    if(active)HrUi.danger(card,"Ngừng sử dụng",()->confirmStatusChange(positionId,name,false));
+                    else HrUi.secondary(card,"Kích hoạt lại",()->confirmStatusChange(positionId,name,true));
+                }
             }
         });
     }

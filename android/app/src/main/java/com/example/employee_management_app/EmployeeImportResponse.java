@@ -9,12 +9,9 @@ public class EmployeeImportResponse {
     public String getError() { return error; }
     public static class Data {
         private int imported;
-        private int proposed, updated, refreshed;
-        private String status;
-        public String getStatus() { return status; }
-        public int getProposed() { return proposed; }
+        private int updated, unchanged;
         public int getUpdated() { return updated; }
-        public int getRefreshed() { return refreshed; }
+        public int getUnchanged() { return unchanged; }
         private List<Credential> temporary_credentials;
         public int getImported() { return imported; }
         public List<Credential> getCredentials() { return temporary_credentials; }

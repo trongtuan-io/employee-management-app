@@ -464,6 +464,10 @@
             <Button android:id="@+id/btnHrDocuments"
                 style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
                 android:text="Giấy tờ nhân sự" />
+            <TextView android:id="@+id/tvHrDocumentProgress"
+                style="@style/AppSubtitle"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
             <Button android:id="@+id/btnHrProposal"
                 style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
                 android:text="Đề xuất nhân sự - chờ BOD" android:visibility="gone" />
