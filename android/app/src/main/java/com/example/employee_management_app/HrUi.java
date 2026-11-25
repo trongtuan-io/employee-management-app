@@ -52,9 +52,29 @@ public final class HrUi {
         sv.addView(root,new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT));
         activity.setContentView(sv);
         sv.requestApplyInsets();
+        // Standard header row: small "Quay lai" button + centered title (same pattern as XML screens).
+        LinearLayout header=new LinearLayout(activity);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT);
+        hp.setMargins(0,dp(activity,6),0,dp(activity,12));
+        root.addView(header,hp);
+        Button back=new Button(activity);
+        back.setText("Quay lại");back.setAllCaps(false);back.setTextSize(13);
+        back.setTypeface(null,Typeface.BOLD);
+        back.setMinimumHeight(0);back.setMinHeight(0);
+        back.setPadding(dp(activity,12),dp(activity,6),dp(activity,12),dp(activity,6));
+        back.setTextColor(PURPLE);
+        back.setBackground(shape(activity,Color.WHITE,LINE,11));
+        back.setOnClickListener(v->activity.finish());
+        header.addView(back);
         TextView t=new TextView(activity);
-        t.setText(title);t.setTextSize(23);t.setTextColor(INK);t.setTypeface(null,Typeface.BOLD);
-        t.setPadding(0,dp(activity,6),0,dp(activity,12));root.addView(t);
+        t.setText(title);t.setTextSize(18);t.setTextColor(INK);t.setTypeface(null,Typeface.BOLD);
+        t.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WRAP_CONTENT,1);
+        tp.setMargins(dp(activity,8),0,dp(activity,8),0);
+        header.addView(t,tp);
         return root;
     }
     public static TextView label(LinearLayout root,String text){

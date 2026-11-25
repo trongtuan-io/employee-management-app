@@ -42,6 +42,7 @@ public class CreateAccountActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_account);
+        findViewById(R.id.btnBackCreateAccount).setOnClickListener(v -> finish());
         setTitle("Tạo tài khoản nhân viên");
 
         String role = TokenManager.getInstance(this).getRole();

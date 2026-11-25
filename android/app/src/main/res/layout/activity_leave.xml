@@ -17,6 +17,14 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <Button
+            android:id="@+id/btnBackLeave"
+            style="?android:attr/buttonStyleSmall"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="Quay lại" />
+
         <TextView
             android:id="@+id/tvLeaveTitle"
             style="@style/AppTitle"

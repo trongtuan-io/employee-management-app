@@ -26,6 +26,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_forgot_password);
+        findViewById(R.id.btnBackForgotPassword).setOnClickListener(v -> finish());
         setTitle("Quên mật khẩu");
 
         step1 = findViewById(R.id.step1);

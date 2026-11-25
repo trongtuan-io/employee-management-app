@@ -37,6 +37,7 @@ public class ImportEmployeesActivity extends AppCompatActivity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         setContentView(R.layout.activity_import_employees);
+        findViewById(R.id.btnBackImportEmployees).setOnClickListener(v -> finish());
         setTitle("Nhập Excel/CSV - HR");
         status = findViewById(R.id.tvImportStatus);
         choose = findViewById(R.id.btnChooseImport);

@@ -35,7 +35,8 @@ public class HrDocumentsActivity extends AppCompatActivity {
     private int employeeId, proposalId, selectedDownloadId;
     private boolean canReview;
     private Spinner type;
-    private TextView summary, checklist;
+    private TextView summary;
+    private LinearLayout checklistBox;
     private LinearLayout list;
     private final List<Map<String,Object>> rows=new ArrayList<>();
 
@@ -54,12 +55,15 @@ public class HrDocumentsActivity extends AppCompatActivity {
         LinearLayout root=HrUi.page(this,proposalId>0?"Giấy tờ ứng viên #"+proposalId:"Giấy tờ nhân sự - NV #"+employeeId);
         if(proposalId==0){
             summary=HrUi.label(root,"Đang tải tiến độ…");
-            checklist=HrUi.label(root,"");
+            checklistBox=new LinearLayout(this);
+            checklistBox.setOrientation(LinearLayout.VERTICAL);
+            root.addView(checklistBox);
         }
         if(proposalId==0 || (HrUi.hr(this) && getIntent().getBooleanExtra("CANDIDATE_DRAFT",false))){
             String[] groups=proposalId>0?CANDIDATE_TYPES:TYPES;
             List<String> labels=new ArrayList<>();
             for(String group:groups)labels.add(typeLabel(group));
+            HrUi.label(root,"Loại giấy tờ cần tải lên");
             type=new Spinner(this);
             type.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,labels));
             root.addView(type);
@@ -69,7 +73,7 @@ public class HrDocumentsActivity extends AppCompatActivity {
                 startActivityForResult(i,OPEN_DOC);
             });
         }
-        HrUi.button(root,"Làm mới",this::load);
+        HrUi.secondary(root,"Làm mới",this::load);
         HrUi.section(root,proposalId>0?"Tài liệu đã đính kèm":"Lịch sử giấy tờ");
         list=new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -132,14 +136,14 @@ public class HrDocumentsActivity extends AppCompatActivity {
         if(proposalId==0)HrUi.call(this,api.documentSummary(employeeId),data->{
             Map<String,Object> details=HrUi.map(data);
             summary.setText(progressText(details));
-            StringBuilder text=new StringBuilder();
+            checklistBox.removeAllViews();
             for(Map<String,Object> item:HrUi.rows(details.get("checklist"))){
-                if(text.length()>0)text.append('\n');
-                text.append(typeLabel(HrUi.s(item.get("document_type"))));
-                if(Boolean.TRUE.equals(item.get("required")))text.append(" (bắt buộc)");
-                text.append(" · ").append(statusLabel(HrUi.s(item.get("status"))));
+                String status=HrUi.s(item.get("status"));
+                LinearLayout card=HrUi.card(checklistBox);
+                HrUi.title(card,typeLabel(HrUi.s(item.get("document_type")))
+                        +(Boolean.TRUE.equals(item.get("required"))?" (bắt buộc)":""));
+                HrUi.status(card,statusLabel(status),"valid".equals(status));
             }
-            checklist.setText(text.toString());
         });
         HrUi.call(this,proposalId>0?api.candidateDocuments(proposalId):api.documents(employeeId),data->{
             rows.clear();

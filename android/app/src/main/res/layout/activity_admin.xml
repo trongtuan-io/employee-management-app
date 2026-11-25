@@ -16,6 +16,36 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- Hang tieu de chuan: nut Quay lai + tieu de -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:layout_marginBottom="12dp">
+
+            <Button
+                android:id="@+id/btnBackAdmin"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Quay lại" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="8dp"
+                android:gravity="center"
+                android:text="Quản trị"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Banner quan tri -->
         <LinearLayout
             android:layout_width="match_parent"

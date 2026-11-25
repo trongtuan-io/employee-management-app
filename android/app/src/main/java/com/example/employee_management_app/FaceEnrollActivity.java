@@ -44,6 +44,7 @@ public class FaceEnrollActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_face_enroll);
+        findViewById(R.id.btnBackFaceEnroll).setOnClickListener(v -> finish());
         api = ApiClient.getClient(this).create(EmployeeApi.class);
         myId = TokenManager.getInstance(this).getUserId();
         tvStatus = findViewById(R.id.tvFaceEnrollStatus);

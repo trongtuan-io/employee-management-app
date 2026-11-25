@@ -65,6 +65,7 @@ public class FaceCaptureActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_face_capture);
+        findViewById(R.id.btnBackFaceCapture).setOnClickListener(v -> finish());
         ivPreview = findViewById(R.id.ivFacePreview);
         tvStatus = findViewById(R.id.tvFaceStatus);
         tvTitle = findViewById(R.id.tvFaceTitle);

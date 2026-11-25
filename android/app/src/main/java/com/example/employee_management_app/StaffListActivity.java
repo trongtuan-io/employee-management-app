@@ -75,6 +75,7 @@ public class StaffListActivity extends AppCompatActivity {
             return;
         }
         setContentView(R.layout.activity_staff_list);
+        findViewById(R.id.btnBackStaffList).setOnClickListener(v -> finish());
         BottomNavHelper.setup(this, R.id.nav_staff);
         applyWindowInsets();
         setTitle(R.string.staff_title);

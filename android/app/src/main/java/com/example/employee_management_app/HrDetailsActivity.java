@@ -1,5 +1,6 @@
 package com.example.employee_management_app;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -9,14 +10,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /** Additional employee fields missing from the original profile screen. */
 public class HrDetailsActivity extends AppCompatActivity {
+    private static final String[] GENDER_VALUES={"","male","female","other"};
     private int employeeId;
-    private EditText dob, gender, address, hire;
+    private EditText dob, address, hire;
+    private Spinner genderSpinner;
     private Spinner managerSpinner, employmentSpinner;
     private TextView companyInfo;
     private final List<Integer> managerIds = new ArrayList<>();
@@ -35,8 +39,16 @@ public class HrDetailsActivity extends AppCompatActivity {
                 || "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
         LinearLayout root = HrUi.page(this, "Thông tin hồ sơ mở rộng");
         companyInfo = HrUi.label(root, "Đang tải thông tin…");
-        dob = HrUi.input(root, "Ngày sinh YYYY-MM-DD");
-        gender = HrUi.input(root, "Giới tính: male / female / other");
+        dob = HrUi.input(root, "Ngày sinh — chạm để chọn ngày");
+        attachDatePicker(dob);
+        HrUi.label(root, "Giới tính");
+        genderSpinner = new Spinner(this);
+        root.addView(genderSpinner);
+        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item,
+                new String[]{"— Chọn giới tính —", "Nam", "Nữ", "Khác"});
+        genderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        genderSpinner.setAdapter(genderAdapter);
         address = HrUi.input(root, "Địa chỉ");
         HrUi.label(root, "Quản lý trực tiếp (không bắt buộc)");
         managerSpinner = new Spinner(this);
@@ -47,18 +59,19 @@ public class HrDetailsActivity extends AppCompatActivity {
         managerIds.add(0);
         managerAdapter.add("Không có quản lý trực tiếp");
         managerSpinner.setEnabled(false);
-        hire = HrUi.input(root, "Ngày vào làm YYYY-MM-DD (Trưởng phòng HR)");
+        hire = HrUi.input(root, "Ngày vào làm — chạm để chọn (Trưởng phòng HR)");
+        attachDatePicker(hire);
         HrUi.label(root, "Trạng thái làm việc");
         employmentSpinner = new Spinner(this);
         root.addView(employmentSpinner);
         employmentSpinner.setEnabled(false);
 
         dob.setEnabled(editable);
-        gender.setEnabled(editable);
+        genderSpinner.setEnabled(editable);
         address.setEnabled(editable);
         hire.setEnabled(hrManager);
         if (editable) HrUi.button(root, "Lưu thông tin cho phép", this::save);
-        HrUi.button(root, "Tải lại", this::load);
+        HrUi.secondary(root, "Tải lại", this::load);
         if (hrManager) loadManagers();
         load();
     }
@@ -138,7 +151,10 @@ public class HrDetailsActivity extends AppCompatActivity {
                     + "Lương cơ bản (nếu có quyền): " + HrUi.s(p.get("base_salary")) + "\n"
                     + "Trạng thái tài khoản: " + (HrUi.n(p.get("status")) == 1 ? "Hoạt động" : "Đã khóa"));
             dob.setText(HrUi.s(p.get("birth_date")));
-            gender.setText(HrUi.s(p.get("gender")));
+            String savedGender = HrUi.s(p.get("gender"));
+            int genderIndex = 0;
+            for (int i = 0; i < GENDER_VALUES.length; i++) if (GENDER_VALUES[i].equals(savedGender)) genderIndex = i;
+            genderSpinner.setSelection(genderIndex);
             address.setText(HrUi.s(p.get("address")));
             hire.setText(HrUi.s(p.get("hire_date")));
             originalManagerId = HrUi.n(p.get("direct_manager_id"));
@@ -163,7 +179,7 @@ public class HrDetailsActivity extends AppCompatActivity {
         Map<String, Object> body = new HashMap<>();
         body.put("id", employeeId);
         body.put("birth_date", birthValue);
-        body.put("gender", nil(gender));
+        body.put("gender", selectedGender());
         body.put("address", nil(address));
         if (hrManager) {
             if (managersLoaded && managerSpinner.getSelectedItemPosition() >= 0) {
@@ -180,6 +196,28 @@ public class HrDetailsActivity extends AppCompatActivity {
         HrUi.call(this, HrUi.api(this).updateProfile(body), data -> {
             Toast.makeText(this, "Đã lưu thông tin hành chính", Toast.LENGTH_SHORT).show();
             load();
+        });
+    }
+
+    private String selectedGender() {
+        int chosen = genderSpinner.getSelectedItemPosition();
+        if (chosen <= 0 || chosen >= GENDER_VALUES.length) return null;
+        return GENDER_VALUES[chosen];
+    }
+
+    private void attachDatePicker(EditText field) {
+        field.setFocusable(false);
+        field.setOnClickListener(v -> {
+            if (!field.isEnabled()) return;
+            Calendar cal = Calendar.getInstance();
+            String current = field.getText().toString().trim();
+            if (current.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                String[] parts = current.split("-");
+                cal.set(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) - 1, Integer.parseInt(parts[2]));
+            }
+            new DatePickerDialog(this, (view, year, month, day) ->
+                    field.setText(String.format(java.util.Locale.US, "%04d-%02d-%02d", year, month + 1, day)),
+                    cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show();
         });
     }
 
