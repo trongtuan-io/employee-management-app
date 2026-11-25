@@ -54,6 +54,12 @@ public class AdminActivity extends AppCompatActivity {
         Button btnLogout = findViewById(R.id.btnAdminLogout);
         Button btnExportAtt = findViewById(R.id.btnAdminExportAtt);
         boolean isExec = TokenManager.getInstance(this).isExecutive();
+        Button btnBodDash = findViewById(R.id.btnBodDashboard);
+        if (btnBodDash != null) {
+            btnBodDash.setVisibility(isExec ? android.view.View.VISIBLE : android.view.View.GONE);
+            btnBodDash.setOnClickListener(v ->
+                    startActivity(new Intent(this, BodDashboardActivity.class)));
+        }
         boolean isPayroll = "admin".equalsIgnoreCase(myRole) || ("ACC".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName()) && "manager".equalsIgnoreCase(myRole));
         boolean isHrOrAdmin = "admin".equalsIgnoreCase(myRole) || "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
         Button btnProposals = findViewById(R.id.btnAdminProposals);

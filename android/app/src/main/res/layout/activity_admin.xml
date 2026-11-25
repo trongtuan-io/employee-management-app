@@ -173,8 +173,14 @@
             android:paddingBottom="28dp">
 
             <Button
-                android:id="@+id/btnAdminApprove"
+                android:id="@+id/btnBodDashboard"
                 style="@style/AppButtonPrimary"
+                android:text="Tổng quan BOD (Dashboard &amp; Biểu đồ)" />
+
+            <Button
+                android:id="@+id/btnAdminApprove"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
                 android:text="Duyệt nghỉ phép" />
 
             <Button

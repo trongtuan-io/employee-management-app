@@ -64,6 +64,9 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+    // Bieu do MPAndroidChart cho BOD Dashboard
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     // Cham cong sinh trac hoc (2026-11-16):
     // - Van tay: BiometricPrompt cua AndroidX (xac thuc van tay tren may)
     // - Khuon mat: ML Kit phat hien/cat khuon mat + FaceNet TFLite trich embedding

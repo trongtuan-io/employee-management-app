@@ -55,6 +55,11 @@
         </activity>
 
         <activity
+            android:name=".BodDashboardActivity"
+            android:exported="false">
+        </activity>
+
+        <activity
             android:name=".ProposalApprovalActivity"
             android:exported="false">
         </activity>

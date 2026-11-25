@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Nov 23, 2026 at 08:15 AM
+-- Generation Time: Nov 25, 2026 at 02:52 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.28
 
@@ -120,7 +120,12 @@ INSERT INTO `api_tokens` (`id`, `employee_id`, `token_hash`, `expires_at`, `crea
 (156, 36, '5b6c0f76f2cbb1e16dc9f0a535d923f2e440fed966d32611f0517808ff7d678c', '2026-11-30 14:37:32', '2026-11-23 07:37:32'),
 (157, 36, '527306a76f36eef3e37872d6ce59313982095f8810c01563d269ddfb9ae70f1f', '2026-11-30 14:47:21', '2026-11-23 07:47:21'),
 (158, 36, '51b6fa3aad1791481c7291e144f0f05254337568beae6ab0fb4edcb4222b1175', '2026-11-30 14:54:50', '2026-11-23 07:54:50'),
-(159, 36, 'ae0037dc0609fc990cb74ca2a70aa42c439e102802da8b02b86a2e58cb3ff2d3', '2026-11-30 15:00:23', '2026-11-23 08:00:23');
+(159, 36, 'ae0037dc0609fc990cb74ca2a70aa42c439e102802da8b02b86a2e58cb3ff2d3', '2026-11-30 15:00:23', '2026-11-23 08:00:23'),
+(160, 36, '73735a397bd56e7bd51c67da0d7ade2bf0f4d4234ff95d126ef6b8afb312f7e4', '2026-11-30 16:09:23', '2026-11-23 09:09:23'),
+(161, 36, 'caa9b25888b7b40ae9e285cd5f7e8ed0c7b0bdb93493083666279fdbebef3c4f', '2026-11-30 16:16:52', '2026-11-23 09:16:52'),
+(162, 36, 'f4ae2ffbb497955134a4054789edc9a378cdc372f89449700f14dbb6771ab181', '2026-11-30 16:43:09', '2026-11-23 09:43:09'),
+(163, 36, '5f0b05eb9ae44d872d936bf5c66cf24f92589be02fedfc1cfa28f6538727c518', '2026-11-30 16:47:07', '2026-11-23 09:47:07'),
+(165, 36, '6e4538d553d2d6d0dbcb104a280461badc92c3bfb434de2b05043d0ba804e80c', '2026-12-02 21:37:36', '2026-11-25 14:37:36');
 
 -- --------------------------------------------------------
 
@@ -179,7 +184,8 @@ INSERT INTO `attendances` (`id`, `employee_id`, `work_date`, `check_in_time`, `c
 (38, 6, '2026-11-22', '2026-11-22 14:43:33', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL),
 (39, 6, '2026-11-23', '2026-11-23 12:30:15', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL),
 (40, 36, '2026-11-23', '2026-11-23 12:31:54', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL),
-(41, 3, '2026-11-23', '2026-11-23 12:45:08', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL);
+(41, 3, '2026-11-23', '2026-11-23 12:45:08', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL),
+(42, 36, '2026-11-25', '2026-11-25 21:27:49', NULL, 'late', NULL, NULL, NULL, NULL, NULL, NULL, 'gps', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1144,13 +1150,13 @@ ALTER TABLE `announcements`
 -- AUTO_INCREMENT for table `api_tokens`
 --
 ALTER TABLE `api_tokens`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=160;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=166;
 
 --
 -- AUTO_INCREMENT for table `attendances`
 --
 ALTER TABLE `attendances`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `attendance_explanations`
@@ -1162,7 +1168,7 @@ ALTER TABLE `attendance_explanations`
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3279;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3414;
 
 --
 -- AUTO_INCREMENT for table `employees`
@@ -1210,7 +1216,7 @@ ALTER TABLE `leave_requests`
 -- AUTO_INCREMENT for table `login_attempts`
 --
 ALTER TABLE `login_attempts`
-  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -1228,7 +1234,7 @@ ALTER TABLE `password_resets`
 -- AUTO_INCREMENT for table `positions`
 --
 ALTER TABLE `positions`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11711;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12224;
 
 --
 -- AUTO_INCREMENT for table `roles`
