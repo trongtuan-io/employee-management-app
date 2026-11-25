@@ -95,18 +95,25 @@ public class SalaryDetailActivity extends AppCompatActivity {
                 (SalaryListResponse.Item.num(tax) > 0 ? "− " : "") + SalaryListResponse.Item.money(tax));
         ((TextView) findViewById(R.id.tvDtlNet)).setText(
                 SalaryListResponse.Item.money(i.getStringExtra(EXTRA_PREFIX + "net_salary")));
+        boolean bodApproved = i.getBooleanExtra(EXTRA_PREFIX + "bod_approved", false);
         boolean paid = i.getBooleanExtra(EXTRA_PREFIX + "paid", false);
         TextView paidTv = findViewById(R.id.tvDtlPaidStatus);
         if (paid) {
             String paidAt = i.getStringExtra(EXTRA_PREFIX + "paid_at");
-            paidTv.setText("✓ Đã trả lương" + (paidAt != null && paidAt.length() >= 10
+            paidTv.setText("✓ Đã giải ngân" + (paidAt != null && paidAt.length() >= 10
                     ? " · " + paidAt.substring(8, 10) + "/" + paidAt.substring(5, 7) + "/" + paidAt.substring(0, 4) : ""));
             paidTv.setTextColor(ContextCompat.getColor(this, R.color.success));
+        } else if (bodApproved) {
+            paidTv.setText("Giám đốc đã duyệt · Sẵn sàng giải ngân");
+            paidTv.setTextColor(ContextCompat.getColor(this, R.color.primary));
+        } else if (finalized) {
+            paidTv.setText("Chờ Giám đốc duyệt · Chưa thể giải ngân");
+            paidTv.setTextColor(ContextCompat.getColor(this, R.color.warning));
         } else {
-            paidTv.setText(finalized ? "Chưa trả lương" : "Chưa trả lương (chốt xong mới trả được)");
+            paidTv.setText("Chưa chốt · Chưa thể giải ngân");
             paidTv.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
         }
-        updateActions(finalized, paid);
+        updateActions(finalized, bodApproved, paid);
         // Giu lai cac khoan hien tai de dialog Sua dung gia tri dung.
         currentExtras = i;
     }
@@ -124,7 +131,7 @@ public class SalaryDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void updateActions(boolean finalized, boolean paid) {
+    private void updateActions(boolean finalized, boolean bodApproved, boolean paid) {
         View actions = findViewById(R.id.layoutDetailActions);
         if (!canManage) {
             actions.setVisibility(View.GONE);
@@ -134,11 +141,11 @@ public class SalaryDetailActivity extends AppCompatActivity {
         findViewById(R.id.btnAdjustSalary).setVisibility(finalized ? View.GONE : View.VISIBLE);
         // Nut Chot chi hien voi Ke toan truong/Admin (NV Ke toan chi soan nhap).
         findViewById(R.id.btnFinalizeSalary).setVisibility(!finalized && canFinalize ? View.VISIBLE : View.GONE);
-        findViewById(R.id.btnUnfinalizeSalary).setVisibility(finalized && isAdmin ? View.VISIBLE : View.GONE);
-        // Tra luong: chi khi da chot, cung nhom quyen voi Chot.
+        findViewById(R.id.btnUnfinalizeSalary).setVisibility(finalized && !paid && isAdmin ? View.VISIBLE : View.GONE);
+        // Tra luong / Giai ngan: BAT BUOC phai đuoc GIAM DOC PHE DUYET (bodApproved = true)!
         android.widget.Button btnPaid = findViewById(R.id.btnPaidSalary);
-        btnPaid.setVisibility(finalized && canFinalize ? View.VISIBLE : View.GONE);
-        btnPaid.setText(paid ? "Huỷ đánh dấu đã trả lương" : "Đánh dấu đã trả lương");
+        btnPaid.setVisibility(finalized && bodApproved && canFinalize ? View.VISIBLE : View.GONE);
+        btnPaid.setText(paid ? "Huỷ đánh dấu đã trả lương" : "Đánh dấu đã trả lương (Giải ngân)");
     }
 
     private void reload() {
@@ -152,6 +159,7 @@ public class SalaryDetailActivity extends AppCompatActivity {
                             ni.putExtra(EXTRA_PREFIX + "full_name", it.getFullName());
                             ni.putExtra(EXTRA_PREFIX + "month", it.getMonth());
                             ni.putExtra(EXTRA_PREFIX + "finalized", it.isFinalized());
+                            ni.putExtra(EXTRA_PREFIX + "bod_approved", it.isBodApproved());
                             ni.putExtra(EXTRA_PREFIX + "full_base_salary", it.getFullBaseSalary());
                             ni.putExtra(EXTRA_PREFIX + "work_days", it.getWorkDays());
                             ni.putExtra(EXTRA_PREFIX + "standard_days", it.getStandardDays());

@@ -2,6 +2,7 @@
 require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/auth_guard.php";
 require_once __DIR__ . "/salary_calc.php";
+require_once __DIR__ . "/system_settings.php";
 require_once __DIR__ . "/biometrics_lib.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
@@ -12,10 +13,6 @@ $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 // OFFICE_RADIUS_M chi bi GAN CO "ngoai van phong" de quan ly doi chieu,
 // KHONG chan cham cong (tranh dung viec khi GPS lech hoac nhan vien lam
 // viec ngoai hien truong).
-define("OFFICE_LAT", 21.0378000);
-define("OFFICE_LNG", 105.7830000);
-define("OFFICE_RADIUS_M", 500);
-
 function att_ensure_columns(PDO $pdo) {
   static $done = false;
   if ($done) return;
@@ -46,11 +43,12 @@ function att_distance_m($lat1, $lng1, $lat2, $lng2) {
 }
 
 // Tra ve [lat, lng, remote]: remote = null khi client khong gui toa do.
-function att_gps_from_body($b) {
+function att_gps_from_body(PDO $pdo, $b) {
   $lat = isset($b["lat"]) && is_numeric($b["lat"]) ? (float)$b["lat"] : null;
   $lng = isset($b["lng"]) && is_numeric($b["lng"]) ? (float)$b["lng"] : null;
   if ($lat === null || $lng === null || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) return [null, null, null];
-  $remote = att_distance_m($lat, $lng, OFFICE_LAT, OFFICE_LNG) > OFFICE_RADIUS_M ? 1 : 0;
+  $office = system_settings_read($pdo);
+  $remote = att_distance_m($lat, $lng, $office['office_lat'], $office['office_lng']) > (int)$office['office_radius'] ? 1 : 0;
   return [$lat, $lng, $remote];
 }
 
@@ -86,7 +84,7 @@ if ($a === "checkin" && $m === "POST") {
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   att_ensure_columns($pdo);
   bio_ensure_schema($pdo);
-  [$gLat, $gLng, $gRemote] = att_gps_from_body($b);
+  [$gLat, $gLng, $gRemote] = att_gps_from_body($pdo, $b);
   [$method, $faceScore] = att_biometric_from_body($pdo, $emp, $b);
   $today = date("Y-m-d"); $now = date("Y-m-d H:i:s");
   $late = (strtotime(date("H:i")) > strtotime("08:15")) ? "late" : "present";
@@ -107,7 +105,7 @@ if ($a === "checkout" && $m === "POST") {
   if ((int)$emp !== (int)$me["id"]) err("Chi duoc cham cong cho chinh minh", 403);
   att_ensure_columns($pdo);
   bio_ensure_schema($pdo);
-  [$gLat, $gLng, $gRemote] = att_gps_from_body($b);
+  [$gLat, $gLng, $gRemote] = att_gps_from_body($pdo, $b);
   [$method, $faceScore] = att_biometric_from_body($pdo, $emp, $b);
   // Chi check-out duoc khi da check-in va chua check-out; kiem tra so dong cap nhat thay vi bao success mu.
   if ($gLat === null) {
@@ -147,20 +145,38 @@ if ($a === "history" && $m === "GET") {
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($a === "report" && $m === "GET") {
-  // Bao cao cham cong: admin/HR/Ke toan xem tat ca (HR tong hop, Ke toan doi chieu
-  // luong - chi XEM, khong sua cong); sep phong nghiep vu chi xem phong minh;
-  // nhan vien thuong khong xem.
   $me = require_login($pdo);
-  $isGlobal = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  $isGlobal = $me["role"] === "admin" || is_executive($me) || is_hr($me) || is_accounting($me);
   if (!$isGlobal && $me["role"] !== "manager") err("Khong co quyen xem bao cao cham cong", 403);
-  $date = $_GET["date"] ?? date("Y-m-d");
-  if ($me["role"] === "manager" && !$isGlobal) {
-    $stmt = $pdo->prepare("SELECT a.*, e.full_name FROM attendances a JOIN employees e ON a.employee_id=e.id WHERE a.work_date=? AND e.department_id=? ORDER BY a.id DESC");
-    $stmt->execute([$date, (int)$me["department_id"]]);
-  } else {
-    $stmt = $pdo->prepare("SELECT a.*, e.full_name FROM attendances a JOIN employees e ON a.employee_id=e.id WHERE a.work_date=? ORDER BY a.id DESC");
-    $stmt->execute([$date]);
+  $date = $_GET["date"] ?? "";
+  $month = isset($_GET["month"]) && is_numeric($_GET["month"]) ? (int)$_GET["month"] : null;
+  $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : null;
+  $dept = $_GET["dept_id"] ?? "";
+  if (!$isGlobal) {
+    if (!$me["department_id"]) out([]);
+    $dept = (int)$me["department_id"];
+  } elseif ($dept !== "" && filter_var($dept, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]]) === false) {
+    err("Phong ban khong hop le", 422);
   }
+  $sql = "SELECT a.*, e.full_name, d.name AS dept_name FROM attendances a JOIN employees e ON a.employee_id=e.id LEFT JOIN departments d ON d.id=e.department_id WHERE 1=1";
+  $params = [];
+  if ($date !== "") {
+    $sql .= " AND a.work_date=?";
+    $params[] = $date;
+  } elseif ($month !== null && $year !== null) {
+    $sql .= " AND MONTH(a.work_date)=? AND YEAR(a.work_date)=?";
+    $params[] = $month;
+    $params[] = $year;
+  } else {
+    $sql .= " AND a.work_date=CURDATE()";
+  }
+  if ($dept !== "") {
+    $sql .= " AND e.department_id=?";
+    $params[] = (int)$dept;
+  }
+  $sql .= " ORDER BY a.work_date DESC, a.id DESC";
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute($params);
   out($stmt->fetchAll(PDO::FETCH_ASSOC));
 }
 if ($a === "today" && $m === "GET") {
@@ -261,7 +277,7 @@ if ($a === "explanation-list" && $m === "GET") {
     if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true) && !is_hr($me)) {
       err("Khong co quyen xem giai trinh cua nguoi khac", 403);
     }
-    if ($me["role"] === "manager" && !is_hr($me) && (int)$emp !== (int)$me["id"]) {
+    if ($me["role"] === "manager" && !is_hr($me) && !is_executive($me) && (int)$emp !== (int)$me["id"]) {
       $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
       $st->execute([(int)$emp]);
       $tgt = $st->fetch(PDO::FETCH_ASSOC);
@@ -274,7 +290,7 @@ if ($a === "explanation-list" && $m === "GET") {
     $cols = "x.*, e.full_name, d.name AS dept_name, e.role_id AS target_role_id, ap.full_name AS approver_name";
     $joins = "FROM attendance_explanations x JOIN employees e ON e.id=x.employee_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN employees ap ON ap.id=x.approved_by";
     $order = "ORDER BY (x.status='pending') DESC, x.id DESC";
-    if ($me["role"] === "manager" && !is_hr($me)) {
+    if ($me["role"] === "manager" && !is_hr($me) && !is_executive($me)) {
       $stmt = $pdo->prepare("SELECT $cols $joins WHERE e.department_id=? $order");
       $stmt->execute([(int)$me["department_id"]]);
     } else {
@@ -295,21 +311,27 @@ if ($a === "explanation-approve" && $m === "POST") {
   $x = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$x) err("Khong tim thay don giai trinh", 404);
   if ($x["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
-  // Khong ai duoc tu duyet giai trinh cua chinh minh; giai trinh cua quan ly do Admin duyet.
   if ((int)$x["employee_id"] === (int)$me["id"]) err("Khong the tu duyet giai trinh cua chinh minh", 403);
-  if ((int)$x['target_role_id'] === 2) err('Don cua truong phong can nguoi co tham quyen BOD duyet', 403);
-  if ($me["role"] === "manager" && (int)$x["department_id"] !== (int)$me["department_id"]) {
+  if ((int)$x["target_role_id"] === 2 && !is_director($me)) {
+    err("Giải trình của Trưởng phòng chỉ có Ban Giám đốc mới được duyệt", 403);
+  }
+  if ($me["role"] === "manager" && (int)$x["department_id"] !== (int)$me["department_id"]
+      && !((int)$x["target_role_id"] === 2 && is_executive($me))) {
     err("Chi duyet duoc giai trinh cua nhan vien phong ban minh", 403);
   }
+  $pdo->beginTransaction();
   $upd = $pdo->prepare("UPDATE attendance_explanations SET status=?, approved_by=?, processed_at=NOW() WHERE id=? AND status='pending'");
   $upd->execute([$b["status"], (int)$me["id"], (int)$b["id"]]);
-  if ($upd->rowCount() === 0) err("Don nay da duoc xu ly roi", 409);
+  if ($upd->rowCount() === 0) {
+    $pdo->rollBack();
+    err("Don nay da duoc xu ly roi", 409);
+  }
   $applied = false;
   if ($b["status"] === "approved") {
     // Ap gio de xuat vao bang cham cong: chua co dong thi tao moi, co roi thi
     // chi dien phan dang thieu (khong ghi de du lieu cham cong that).
     $empId = (int)$x["employee_id"]; $wd = $x["work_date"];
-    $st = $pdo->prepare("SELECT id, check_in_time, check_out_time FROM attendances WHERE employee_id=? AND work_date=? LIMIT 1");
+    $st = $pdo->prepare("SELECT id, check_in_time, check_out_time FROM attendances WHERE employee_id=? AND work_date=? FOR UPDATE");
     $st->execute([$empId, $wd]);
     $att = $st->fetch(PDO::FETCH_ASSOC);
     $inDt = $x["proposed_in"] ? $wd . " " . $x["proposed_in"] : null;
@@ -333,6 +355,7 @@ if ($a === "explanation-approve" && $m === "POST") {
       }
     }
   }
+  $pdo->commit();
   $ok = $b["status"] === "approved";
   notify_push($pdo, (int)$x["employee_id"], $ok ? "expl_approved" : "expl_rejected",
     $ok ? "Giải trình chấm công đã được duyệt" : "Giải trình chấm công bị từ chối",
@@ -346,7 +369,7 @@ if ($a === "explanation-approve" && $m === "POST") {
 if ($a === "attendance-export" && $m === "GET") {
   $me = require_login($pdo);
   att_ensure_columns($pdo);
-  $isGlobal = $me["role"] === "admin" || is_hr($me) || is_accounting($me);
+  $isGlobal = $me["role"] === "admin" || is_executive($me) || is_hr($me) || is_accounting($me);
   if (!$isGlobal && $me["role"] !== "manager") err("Khong co quyen xuat bang cong", 403);
   $month = isset($_GET["month"]) && is_numeric($_GET["month"]) ? (int)$_GET["month"] : (int)date("n");
   $year = isset($_GET["year"]) && is_numeric($_GET["year"]) ? (int)$_GET["year"] : (int)date("Y");

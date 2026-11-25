@@ -46,6 +46,12 @@ public class LoginResponse {
 
         @SerializedName("department_name")
         private String departmentName;
+        @SerializedName("can_approve_bod")
+        private boolean canApproveBod;
+
+        public boolean canApproveBod() {
+            return canApproveBod;
+        }
 
         public int getId() {
             return id;

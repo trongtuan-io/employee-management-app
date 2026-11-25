@@ -87,6 +87,9 @@ public interface EmployeeApi {
     @POST("departments.php?action=delete")
     Call<ApiResponse> deleteDepartment(@Body DepartmentMutationRequest request);
 
+    @POST("employees.php?action=delete")
+    Call<ApiResponse> deleteEmployee(@Body SalaryFinalizeRequest request);
+
     @Multipart
     @POST("import_employees.php")
     Call<EmployeeImportResponse> importEmployees(@Part("requester_id") okhttp3.RequestBody requesterId,
@@ -146,6 +149,13 @@ public interface EmployeeApi {
     @POST("attendances.php?action=explanation-approve")
     Call<ApiResponse> approveExplanation(@Body LeaveApproveRequest request);
 
+    @GET("attendances.php?action=report")
+    Call<AttendanceReportResponse> getAttendanceReport(
+            @Query("date") String date,
+            @Query("month") Integer month,
+            @Query("year") Integer year,
+            @Query("dept_id") Integer deptId);
+
     // Xuat bang cong 1 thang ra CSV
     @GET("attendances.php?action=attendance-export")
     Call<okhttp3.ResponseBody> exportAttendance(@Query("month") int month, @Query("year") int year);
@@ -169,6 +179,9 @@ public interface EmployeeApi {
     // Chot 1 dong bang luong (chi admin/manager)
     @POST("leaves_salaries.php?action=salary-finalize")
     Call<ApiResponse> finalizeSalary(@Body SalaryFinalizeRequest request);
+
+    @POST("leaves_salaries.php?action=salary-bod-approve")
+    Call<ApiResponse> approveSalaryBod(@Body SalaryFinalizeRequest request);
 
     // Mo lai bang luong da chot (chi admin)
     @POST("leaves_salaries.php?action=salary-unfinalize")
@@ -195,6 +208,17 @@ public interface EmployeeApi {
 
     @POST("leaves_salaries.php?action=salary-policy-delete")
     Call<ApiResponse> deleteSalaryPolicy(@Body SalaryFinalizeRequest request);
+
+    @GET("settings.php?action=get")
+    Call<SettingsResponse> getSettings();
+
+    class SettingsResponse extends ApiResponse {
+        private java.util.Map<String, String> data;
+        public java.util.Map<String, String> getData() { return data; }
+    }
+
+    @POST("settings.php?action=save")
+    Call<ApiResponse> saveSettings(@Body java.util.Map<String, String> settings);
 
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")

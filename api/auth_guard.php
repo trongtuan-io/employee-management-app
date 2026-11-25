@@ -36,6 +36,7 @@ function auth_bearer_token() {
   elseif (function_exists("getallheaders")) {
     $hs = getallheaders();
     if (isset($hs["Authorization"])) $h = $hs["Authorization"];
+    elseif (isset($hs["authorization"])) $h = $hs["authorization"];
   }
   if (stripos($h, "Bearer ") === 0) return trim(substr($h, 7));
   return "";
@@ -46,11 +47,13 @@ function current_user(PDO $pdo) {
   $t = auth_bearer_token();
   if ($t === "") return null;
   auth_ensure_table($pdo);
-  $stmt = $pdo->prepare("SELECT e.id, e.username, e.full_name, e.department_id, e.status, LOWER(r.name) AS role,
-      d.name AS department_name
+  $stmt = $pdo->prepare("SELECT e.id, e.username, e.full_name, e.department_id, e.position_id, e.status, LOWER(r.name) AS role,
+      d.name AS department_name, p.title AS position_name
     FROM employees e
     LEFT JOIN roles r ON r.id = e.role_id
     LEFT JOIN departments d ON d.id = e.department_id
+    LEFT JOIN positions p ON p.id=e.position_id AND p.is_active=1
+    AND (p.department_id IS NULL OR p.department_id=e.department_id)
     JOIN api_tokens tk ON tk.employee_id = e.id
     WHERE tk.token_hash = ? AND tk.expires_at > NOW() LIMIT 1");
   $stmt->execute([hash("sha256", $t)]);
@@ -89,6 +92,17 @@ function is_dept($u, $dept) {
 function is_accounting($u) { return is_dept($u, "ACC"); }
 function is_hr($u) { return is_dept($u, "HR"); }
 
+// Executive permissions are BOD-only. Admin cannot act as a BOD approver.
+function is_executive($u) {
+  return is_director($u);
+}
+
+function is_director($u) {
+  return ($u['role'] ?? '') === 'manager'
+    && in_array(mb_strtolower(trim((string)($u['department_name'] ?? ''))), ['bod', 'ban giám đốc', 'ban giam doc', 'phòng ban giám đốc', 'phong ban giam doc'], true)
+    && in_array(mb_strtolower(trim((string)($u['position_name'] ?? ''))),
+      ['giám đốc', 'giam doc', 'phó giám đốc', 'pho giam doc', 'tổng giám đốc', 'tong giam doc', 'ceo', 'director', 'vice director'], true);
+}
 // Quan ly nhan su toan cong ty: admin hoac Truong phong HR.
 function is_hr_manager($u) {
   return $u["role"] === "admin" || (is_hr($u) && $u["role"] === "manager");
@@ -115,13 +129,13 @@ function require_payroll(PDO $pdo, $finalize = false) {
     }
     return $u;
   }
-  err("Chi phong Ke toan moi duoc thao tac bang luong", 403);
+  err("Chi Ban Giam Doc hoac phong Ke toan moi duoc thao tac bang luong", 403);
 }
 
 // Nguoi goi co duoc XEM bang luong cua nguoi khac khong (Admin + phong Ke toan,
 // de phuc vu soan nhap; Truong phong HR thi KHONG).
 function can_view_others_salary($u) {
-  return $u["role"] === "admin" || is_accounting($u);
+  return $u["role"] === "admin" || is_executive($u) || is_accounting($u);
 }
 
 // ===== Thong bao trong app (dung chung cho leaves_salaries.php va attendances.php) =====
@@ -161,17 +175,31 @@ function notify_vnd($v) {
   return number_format((float)$v, 0, ",", ".") . " ₫";
 }
 
-// Gui thong bao cho TAP NGUOI DUYET cua 1 nhan vien: Admin + manager cung
-// phong voi nhan vien do + toan phong HR. Khong gui cho chinh nhan vien do.
+function notify_bod_approvers(PDO $pdo, int $employeeId, string $type, string $title, string $body, ?int $refId): void {
+  $recips = $pdo->prepare("SELECT e.id, 'manager' AS role, d.name AS department_name, p.title AS position_name
+    FROM employees e JOIN departments d ON d.id=e.department_id
+    JOIN positions p ON p.id=e.position_id AND p.is_active=1 AND (p.department_id IS NULL OR p.department_id=e.department_id)
+    WHERE e.status=1 AND e.role_id=2 AND e.id<>?");
+  $recips->execute([(int)$employeeId]);
+  foreach ($recips->fetchAll(PDO::FETCH_ASSOC) as $approver) {
+    if (is_director($approver)) notify_push($pdo, (int)$approver['id'], $type, $title, $body, $refId);
+  }
+}
+
+// Đơn của trưởng phòng chuyển đến BOD. Đơn nhân viên giữ tuyến duyệt theo phòng.
 // Dung cho don nghi moi va don giai trinh cham cong moi.
 function notify_approvers(PDO $pdo, $employeeId, $type, $title, $body, $refId = null) {
-  $st = $pdo->prepare("SELECT department_id FROM employees WHERE id=?");
+  $st = $pdo->prepare("SELECT department_id, role_id FROM employees WHERE id=?");
   $st->execute([(int)$employeeId]);
-  $deptId = $st->fetchColumn();
-  if ($deptId === false) return;
+  $employee = $st->fetch(PDO::FETCH_ASSOC);
+  if (!$employee) return;
+  if ((int)$employee['role_id'] === 2) {
+    notify_bod_approvers($pdo, $employeeId, $type, $title, $body, $refId);
+    return;
+  }
   $recips = $pdo->prepare("SELECT DISTINCT e.id FROM employees e LEFT JOIN departments d ON d.id=e.department_id
     WHERE e.status=1 AND e.id<>? AND (e.role_id=1 OR (e.role_id=2 AND e.department_id=?) OR d.name='HR')");
-  $recips->execute([(int)$employeeId, (int)$deptId]);
+  $recips->execute([(int)$employeeId, (int)$employee["department_id"]]);
   foreach ($recips->fetchAll(PDO::FETCH_COLUMN) as $rid) {
     notify_push($pdo, (int)$rid, $type, $title, $body, $refId);
   }

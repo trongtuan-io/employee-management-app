@@ -16,7 +16,11 @@ if ($a === "login" && $m === "POST") {
   $st = $pdo->prepare("SELECT COUNT(*) FROM login_attempts WHERE username=? AND ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
   $st->execute([$username, $ip]);
   if ((int)$st->fetchColumn() >= 10) err("Dang nhap sai qua nhieu lan, vui long thu lai sau 10 phut", 429);
-  $stmt = $pdo->prepare("SELECT e.*, r.name AS role_name, d.name AS department_name FROM employees e LEFT JOIN roles r ON e.role_id=r.id LEFT JOIN departments d ON d.id=e.department_id WHERE e.username=? LIMIT 1");
+  $stmt = $pdo->prepare("SELECT e.*, LOWER(r.name) AS role_name, d.name AS department_name, p.title AS position_name
+    FROM employees e LEFT JOIN roles r ON e.role_id=r.id LEFT JOIN departments d ON e.department_id=d.id
+    LEFT JOIN positions p ON p.id=e.position_id AND p.is_active=1
+    AND (p.department_id IS NULL OR p.department_id=e.department_id)
+    WHERE e.username=? LIMIT 1");
   $stmt->execute([$username]);
   $u = $stmt->fetch(PDO::FETCH_ASSOC);
   // User khong ton tai van chay password_verify voi hash gia de thoi gian phan hoi deu nhau.
@@ -28,6 +32,7 @@ if ($a === "login" && $m === "POST") {
   if ((int)$u["status"] === 0) err("Tai khoan da bi khoa", 403);
   $pdo->prepare("DELETE FROM login_attempts WHERE username=? AND ip=?")->execute([$username, $ip]);
   unset($u["password_hash"]);
+  $u["can_approve_bod"] = is_director(["role" => $u["role_name"]] + $u);
   $u["token"] = auth_issue_token($pdo, $u["id"]); // Token that ngau nhien, server luu hash (auth_guard.php)
   out($u);
 }

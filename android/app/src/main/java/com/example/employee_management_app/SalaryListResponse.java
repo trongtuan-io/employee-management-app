@@ -31,6 +31,7 @@ public class SalaryListResponse {
         private String insurance_base;
         private String insurance_amount;
         private String tax_amount;
+        private int bod_approved;
         private int paid;
         private String paid_at;
         private String insurance_salary;
@@ -54,6 +55,7 @@ public class SalaryListResponse {
         public String getInsuranceBase() { return insurance_base; }
         public String getInsuranceAmount() { return insurance_amount; }
         public String getTaxAmount() { return tax_amount; }
+        public boolean isBodApproved() { return bod_approved == 1; }
         public boolean isPaid() { return paid == 1; }
         public String getPaidAt() { return paid_at; }
         public String getInsuranceSalary() { return insurance_salary; }

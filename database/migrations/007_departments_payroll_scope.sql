@@ -10,8 +10,22 @@
 -- app van khong sup; file nay dung de cai moi doi chieu va tao tai khoan mau.
 
 -- Phu thuoc migration 003 (cot positions.department_id); tu bo sung neu chua co.
-ALTER TABLE positions ADD COLUMN IF NOT EXISTS department_id INT NULL DEFAULT NULL;
-ALTER TABLE positions ADD INDEX IF NOT EXISTS idx_positions_dept (department_id);
+SET @migration_ddl = IF(
+  EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE()
+    AND TABLE_NAME='positions' AND COLUMN_NAME='department_id'),
+  'DO 0', 'ALTER TABLE positions ADD COLUMN department_id INT NULL DEFAULT NULL'
+);
+PREPARE migration_stmt FROM @migration_ddl;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
+SET @migration_ddl = IF(
+  EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE()
+    AND TABLE_NAME='positions' AND INDEX_NAME='idx_positions_dept'),
+  'DO 0', 'ALTER TABLE positions ADD INDEX idx_positions_dept (department_id)'
+);
+PREPARE migration_stmt FROM @migration_ddl;
+EXECUTE migration_stmt;
+DEALLOCATE PREPARE migration_stmt;
 
 INSERT IGNORE INTO departments(name, description) VALUES
   ('ACC', 'Ke toan - Tai chinh'),
