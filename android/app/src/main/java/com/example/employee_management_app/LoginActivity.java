@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -39,8 +40,8 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
 
-        // Nut Hien/An mat khau: doi inputType, giu nguyen vi tri con tro.
-        Button btnTogglePassword = findViewById(R.id.btnTogglePassword);
+        // Icon con mat Hien/An mat khau: doi inputType + icon, giu nguyen vi tri con tro.
+        ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
         btnTogglePassword.setOnClickListener(v -> {
             passwordVisible = !passwordVisible;
             int cursor = etPassword.getSelectionEnd();
@@ -48,7 +49,9 @@ public class LoginActivity extends AppCompatActivity {
                     ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
                     : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
             if (cursor >= 0) etPassword.setSelection(cursor);
-            btnTogglePassword.setText(passwordVisible ? "Ẩn" : "Hiện");
+            btnTogglePassword.setImageResource(passwordVisible
+                    ? R.drawable.ic_visibility_off : R.drawable.ic_visibility);
+            btnTogglePassword.setContentDescription(passwordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu");
         });
 
         findViewById(R.id.tvForgotPassword).setOnClickListener(v ->

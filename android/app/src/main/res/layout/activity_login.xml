@@ -78,13 +78,14 @@
                     android:hint="Nhập mật khẩu"
                     android:inputType="textPassword" />
 
-                <Button
+                <ImageButton
                     android:id="@+id/btnTogglePassword"
-                    style="?android:attr/buttonStyleSmall"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Hiện" />
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Hiện mật khẩu"
+                    android:src="@drawable/ic_visibility" />
             </LinearLayout>
 
             <Button
