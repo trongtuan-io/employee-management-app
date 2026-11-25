@@ -2,6 +2,7 @@ package com.example.employee_management_app;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -16,6 +17,7 @@ public class LoginActivity extends AppCompatActivity {
     private EditText etUsername;
     private EditText etPassword;
     private Button btnLogin;
+    private boolean passwordVisible;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +38,18 @@ public class LoginActivity extends AppCompatActivity {
         etUsername = findViewById(R.id.etUsername);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
+
+        // Nut Hien/An mat khau: doi inputType, giu nguyen vi tri con tro.
+        Button btnTogglePassword = findViewById(R.id.btnTogglePassword);
+        btnTogglePassword.setOnClickListener(v -> {
+            passwordVisible = !passwordVisible;
+            int cursor = etPassword.getSelectionEnd();
+            etPassword.setInputType(passwordVisible
+                    ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                    : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            if (cursor >= 0) etPassword.setSelection(cursor);
+            btnTogglePassword.setText(passwordVisible ? "Ẩn" : "Hiện");
+        });
 
         findViewById(R.id.tvForgotPassword).setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, ForgotPasswordActivity.class)));
