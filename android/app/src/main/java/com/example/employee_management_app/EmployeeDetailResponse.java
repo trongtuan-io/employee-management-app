@@ -26,6 +26,7 @@ public class EmployeeDetailResponse {
         private String base_salary;
 
         private int status;
+        private int role_id;
         private int department_id;
         private int position_id;
         private String created_at;
@@ -48,6 +49,7 @@ public class EmployeeDetailResponse {
         public String getBaseSalary() { return base_salary; }
         public String getAvatarUrl() { return avatarUrl; }
         public int getStatus() { return status; }
+        public int getRoleId() { return role_id; }
         public int getDepartmentId() { return department_id; }
         public int getPositionId() { return position_id; }
         public String getCreatedAt() { return created_at; }

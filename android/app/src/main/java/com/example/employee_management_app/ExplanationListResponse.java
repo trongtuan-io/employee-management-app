@@ -13,6 +13,8 @@ public class ExplanationListResponse {
     public static class Item {
         private int id;
         private int employee_id;
+        private int target_role_id;
+        public int getTargetRoleId() { return target_role_id; }
         private String full_name; // chi co o hang cho duyet
         private String dept_name; // chi co o hang cho duyet
         private String work_date;

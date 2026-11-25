@@ -98,7 +98,11 @@ public class LeaveActivity extends AppCompatActivity {
             LeaveListResponse.Item item = shownItems.get(position);
             // O tab duyet: chi don dang CHO duyet moi mo hop thoai Duyet/Tu choi;
             // don da xu ly (va don o tab cua toi) chi xem chi tiet de truy vet.
-            if (mode == MODE_QUEUE && "pending".equals(item.getStatus())) showApproveDialog(item);
+            boolean hrWatcher = "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
+            boolean staffHr = hrWatcher && "staff".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+            boolean otherDept = hrWatcher && item.getDeptName()!=null && !"HR".equalsIgnoreCase(item.getDeptName());
+            if (mode == MODE_QUEUE && "pending".equals(item.getStatus()) && !staffHr && !otherDept && item.getTargetRoleId()!=2)
+                showApproveDialog(item);
             else showDetailDialog(item);
         });
 

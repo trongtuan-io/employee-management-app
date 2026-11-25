@@ -52,10 +52,11 @@ public final class ProfileValidation {
 
     public static String phoneError(String value) {
         String phone = text(value);
-        // Nullable in the database. The leading '+' counts toward VARCHAR(15).
+        // So di dong Viet Nam: 10 chu so (03/05/07/08/09) hoac +84 tuong ung.
+        // Truong phone co the bo trong; du lieu cu khong sua khong bi validate lai.
         if (phone.isEmpty()) return null;
-        if (phone.length() > 15 || !phone.matches("\\+?[0-9]{7,15}")) {
-            return "SĐT gồm 7–15 chữ số, có thể bắt đầu bằng +; tối đa 15 ký tự";
+        if (!phone.matches("(?:0[35789][0-9]{8}|\\+84[35789][0-9]{8})")) {
+            return "SĐT di động VN phải có 10 chữ số, bắt đầu 03/05/07/08/09 (hoặc +84)";
         }
         return null;
     }

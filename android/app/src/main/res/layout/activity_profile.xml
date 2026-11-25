@@ -458,6 +458,22 @@
                     android:textColor="@color/text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
+            <Button android:id="@+id/btnHrFullProfile"
+                style="@style/AppButtonSecondary" android:layout_marginTop="10dp"
+                android:text="Thông tin cá nhân và công việc mở rộng" />
+            <Button android:id="@+id/btnHrDocuments"
+                style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
+                android:text="Giấy tờ nhân sự" />
+            <TextView android:id="@+id/tvHrDocumentProgress"
+                style="@style/AppSubtitle"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+            <Button android:id="@+id/btnHrProposal"
+                style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
+                android:text="Đề xuất nhân sự - chờ BOD" android:visibility="gone" />
+            <Button android:id="@+id/btnHrHistory"
+                style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
+                android:text="Lịch sử nhân sự" android:visibility="gone" />
             <Button
             android:id="@+id/btnProfileLogout"
             style="@style/AppButtonDanger"

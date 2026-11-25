@@ -3,6 +3,7 @@ require_once __DIR__ . "/db.php";
 require_once __DIR__ . "/auth_guard.php";
 require_once __DIR__ . "/positions_logic.php";
 require_once __DIR__ . "/employee_validation.php";
+require_once __DIR__ . "/hr_proposals_lib.php";
 $a = $_GET["action"] ?? ""; $m = $_SERVER["REQUEST_METHOD"];
 
 if ($a === "login" && $m === "POST") {
@@ -31,37 +32,35 @@ if ($a === "login" && $m === "POST") {
   out($u);
 }
 if ($a === "register" && $m === "POST") {
-  // Tao tai khoan la viec cua admin/manager dang dang nhap (app mo man nay tu AdminActivity).
-  $me = require_role($pdo, ["admin", "manager"]);
-  $b = body();
-  if ((int)($b["role_id"] ?? 3) !== 3 && $me["role"] !== "admin") err("Chi admin moi tao duoc tai khoan admin/manager", 403);
-  // Manager (MOI phong) chi tao nhan vien thuong cho PHONG MINH; tao tai khoan
-  // cho phong khac la viec cua admin (siet chat 09/11/2026).
-  if ($me["role"] === "manager") {
-    $b["role_id"] = 3;
-    $b["department_id"] = (int)$me["department_id"];
+  // Reuse existing Android CreateAccount screen as recruitment proposal for HR.
+  // Never store or return a password until BOD approves and account activation exists.
+  $me=require_login($pdo);
+  $b=body();
+  if($me['role']==='admin' && (int)($b['role_id']??0)===1){
+      hr_require_migration($pdo);
+      // Pure technical administrator account, not ordinary employee recruitment.
+      // This branch cannot create staff/manager or set any salary.
+      if(empty($b['password'])||!is_string($b['password'])||strlen($b['password'])<8)err('Mat khau quan tri it nhat 8 ky tu',422);
+      $username=employee_username($b['username']??null);$email=employee_email($b['email']??null);
+      $name=employee_name($b['full_name']??null);
+      $dep=hr_fk($pdo,'departments',$b['department_id']??null);
+      try{
+          $pdo->beginTransaction();
+          $stmt=$pdo->prepare('INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,role_id,department_id) VALUES(?,?,?,?,?,0,1,1,?)');
+          $stmt->execute([$username,password_hash($b['password'],PASSWORD_BCRYPT),$name,empty($b['phone'])?null:employee_phone($b['phone']),$email,$dep]);
+          $id=(int)$pdo->lastInsertId();
+          hr_record_history($pdo,(int)$me['id'],$id,'account.admin.created',null,['technical_admin'=>true,'username'=>$username]);
+          $pdo->commit();out(['id'=>$id,'technical_account'=>true]);
+      }catch(PDOException $e){if($pdo->inTransaction())$pdo->rollBack();err($e->getCode()==='23000'?'Username/email da ton tai':'Khong tao duoc tai khoan quan tri',409);}
   }
-  if (empty($b["username"]) || empty($b["password"]) || empty($b["full_name"]) || empty($b["email"])) err("Thieu username/password/full_name/email");
-  if (!is_string($b["password"]) || strlen($b["password"]) < 6) err("Mat khau it nhat 6 ky tu");
-  if (isset($b["base_salary"]) && (!is_scalar($b["base_salary"]) || !is_numeric($b["base_salary"]) || (float)$b["base_salary"] < 0)) err("Luong co ban khong hop le", 422);
-  // Chuan hoa + validate dinh dang nhu duong import (truoc day email/username sai dinh dang van luu).
-  try {
-    $b["username"] = employee_username($b["username"]);
-    $b["full_name"] = employee_name($b["full_name"]);
-    $b["email"] = employee_email($b["email"]);
-    if (isset($b["phone"]) && $b["phone"] !== null && $b["phone"] !== "") $b["phone"] = employee_phone($b["phone"]);
-  } catch (InvalidArgumentException $e) { err($e->getMessage(), 422); }
-  positions_ensure($pdo);
-  $posId = validate_position_for_department($pdo, $b["position_id"] ?? null, $b["department_id"] ?? null);
-  $hash = password_hash($b["password"], PASSWORD_BCRYPT);
-  try {
-    $stmt = $pdo->prepare("INSERT INTO employees(username,password_hash,full_name,phone,email,base_salary,status,role_id,department_id,position_id) VALUES(?,?,?,?,?,?,?,?,?,?)");
-    $stmt->execute([$b["username"], $hash, $b["full_name"], $b["phone"] ?? null, $b["email"], $b["base_salary"] ?? 0, 1, $b["role_id"] ?? 3, $b["department_id"] ?? null, $posId]);
-    out(["id" => $pdo->lastInsertId()]);
-  } catch (Exception $e) {
-    if ($e instanceof PDOException && $e->getCode() === "23000") err("Username/Email da ton tai", 409);
-    err("Khong tao duoc tai khoan", 500);
-  }
+  if(!hr_employee_actor($me))err('Ho so tuyen dung can HR de xuat, BOD phe duyet',403);
+  hr_require_migration($pdo);
+  if(isset($b['role_id'])&&(int)$b['role_id']!==3)err('Tuyen nhan vien moi chi duoc de xuat role staff',403);
+  unset($b['password']);
+  $b['reason']=$b['reason']??'De xuat tuyen dung tu man hinh tao tai khoan';
+  try{$pdo->beginTransaction();$r=hr_save_proposal($pdo,$me,'recruitment',$b);$pdo->commit();out($r);}
+  catch(InvalidArgumentException $e){if($pdo->inTransaction())$pdo->rollBack();err($e->getMessage(),422);}
+  catch(PDOException $e){if($pdo->inTransaction())$pdo->rollBack();err($e->getCode()==='23000'?'Ho so tuyen dung trung':'Khong tao duoc de xuat',$e->getCode()==='23000'?409:500);}
 }
 if ($a === "change-password" && $m === "POST") {
   $me = require_login($pdo); // Chi duoc doi mat khau cua chinh minh

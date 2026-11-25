@@ -59,6 +59,11 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <Button android:id="@+id/btnOpenHrHub"
+        style="@style/AppButtonSecondary" android:layout_marginTop="8dp"
+        android:text="Mở nghiệp vụ Nhân sự (HR)"
+        android:visibility="gone" />
+
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/swFullTextSearch"
         android:layout_width="match_parent"

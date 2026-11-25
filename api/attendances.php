@@ -256,7 +256,7 @@ if ($a === "explanation-list" && $m === "GET") {
   $me = require_login($pdo);
   expl_ensure_table($pdo);
   $emp = $_GET["employee_id"] ?? "";
-  if ($emp === "" && $me["role"] === "staff") $emp = (string)(int)$me["id"];
+  if ($emp === "" && $me["role"] === "staff" && !is_hr($me)) $emp = (string)(int)$me["id"];
   if ($emp !== "") {
     if ((int)$emp !== (int)$me["id"] && !in_array($me["role"], ["admin", "manager"], true) && !is_hr($me)) {
       err("Khong co quyen xem giai trinh cua nguoi khac", 403);
@@ -271,7 +271,7 @@ if ($a === "explanation-list" && $m === "GET") {
     $stmt->execute([(int)$emp]);
   } else {
     if (!in_array($me["role"], ["admin", "manager"], true) && !is_hr($me)) err("Khong co quyen xem hang cho duyet", 403);
-    $cols = "x.*, e.full_name, d.name AS dept_name, ap.full_name AS approver_name";
+    $cols = "x.*, e.full_name, d.name AS dept_name, e.role_id AS target_role_id, ap.full_name AS approver_name";
     $joins = "FROM attendance_explanations x JOIN employees e ON e.id=x.employee_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN employees ap ON ap.id=x.approved_by";
     $order = "ORDER BY (x.status='pending') DESC, x.id DESC";
     if ($me["role"] === "manager" && !is_hr($me)) {
@@ -290,13 +290,14 @@ if ($a === "explanation-approve" && $m === "POST") {
   $b = body();
   if (empty($b["id"]) || empty($b["status"])) err("Thieu id/status");
   if (!in_array($b["status"], ["approved", "rejected"], true)) err("status chi duoc la approved/rejected");
-  $stmt = $pdo->prepare("SELECT x.*, e.department_id FROM attendance_explanations x JOIN employees e ON e.id=x.employee_id WHERE x.id=? LIMIT 1");
+  $stmt = $pdo->prepare("SELECT x.*, e.department_id, e.role_id AS target_role_id FROM attendance_explanations x JOIN employees e ON e.id=x.employee_id WHERE x.id=? LIMIT 1");
   $stmt->execute([(int)$b["id"]]);
   $x = $stmt->fetch(PDO::FETCH_ASSOC);
   if (!$x) err("Khong tim thay don giai trinh", 404);
   if ($x["status"] !== "pending") err("Don nay da duoc xu ly roi", 409);
   // Khong ai duoc tu duyet giai trinh cua chinh minh; giai trinh cua quan ly do Admin duyet.
   if ((int)$x["employee_id"] === (int)$me["id"]) err("Khong the tu duyet giai trinh cua chinh minh", 403);
+  if ((int)$x['target_role_id'] === 2) err('Don cua truong phong can nguoi co tham quyen BOD duyet', 403);
   if ($me["role"] === "manager" && (int)$x["department_id"] !== (int)$me["department_id"]) {
     err("Chi duyet duoc giai trinh cua nhan vien phong ban minh", 403);
   }

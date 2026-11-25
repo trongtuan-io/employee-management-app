@@ -15,11 +15,15 @@ function employee_email($value) {
     return trim($value);
 }
 function employee_phone($value) {
-    if ($value === null || trim((string)$value) === '') return null;
-    if (!is_string($value) || strlen($value) > 15 || !preg_match('/^\+?[0-9]{7,15}$/D', trim($value))) {
-        throw new InvalidArgumentException('So dien thoai phai co 7-15 chu so');
+    // Dinh dang di dong Viet Nam. Dung chung cho cap nhat ho so, tuyen dung va import.
+    if ($value === null) return null;
+    if (!is_string($value)) throw new InvalidArgumentException('So dien thoai khong hop le');
+    $value = trim($value);
+    if ($value === '') return null;
+    if (!preg_match('/^(?:0[35789][0-9]{8}|\+84[35789][0-9]{8})$/D', $value)) {
+        throw new InvalidArgumentException('So di dong VN can 10 chu so, bat dau 03/05/07/08/09 (hoac +84)');
     }
-    return trim($value);
+    return $value;
 }
 function employee_username($value) {
     if (!is_string($value) || !preg_match('/^[A-Za-z0-9_.-]{3,50}$/D', trim($value))) {

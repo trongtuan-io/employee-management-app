@@ -20,6 +20,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -53,7 +54,7 @@ public class DepartmentActivity extends AppCompatActivity {
             if (position >= departments.size()) return;
             DepartmentListResponse.Item item = departments.get(position);
             new AlertDialog.Builder(this).setTitle(item.getName())
-                    .setItems(admin ? new String[]{"Xem nhân viên", "Sửa", "Xóa"} : new String[]{"Xem nhân viên"},
+                    .setItems(admin ? new String[]{"Xem nhân viên", "Sửa", "Xóa", "Chức vụ thuộc phòng ban"} : new String[]{"Xem nhân viên"},
                             (dlg, which) -> {
                                 if (which == 0) {
                                     Intent intent = new Intent(this, StaffListActivity.class);
@@ -61,11 +62,30 @@ public class DepartmentActivity extends AppCompatActivity {
                                     intent.putExtra("DEPARTMENT_NAME", item.getName());
                                     startActivity(intent);
                                 } else if (which == 1) editDepartment(item);
-                                else confirmDelete(item);
+                                else if (which == 2) confirmDelete(item);
+                                else showDepartmentPositions(item);
                             }).show();
         });
         findViewById(R.id.btnReloadDepartments).setOnClickListener(v -> load());
         load();
+    }
+
+    private void showDepartmentPositions(DepartmentListResponse.Item department) {
+        HrUi.call(this, HrUi.api(this).departmentPositions(department.getId()), data -> {
+            List<String> positions = new ArrayList<>();
+            for (Map<String,Object> row : HrUi.rows(data)) {
+                String status = HrUi.n(row.get("is_active")) == 1 ? "Đang sử dụng" : "Ngừng sử dụng";
+                positions.add(HrUi.s(row.get("title")) + " · #" + HrUi.id(row.get("id"))
+                        + "\n" + status + " · " + HrUi.id(row.get("assigned_count")) + " nhân viên");
+            }
+            AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                    .setTitle("Chức vụ thuộc phòng ban "+department.getName())
+                    .setPositiveButton("Đóng", null)
+                    .setNeutralButton("Tải lại", (d, w) -> showDepartmentPositions(department));
+            if (positions.isEmpty()) dialog.setMessage("Chưa có chức vụ thuộc phòng ban này.");
+            else dialog.setItems(positions.toArray(new String[0]), null);
+            dialog.show();
+        });
     }
     // Tránh che nút phía trên bởi status bar / camera cutout trên Android mới.
     private void applyWindowInsets() {

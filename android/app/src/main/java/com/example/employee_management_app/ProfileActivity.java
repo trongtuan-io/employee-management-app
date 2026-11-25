@@ -47,6 +47,7 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText etName, etEmail, etPhone;
     private int targetId, myId, currentStatus = 1;
     private boolean isAdminMode, suppressLockEvent;
+    private boolean readOnlyOtherProfile;
     private androidx.appcompat.widget.SwitchCompat swLock;
     private TextView tvLockStatus;
     private Button btnSave, btnAvatar;
@@ -119,29 +120,27 @@ public class ProfileActivity extends AppCompatActivity {
         String role = TokenManager.getInstance(this).getRole();
         boolean isAdmin = "admin".equalsIgnoreCase(role) || "manager".equalsIgnoreCase(role);
 
-        // Admin mo tu danh sach NV kem EMPLOYEE_ID -> sua duoc het. Con lai la tu sua.
-        if (getIntent().hasExtra("EMPLOYEE_ID") && isAdmin) {
-            targetId = getIntent().getIntExtra("EMPLOYEE_ID", myId);
-            isAdminMode = true;
-            setTitle("Sửa hồ sơ nhân viên");
-        } else {
-            targetId = myId;
-            isAdminMode = false;
-            setTitle("Hồ sơ của tôi");
-        }
-        etEmail.setEnabled(isAdminMode);
-        etPhone.setEnabled(isAdminMode);
+        // Manager xem ho so manager/admin khac: chi xem, khong duoc sua/khoa.
+        boolean hrStaff = "staff".equalsIgnoreCase(role)
+                && "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName());
+        targetId = getIntent().hasExtra("EMPLOYEE_ID") && (isAdmin || hrStaff)
+                ? getIntent().getIntExtra("EMPLOYEE_ID", myId) : myId;
+        findViewById(R.id.btnProfileLogout).setVisibility(
+                getIntent().hasExtra("EMPLOYEE_ID") ? View.GONE : View.VISIBLE
+        );
+        etEmail.setEnabled(true);
+        etPhone.setEnabled(true);
         // Cum khoa/mo chi hien khi admin (hoac sep) mo ho so nguoi khac.
         // Gat OFF -> status=0 (khoa), ON -> status=1 (mo) trong DB.
         // Dat SAU khi xac dinh isAdminMode o tren.
-        findViewById(R.id.layoutLock).setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
-        ((TextView) findViewById(R.id.tvProfilePermissions)).setText(isAdminMode
-                ? "* Trường bắt buộc. Số điện thoại có thể để trống."
-                : "Bạn được sửa họ tên và ảnh đại diện. Liên hệ người quản lý để cập nhật thông tin khác.");
+        findViewById(R.id.layoutLock).setVisibility("admin".equalsIgnoreCase(role)
+                && targetId != myId ? View.VISIBLE : View.GONE);
+        ((TextView) findViewById(R.id.tvProfilePermissions)).setText(
+                "Chỉ sửa thông tin liên hệ và ảnh. Lương, phòng, chức vụ cần BOD phê duyệt.");
         ((TextView) findViewById(R.id.tvProfileHireDate)).setText("Chưa có dữ liệu");
-        etHireDate.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
-        spDepartment.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
-        spPosition.setVisibility(isAdminMode ? View.VISIBLE : View.GONE);
+        etHireDate.setVisibility(View.GONE);
+        spDepartment.setVisibility(View.GONE);
+        spPosition.setVisibility(View.GONE);
         findViewById(R.id.btnRetryProfileLookups).setOnClickListener(v -> loadLookups());
         // Doi phong ban -> tai lai chuc vu chi cua phong do (+ chuc vu dung chung).
         spDepartment.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -154,7 +153,6 @@ public class ProfileActivity extends AppCompatActivity {
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
         });
-        if (isAdminMode) loadLookups();
         etHireDate.setOnClickListener(v -> {
             java.util.Calendar calendar = java.util.Calendar.getInstance();
             String current = etHireDate.getText().toString();
@@ -177,10 +175,41 @@ public class ProfileActivity extends AppCompatActivity {
             startActivityForResult(Intent.createChooser(i, "Chọn ảnh"), PICK_IMAGE);
         });
         btnSave.setOnClickListener(v -> saveProfile());
+        boolean hrMember = "HR".equalsIgnoreCase(TokenManager.getInstance(this).getDepartmentName())
+                && ("manager".equalsIgnoreCase(role) || "staff".equalsIgnoreCase(role));
+        findViewById(R.id.btnHrFullProfile).setOnClickListener(v -> openHr(HrDetailsActivity.class));
+        findViewById(R.id.btnHrDocuments).setVisibility(targetId == myId || hrMember ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnHrDocuments).setOnClickListener(v -> openHr(HrDocumentsActivity.class));
+        findViewById(R.id.btnHrProposal).setVisibility(hrMember ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnHrProposal).setOnClickListener(v -> openHr(
+                HrUi.managerHr(this) ? HrPersonnelProposalActivity.class : HrProposalsActivity.class));
+        findViewById(R.id.btnHrHistory).setVisibility(hrMember ? View.VISIBLE : View.GONE);
+        findViewById(R.id.btnHrHistory).setOnClickListener(v -> openHr(HrHistoryActivity.class));
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        TextView progress=findViewById(R.id.tvHrDocumentProgress);
+        if(progress==null || targetId<=0 || (targetId!=myId && !HrUi.hr(this))) return;
+        HrUi.call(this,HrUi.api(this).documentSummary(targetId),data->{
+            progress.setText(HrDocumentsActivity.progressText(HrUi.map(data)));
+            progress.setVisibility(View.VISIBLE);
+        });
+    }
+
+    private void openHr(Class<?> screen) {
+        Intent intent=new Intent(this,screen);
+        intent.putExtra("EMPLOYEE_ID", targetId);
+        startActivity(intent);
     }
 
     // Gat cong tac: server tu chan theo quyen (admin moi phong / sep cung phong)
     private void setLock(boolean enable) {
+        if (!"admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole())
+                || readOnlyOtherProfile || targetId == myId) {
+            revertLock(enable);
+            return;
+        }
         if (lockInFlight) { // dang cho server: bo qua lan gat them, giu nguyen trang thai cong tac
             revertLock(enable);
             return;
@@ -240,6 +269,21 @@ public class ProfileActivity extends AppCompatActivity {
                         && r.body().getData() != null && r.body().getData().getId() == targetId) {
                     EmployeeDetailResponse.Detail d = r.body().getData();
                     loadedProfile = d;
+                    String myRole = TokenManager.getInstance(ProfileActivity.this).getRole();
+                    boolean adminRole = "admin".equalsIgnoreCase(myRole);
+                    boolean hrRole = "HR".equalsIgnoreCase(TokenManager.getInstance(ProfileActivity.this).getDepartmentName())
+                            && ("manager".equalsIgnoreCase(myRole) || "staff".equalsIgnoreCase(myRole));
+                    readOnlyOtherProfile = targetId != myId
+                            && !adminRole && !(hrRole && d.getRoleId() != 1);
+                    etHireDate.setVisibility(View.GONE);
+                    spDepartment.setVisibility(View.GONE);
+                    spPosition.setVisibility(View.GONE);
+                    findViewById(R.id.layoutLock).setVisibility(
+                            adminRole && targetId != myId ? View.VISIBLE : View.GONE);
+                    if (readOnlyOtherProfile) {
+                        ((TextView) findViewById(R.id.tvProfilePermissions))
+                                .setText("Bạn chỉ có quyền xem thông tin công việc của nhân viên này.");
+                    }
                     etName.setText(ProfileValidation.text(d.getFullName()));
                     etEmail.setText(ProfileValidation.text(d.getEmail()));
                     etPhone.setText(ProfileValidation.text(d.getPhone()));
@@ -254,8 +298,7 @@ public class ProfileActivity extends AppCompatActivity {
                             ProfileValidation.display(d.getHireDate()));
                     etHireDate.setText(ProfileValidation.text(d.getHireDate()));
                     selectLookupValues();
-                    // Loc lai chuc vu theo dung phong ban cua ho so nay (ke ca khi lan tai truoc chua xong).
-                    if (isAdminMode && positionsForDept != d.getDepartmentId()) loadPositions(d.getDepartmentId());
+                    // Employment data is read-only until the shared BOD approval API is agreed.
                     currentStatus = d.getStatus();
                     TextView tvStatusBox = findViewById(R.id.tvProfileStatus);
                     tvStatusBox.setText(
@@ -296,42 +339,25 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void saveProfile() {
-        if (loadedProfile == null || loading || saving) return;
+        if (loadedProfile == null || loading || saving || readOnlyOtherProfile) return;
         String name = etName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
         String phone = etPhone.getText().toString().trim();
-        boolean emailChanged = isAdminMode && ProfileValidation.changed(email, loadedProfile.getEmail());
-        boolean phoneChanged = isAdminMode && ProfileValidation.changed(phone, loadedProfile.getPhone());
+        boolean emailChanged = ProfileValidation.changed(email, loadedProfile.getEmail());
+        boolean phoneChanged = ProfileValidation.changed(phone, loadedProfile.getPhone());
         etName.setError(ProfileValidation.nameError(name));
         etEmail.setError(emailChanged ? ProfileValidation.emailError(email) : null);
         etPhone.setError(phoneChanged ? ProfileValidation.phoneError(phone) : null);
-        String date = isAdminMode ? etHireDate.getText().toString().trim() : null;
-        if (isAdminMode) etHireDate.setError(ProfileValidation.hireDateError(date));
-        if (etName.getError() != null || etEmail.getError() != null || etPhone.getError() != null
-                || (isAdminMode && etHireDate.getError() != null)) {
-            EditText invalid = etName.getError() != null ? etName : etEmail.getError() != null ? etEmail
-                    : etPhone.getError() != null ? etPhone : etHireDate;
-            invalid.requestFocus();
+        if (etName.getError() != null || etEmail.getError() != null || etPhone.getError() != null) {
             showMessage("Vui lòng kiểm tra các trường được đánh dấu.");
-            return;
-        }
-        if (isAdminMode && (!departmentsLoaded || !positionsLoaded)) {
-            showMessage("Cần tải phòng ban và chức vụ trước khi lưu. Bấm Tải lại nếu gặp lỗi.");
             return;
         }
         saving = true;
         showMessage("Đang lưu hồ sơ…");
         updateControls();
         EmployeeApi api = ApiClient.getClient(this).create(EmployeeApi.class);
-        // Gson omits nulls: only edited contact fields are sent, preserving legacy data.
-        Integer departmentId = isAdminMode ? departmentChoices.get(spDepartment.getSelectedItemPosition()).getId() : null;
-        Integer positionId = isAdminMode ? positionChoices.get(spPosition.getSelectedItemPosition()).getId() : null;
-        boolean dateChanged = isAdminMode && ProfileValidation.changed(date, loadedProfile.getHireDate());
         UpdateEmployeeRequest req = new UpdateEmployeeRequest(targetId, myId, name,
-                emailChanged ? email : null, phoneChanged ? phone : null,
-                isAdminMode && departmentId != loadedProfile.getDepartmentId() ? departmentId : null,
-                isAdminMode && positionId != loadedProfile.getPositionId() ? positionId : null,
-                dateChanged ? date : null);
+                emailChanged ? email : null, phoneChanged ? phone : null);
         saveCall = api.updateEmployee(req);
         saveCall.enqueue(new Callback<ApiResponse>() {
             @Override
@@ -444,17 +470,20 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void updateControls() {
-        boolean editable = loadedProfile != null && !loading && !saving;
+        boolean editable = loadedProfile != null && !loading && !saving && !readOnlyOtherProfile;
         etName.setEnabled(editable);
-        etEmail.setEnabled(editable && isAdminMode);
-        etPhone.setEnabled(editable && isAdminMode);
+        etEmail.setEnabled(editable);
+        etPhone.setEnabled(editable);
         btnSave.setEnabled(editable);
         btnAvatar.setEnabled(editable);
         // Khong cho tu khoa chinh minh (server cung chan) + khoa cong tac khi dang cho ket qua.
-        swLock.setEnabled(editable && targetId != myId && !lockInFlight);
-        etHireDate.setEnabled(editable && isAdminMode);
-        spDepartment.setEnabled(editable && isAdminMode && departmentsLoaded);
-        spPosition.setEnabled(editable && isAdminMode && positionsLoaded);
+        swLock.setEnabled(editable && "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole())
+                && targetId != myId && !lockInFlight);
+        etHireDate.setEnabled(false);
+        // Chuyen phong ban la quyen cua Admin, khong phai Manager.
+        boolean adminRole = "admin".equalsIgnoreCase(TokenManager.getInstance(this).getRole());
+        spDepartment.setEnabled(false);
+        spPosition.setEnabled(false);
         findViewById(R.id.progressProfile).setVisibility(loading || saving ? View.VISIBLE : View.GONE);
     }
 

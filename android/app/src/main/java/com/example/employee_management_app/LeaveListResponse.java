@@ -13,6 +13,8 @@ public class LeaveListResponse {
     public static class Item {
         private int id;
         private int employee_id;
+        private int target_role_id;
+        public int getTargetRoleId() { return target_role_id; }
         private String full_name; // chi co o danh sach cho duyet (server JOIN employees)
         private String dept_name; // chi co o danh sach cho duyet (server JOIN departments)
         private String start_date;

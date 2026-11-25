@@ -5,7 +5,7 @@ import java.util.Objects;
 // Immutable query: every page request carries the complete filter and sort selection.
 final class StaffListQuery {
     static final int PAGE_SIZE = 20;
-    static final String[] SORTS = {"name_asc", "name_desc", "code_asc", "code_desc"};
+    static final String[] SORTS = {"name_asc", "name_desc"};
 
     final String search;
     final int departmentId; // 0 means all departments; omitted from the API query.

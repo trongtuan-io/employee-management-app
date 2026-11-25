@@ -2,7 +2,7 @@
     <string name="app_name">employee-management-app</string>
     <string name="staff_title">Quản lý nhân viên</string>
     <string name="staff_edit_hint">Bấm vào 1 người để sửa hồ sơ</string>
-    <string name="staff_search_hint">Nhập tên hoặc mã nhân viên</string>
+    <string name="staff_search_hint">Nhập tên hoặc tên đăng nhập</string>
     <string name="staff_search">Tìm kiếm</string>
     <string name="staff_department">Phòng ban</string>
     <string name="staff_all_departments">Tất cả phòng ban</string>
@@ -15,8 +15,6 @@
     <string-array name="staff_sort_options">
         <item>Tên nhân viên A–Z</item>
         <item>Tên nhân viên Z–A</item>
-        <item>Mã nhân viên A–Z</item>
-        <item>Mã nhân viên Z–A</item>
     </string-array>
     <string name="staff_previous_page">Trang trước</string>
     <string name="staff_next_page">Trang sau</string>

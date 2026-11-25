@@ -10,6 +10,15 @@ import retrofit2.http.Query;
 import retrofit2.http.Header;
 
 public interface EmployeeApi {
+    @GET("proposals.php?action=access")
+    Call<ApiResponse> getProposalAccess();
+
+    @GET("proposals.php?action=list")
+    Call<ProposalListResponse> getProposals(@Query("status") String status, @Query("type") String type);
+
+    @POST("proposals.php?action=approve")
+    Call<ApiResponse> approveProposal(@Body ProposalApproveRequest request);
+
     // Ho so chi tiet 1 nhan vien
     @GET("employees.php?action=detail")
     Call<EmployeeDetailResponse> getDetail(@Query("id") int employeeId);

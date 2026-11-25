@@ -43,9 +43,9 @@ public class ProfileActivityTest {
     private Field retrofitField;
     private Retrofit originalRetrofit;
     private SharedPreferences preferences;
-    private boolean hadUserId, hadRole;
+    private boolean hadUserId, hadRole, hadDepartment;
     private int originalUserId;
-    private String originalRole;
+    private String originalRole, originalDepartment;
     private volatile boolean offline, detailError, saveError;
     private volatile JSONObject savedBody;
     private volatile String name = "Nguyễn An";
@@ -57,8 +57,10 @@ public class ProfileActivityTest {
         preferences = context.getSharedPreferences("EmployeeAppPrefs", Context.MODE_PRIVATE);
         hadUserId = preferences.contains("user_id");
         hadRole = preferences.contains("user_role");
+        hadDepartment = preferences.contains("user_department");
         originalUserId = preferences.getInt("user_id", -1);
         originalRole = preferences.getString("user_role", "staff");
+        originalDepartment = preferences.getString("user_department", null);
         retrofitField = ApiClient.class.getDeclaredField("retrofit");
         retrofitField.setAccessible(true);
         originalRetrofit = (Retrofit) retrofitField.get(null);
@@ -74,29 +76,37 @@ public class ProfileActivityTest {
         SharedPreferences.Editor editor = preferences.edit();
         if (hadUserId) editor.putInt("user_id", originalUserId); else editor.remove("user_id");
         if (hadRole) editor.putString("user_role", originalRole); else editor.remove("user_role");
+        if (hadDepartment) editor.putString("user_department", originalDepartment);
+        else editor.remove("user_department");
         assertTrue(editor.commit());
     }
 
     private void launch(boolean admin) {
         TokenManager.getInstance(context).saveUserId(admin ? 8 : 42);
         TokenManager.getInstance(context).saveRole(admin ? "manager" : "staff");
+        assertTrue(preferences.edit().putString("user_department", admin ? "HR" : "IT").commit());
         Intent intent = new Intent(context, ProfileActivity.class);
         if (admin) intent.putExtra("EMPLOYEE_ID", 42);
         scenario = ActivityScenario.launch(intent);
     }
 
-    @Test public void staffSeesIdentityAndMissingFieldsWithoutGainingEditRights() {
+    @Test public void staffSeesDocumentProgressAndCanEditOwnContact() {
         launch(false);
-        await(a -> a.findViewById(R.id.btnSaveProfile).isEnabled());
+        await(a -> a.findViewById(R.id.btnSaveProfile).isEnabled()
+                && a.findViewById(R.id.tvHrDocumentProgress).getVisibility()==View.VISIBLE);
         scenario.onActivity(a -> {
             assertTrue(text(a, R.id.tvProfileCode).contains("NV042"));
             assertEquals("Chưa cập nhật", text(a, R.id.tvProfileDepartment));
             assertEquals("Chưa cập nhật", text(a, R.id.tvProfilePosition));
             assertEquals("", text(a, R.id.etProfilePhone));
             assertTrue(text(a, R.id.tvProfileStatus).contains("Đang hoạt động"));
-            assertFalse(a.findViewById(R.id.etProfileEmail).isEnabled());
-            assertFalse(a.findViewById(R.id.etProfilePhone).isEnabled());
+            assertTrue(a.findViewById(R.id.etProfileEmail).isEnabled());
+            assertTrue(a.findViewById(R.id.etProfilePhone).isEnabled());
             assertEquals(View.GONE, a.findViewById(R.id.layoutLock).getVisibility());
+            String progress=text(a,R.id.tvHrDocumentProgress);
+            assertTrue(progress.contains("1/3"));
+            assertTrue(progress.contains("Chưa nộp 1"));
+            assertTrue(progress.contains("Hạn nộp 2026-12-09"));
         });
     }
 
@@ -198,6 +208,10 @@ public class ProfileActivityTest {
             } else if ("positions".equals(action)) {
                 body.put("success", true).put("data", new org.json.JSONArray()
                         .put(new JSONObject().put("id", 1).put("title", "Developer")));
+            } else if ("summary".equals(action) && "/hr_documents.php".equals(request.url().encodedPath())) {
+                body.put("success",true).put("data",new JSONObject().put("valid",1)
+                        .put("required_count",3).put("missing",1).put("pending",1)
+                        .put("needs_update",0).put("due_at","2026-12-09 08:00:00"));
             } else if ("detail".equals(action)) {
                 status = detailError ? 404 : 200;
                 body.put("success", !detailError).put("error", "Không tìm thấy nhân viên");

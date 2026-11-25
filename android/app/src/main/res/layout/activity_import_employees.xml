@@ -32,7 +32,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:lineSpacingMultiplier="1.4"
-                android:text="Dòng đầu của file phải có: username, full_name, email. Có thể thêm: phone, department_id, position_id, hire_date (YYYY-MM-DD).\n\nTối đa 500 nhân viên, 3MB. Import tất cả hoặc không nhập dòng nào nếu có lỗi. Tài khoản mới có mật khẩu tạm ngẫu nhiên — hãy lưu bảng mật khẩu và yêu cầu nhân viên đổi mật khẩu."
+                android:text="Cột bắt buộc: username, full_name, email, department_id, position_id. Cột tùy chọn: phone, hire_date (YYYY-MM-DD).\n\nTạo tài khoản Staff trực tiếp, tối đa 500 dòng và 3 MB. Tài khoản mới có mật khẩu tạm và 15 ngày để nộp giấy tờ."
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -41,6 +41,11 @@
                 style="@style/AppButtonPrimary"
                 android:layout_marginTop="18dp"
                 android:text="Chọn file Excel / CSV" />
+
+            <Button
+                android:id="@+id/btnImportHistory"
+                style="@style/AppButtonSecondary"
+                android:text="Lịch sử import" />
 
             <TextView
                 android:id="@+id/tvImportStatus"
