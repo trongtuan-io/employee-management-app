@@ -243,6 +243,28 @@ public interface EmployeeApi {
     @POST("settings.php?action=save")
     Call<ApiResponse> saveSettings(@Body java.util.Map<String, String> settings);
 
+    // Phan he BOD (bod.php) - Dashboard Ban Giam doc (chuyen tu nhanh vu_ngoc_BOD cua Ngoc, 27/11/2026)
+    @GET("bod.php?action=dashboard")
+    Call<BodDashboardResponse> getBodDashboard();
+
+    @GET("bod.php?action=employee-statistics")
+    Call<BodEmployeeStatsResponse> getBodEmployeeStats();
+
+    @GET("bod.php?action=salary-statistics")
+    Call<BodSalaryStatsResponse> getBodSalaryStats();
+
+    @GET("bod.php?action=attendance-statistics")
+    Call<BodAttendanceStatsResponse> getBodAttendanceStats(@Query("month") Integer month, @Query("year") Integer year);
+
+    @GET("bod.php?action=leave-statistics")
+    Call<BodLeaveStatsResponse> getBodLeaveStats(@Query("month") Integer month, @Query("year") Integer year);
+
+    @GET("bod.php?action=employee-movements")
+    Call<BodMovementsResponse> getBodMovements();
+
+    @GET("bod.php?action=export-report")
+    Call<okhttp3.ResponseBody> exportBodReport(@Query("month") int month, @Query("year") int year);
+
     // Trang chu: trang thai cham cong hom nay + bang tin cong ty
     @GET("attendances.php?action=today")
     Call<AttendanceTodayResponse> getAttendanceToday();

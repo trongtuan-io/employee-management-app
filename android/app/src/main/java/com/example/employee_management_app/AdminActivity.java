@@ -82,6 +82,12 @@ public class AdminActivity extends AppCompatActivity {
             btnSalaryOverview.setOnClickListener(v ->
                     startActivity(new Intent(this, SalaryOverviewActivity.class)));
         }
+        Button btnBodDashboard = findViewById(R.id.btnAdminBodDashboard);
+        if (btnBodDashboard != null) {
+            btnBodDashboard.setVisibility(isExec ? android.view.View.VISIBLE : android.view.View.GONE);
+            btnBodDashboard.setOnClickListener(v ->
+                    startActivity(new Intent(this, BodDashboardActivity.class)));
+        }
         Button btnGps = findViewById(R.id.btnAdminGps);
         if (btnGps != null) {
             btnGps.setVisibility(isExec ? android.view.View.VISIBLE : android.view.View.GONE);

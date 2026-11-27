@@ -62,6 +62,9 @@ dependencies {
 
     // Tai + hien thi anh dai dien
     implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // Bieu do cho Dashboard BOD (BodDashboardActivity)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     // Cham cong sinh trac hoc (2026-11-16):

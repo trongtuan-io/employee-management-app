@@ -226,6 +226,12 @@
                 android:text="Bảng lương toàn công ty (Duyệt lương)" />
 
             <Button
+                android:id="@+id/btnAdminBodDashboard"
+                style="@style/AppButtonSecondary"
+                android:layout_marginTop="10dp"
+                android:text="Dashboard Ban Giám đốc (BOD)" />
+
+            <Button
                 android:id="@+id/btnAdminGps"
                 style="@style/AppButtonSecondary"
                 android:layout_marginTop="10dp"
