@@ -12,8 +12,10 @@ public class EmployeeImportResponse {
         private int updated, unchanged;
         public int getUpdated() { return updated; }
         public int getUnchanged() { return unchanged; }
+        private long batch_id;
         private List<Credential> temporary_credentials;
         public int getImported() { return imported; }
+        public long getBatchId() { return batch_id; }
         public List<Credential> getCredentials() { return temporary_credentials; }
     }
     public static class Credential {

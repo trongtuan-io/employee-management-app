@@ -111,6 +111,7 @@
 
         <activity android:name=".DepartmentActivity" android:exported="false" />
         <activity android:name=".ImportEmployeesActivity" android:exported="false" />
+        <activity android:name=".ImportSheetActivity" android:exported="false" />
         <activity android:name=".CreateAccountActivity" android:exported="false" />
         <activity android:name=".HrHubActivity" android:exported="false" />
         <activity android:name=".ProposalApprovalActivity" android:exported="false" />
