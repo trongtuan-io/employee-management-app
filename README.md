@@ -105,17 +105,16 @@ api/            PHP REST API
   mail_lib.php        gửi bản sao thông báo qua email (PHPMailer + Gmail SMTP)
   db.php              kết nối PDO MySQL, múi giờ Asia/Ho_Chi_Minh dùng chung
 database/       employee_management.sql (8 bảng gốc) + migrations/ (đủ 14 bảng) — xem database/README.md
-app/            App Android — một bản của ứng dụng
-android/        App Android — bản thứ hai; hai cây app/ và android/ được giữ ĐỒNG BỘ
-                mọi thay đổi; máy demo của nhóm mở project ở thư mục android/
+android/        App Android — project HIỆN TẠI, mở thư mục này bằng Android Studio để chạy
+app/            App Android — bản cũ ở gốc repo, KHÔNG còn cập nhật (chỉ giữ tham khảo)
 ```
 
 ## Chạy dự án trên máy mới
 
 1. Cài Git, Android Studio, XAMPP. Clone repo.
-2. **Database**: XAMPP Start Apache + MySQL → mở `http://localhost/phpmyadmin` → tạo trước DB `employee_management` rồi nhập file `database/employee_management.sql` (8 bảng gốc), sau đó chạy các file trong `database/migrations/` theo thứ tự số để đủ 14 bảng (001 ngày vào làm/fulltext, 002 token, 003 chức vụ theo phòng, 005 bảo mật reset, 006 tính lương tự động, 007 phân quyền theo phòng, 008 hoàn thiện lương, 009 thông báo, 010 quỹ phép/GPS/giải trình, 011 chấm công sinh trắc học; dãy số không có 004). Nếu nâng cấp một DB cũ, chỉ chạy những migration **chưa** áp dụng và không import lại file dump. Nhiều cột/bảng mới (thông báo, giải trình, lịch sử lương…) API cũng **tự bổ sung khi chạy lần đầu** nên migration chủ yếu để đối chiếu/cài mới. Chi tiết từng bảng xem `database/README.md`.
+2. **Database**: XAMPP Start Apache + MySQL → mở `http://localhost/phpmyadmin` → tạo trước DB `employee_management` (file dump **không** có lệnh CREATE DATABASE) rồi nhập file `database/employee_management.sql` (8 bảng gốc), sau đó chạy **lần lượt mọi file** trong `database/migrations/` theo thứ tự số: 001 ngày vào làm/fulltext, 002 token, 002 (file thứ hai) import hàng loạt, 003 chức vụ theo phòng, 005 bảo mật reset, 006 tính lương tự động, 007 phân quyền theo phòng, 008 hoàn thiện lương, 009 thông báo, 010 quỹ phép/GPS/giải trình, 011 chấm công sinh trắc học, 012 quy trình HR, 013 tuyển dụng, 014 onboarding, **015 seed Ban Giám đốc (BOD)** — dãy số không có 004. ⚠️ Bỏ qua migration nào là thiếu bảng/thiếu dữ liệu tương ứng; riêng **015 tạo phòng BOD + chức vụ Giám đốc + tài khoản `giamdoc`** — không chạy 015 thì hệ thống **không có tài khoản giám đốc** (tài khoản tạo tay sẽ mặc định là nhân viên). Nếu nâng cấp một DB cũ, chỉ chạy những migration **chưa** áp dụng và không import lại file dump. Chi tiết từng bảng xem `database/README.md`.
 3. **API**: copy thư mục `api/` vào `htdocs/employee-api/`. File cấu hình mail/SMS **không nằm trong repo** — copy `api/mail_config.example.php` → `api/mail_config.php` (và tương tự `sms_config`) rồi điền thông tin thật ngay trên máy chạy server. Test: mở `http://localhost/employee-api/attendances.php?action=today` phải trả JSON.
-4. **App**: mở project bằng Android Studio → thêm IP máy vào `local.properties` (file này đã gitignore, mỗi máy tự giữ):
+4. **App**: mở thư mục **`android/`** bằng Android Studio (đây là project chạy được hiện tại; cây `app/` ở gốc repo là bản cũ, không còn cập nhật) → thêm IP máy vào file `android/local.properties` (file này đã gitignore, mỗi máy tự giữ):
    ```
    apiUrl=http://<IP-LAN-cua-may>/employee-api/
    ```
@@ -140,6 +139,8 @@ App **không** kết nối được tới `localhost` của máy tính. Bắt bu
 | `ketoan_vien` | `ketoan123` | Nhân viên Kế toán (ACC) |
 | `quang_hr` | `nhansu123` | Trưởng phòng HR |
 | `sep_sales` | `sales123` | Trưởng phòng Kinh doanh (SALES) |
+| `giamdoc` | `123456` | Giám đốc — Ban Giám đốc (BOD), có quyền duyệt BOD *(cần migration 015)* |
+| `thuky` | `123456` | Thư ký — Ban Giám đốc (BOD) *(cần migration 015)* |
 
 ## API chính (tham khảo nhanh)
 
