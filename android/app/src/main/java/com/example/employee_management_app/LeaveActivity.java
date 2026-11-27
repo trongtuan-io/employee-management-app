@@ -62,7 +62,6 @@ public class LeaveActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_leave);
-        findViewById(R.id.btnBackLeave).setOnClickListener(v -> finish());
         BottomNavHelper.setup(this, R.id.nav_leave);
 
         api = ApiClient.getClient(this).create(EmployeeApi.class);

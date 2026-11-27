@@ -16,12 +16,6 @@
         android:paddingEnd="16dp"
         android:paddingTop="14dp">
 
-        <Button
-            android:id="@+id/btnBackProfile"
-            style="@style/AppButtonSmall"
-            android:text="← Quay lại"
-            android:contentDescription="Quay lại màn hình trước" />
-
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"

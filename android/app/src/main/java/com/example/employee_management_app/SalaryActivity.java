@@ -46,7 +46,6 @@ public class SalaryActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_salary);
-        findViewById(R.id.btnBackSalary).setOnClickListener(v -> finish());
         BottomNavHelper.setup(this, R.id.nav_salary);
 
         api = ApiClient.getClient(this).create(EmployeeApi.class);

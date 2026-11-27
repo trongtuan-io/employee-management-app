@@ -88,7 +88,6 @@ public class ProfileActivity extends AppCompatActivity {
                 finish();
             });
         }
-        findViewById(R.id.btnBackProfile).setOnClickListener(v -> finish());
         View root = findViewById(R.id.profileRoot);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()

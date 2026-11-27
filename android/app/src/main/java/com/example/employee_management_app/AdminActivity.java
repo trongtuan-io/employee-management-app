@@ -37,7 +37,6 @@ public class AdminActivity extends AppCompatActivity {
             return;
         }
         setContentView(R.layout.activity_admin);
-        findViewById(R.id.btnBackAdmin).setOnClickListener(v -> finish());
         BottomNavHelper.setup(this, R.id.nav_overview);
 
         tvTotalStaff = findViewById(R.id.tvTotalStaff);
